@@ -1,6 +1,6 @@
 # PRODUCT REQUIREMENTS SPECIFICATION
 
-## vite-plugin-mock-server
+## vite-plugin-open-api-server
 
 **Version:** 1.0.0-draft  
 **Last Updated:** 2025-01-XX  
@@ -34,7 +34,39 @@
 
 ### 1.1 Product Overview
 
-The `vite-plugin-mock-server` is a Vite plugin that integrates the Scalar Mock Server into the development workflow. It automatically spawns a mock API server based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
+The `vite-plugin-open-api-server` is a Vite plugin that integrates the Scalar Mock Server into the development workflow. It automatically spawns a mock API server based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
+
+#### 1.1.1 Why OpenAPI-First?
+
+The plugin is built on an **OpenAPI-first philosophy**, where the OpenAPI specification serves as the single source of truth for API contracts. This approach provides several key advantages:
+
+**Contract-Driven Development:**
+- OpenAPI specification defines the exact contract between frontend and backend
+- Automatic validation ensures mocked responses match the documented API structure
+- Reduces integration issues by catching contract mismatches early in development
+
+**Living Documentation:**
+- OpenAPI spec serves as always up-to-date API documentation
+- Changes to the API are immediately reflected in mock responses
+- Eliminates drift between documentation, mocks, and actual implementation
+
+**Type Safety & Code Generation:**
+- OpenAPI schemas enable automatic TypeScript type generation
+- Strongly-typed API clients reduce runtime errors
+- IDE autocomplete and validation based on actual API contracts
+
+**Ecosystem Integration:**
+- Leverages mature OpenAPI tooling (parsers, validators, code generators)
+- Compatible with industry-standard API design practices
+- Enables contract testing and API-first development workflows
+
+**Differentiation from Generic Mock Servers:**
+
+Unlike generic mock servers (json-server, MSW) that require manual mock definitions, `vite-plugin-open-api-server`:
+- Generates mocks **automatically** from OpenAPI specs (zero manual configuration)
+- Validates responses against schemas (catches type mismatches)
+- Supports all OpenAPI features (path params, query params, request bodies, multiple response codes)
+- Maintains consistency between API documentation and mock behavior
 
 ### 1.2 Value Proposition
 
@@ -1110,14 +1142,333 @@ fetch_vehicles: `
 
 **Priority:** P1 (High)
 
-**Description:** The plugin MUST handle OpenAPI security schemes for authentication simulation.
+**Description:** The plugin MUST handle OpenAPI security schemes to simulate authentication flows during development. The Scalar Mock Server validates the **presence** of credentials but accepts any value as valid, enabling frontend development without backend authentication infrastructure.
+
+**Background:**
+
+OpenAPI specifications often define security schemes that require authentication (Bearer tokens, API Keys, OAuth2, etc.). In development, we need to:
+1. Validate that the frontend sends credentials correctly
+2. Test 401/403 error handling flows
+3. Avoid complex authentication setup (real JWTs, OAuth flows, etc.)
+
+The mock server achieves this by:
+- **Validating presence** of credentials (header, query param, cookie)
+- **Accepting any value** as valid (no signature verification, no token expiry)
+- **Returning 401 Unauthorized** only when credentials are completely missing
+
+**How Security Scheme Normalization Works:**
+
+The `@scalar/openapi-parser`'s `sanitize()` function automatically handles security scheme normalization:
+
+```typescript
+import { sanitize } from '@scalar/openapi-parser';
+
+// Before sanitization (potentially incomplete)
+const document = {
+  openapi: '3.1.0',
+  info: { title: 'API', version: '1.0.0' },
+  paths: {
+    '/protected': {
+      get: {
+        security: [{ bearerAuth: [] }],  // References bearerAuth
+        responses: { '200': { description: 'OK' } }
+      }
+    }
+  }
+  // Missing components.securitySchemes definition!
+};
+
+// After sanitization - missing securitySchemes auto-generated
+const normalized = sanitize(document);
+
+// Result:
+// {
+//   ...
+//   components: {
+//     securitySchemes: {
+//       bearerAuth: {
+//         type: 'http',
+//         scheme: 'bearer'
+//       }
+//     }
+//   }
+// }
+```
+
+**Supported Security Schemes:**
+
+| Scheme Type | Location | OpenAPI Definition | Mock Behavior |
+|-------------|----------|-------------------|---------------|
+| **HTTP Bearer** | `Authorization: Bearer <token>` | `type: http, scheme: bearer` | Accepts any non-empty token |
+| **HTTP Basic** | `Authorization: Basic <base64>` | `type: http, scheme: basic` | Accepts any base64 string |
+| **API Key (Header)** | Custom header | `type: apiKey, in: header, name: X-API-Key` | Accepts any non-empty value |
+| **API Key (Query)** | Query parameter | `type: apiKey, in: query, name: api_key` | Accepts any non-empty value |
+| **API Key (Cookie)** | Cookie | `type: apiKey, in: cookie, name: auth` | Accepts any non-empty value |
+| **OAuth2** | `Authorization: Bearer <token>` | `type: oauth2, flows: {...}` | Accepts any non-empty token |
+| **OpenID Connect** | `Authorization: Bearer <token>` | `type: openIdConnect, url: ...` | Accepts any non-empty token |
+
+**Example 1: Bearer Token Authentication**
+
+```yaml
+# OpenAPI Specification
+paths:
+  /api/v1/users:
+    get:
+      summary: Get users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              example:
+                error: 'Missing or invalid authentication'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
+
+**Mock Server Behavior:**
+
+```bash
+# ✅ Request WITH Authorization header (any token accepted)
+curl -H "Authorization: Bearer any-random-string" http://localhost:3456/api/v1/users
+# Response: 200 OK with mock user data
+
+# ✅ Request WITH valid JWT (not decoded, just presence validated)
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." http://localhost:3456/api/v1/users
+# Response: 200 OK with mock user data
+
+# ❌ Request WITHOUT Authorization header
+curl http://localhost:3456/api/v1/users
+# Response: 401 Unauthorized
+# Body: { "error": "Missing or invalid authentication" }
+```
+
+**Example 2: API Key Authentication**
+
+```yaml
+# OpenAPI Specification
+paths:
+  /api/v1/data:
+    get:
+      summary: Get data
+      security:
+        - apiKeyAuth: []
+      responses:
+        '200':
+          description: Success
+
+components:
+  securitySchemes:
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+```
+
+**Mock Server Behavior:**
+
+```bash
+# ✅ Request WITH X-API-Key header
+curl -H "X-API-Key: test-key-123" http://localhost:3456/api/v1/data
+# Response: 200 OK
+
+# ❌ Request WITHOUT X-API-Key header
+curl http://localhost:3456/api/v1/data
+# Response: 401 Unauthorized
+```
+
+**Example 3: Multiple Security Schemes (OR logic)**
+
+```yaml
+# OpenAPI Specification - Either bearerAuth OR apiKey required
+paths:
+  /api/v1/resource:
+    get:
+      security:
+        - bearerAuth: []
+        - apiKey: []
+      responses:
+        '200':
+          description: Success
+```
+
+**Mock Server Behavior:**
+
+```bash
+# ✅ With Bearer token
+curl -H "Authorization: Bearer token123" http://localhost:3456/api/v1/resource
+# Response: 200 OK
+
+# ✅ With API Key
+curl -H "X-API-Key: key123" http://localhost:3456/api/v1/resource
+# Response: 200 OK
+
+# ✅ With BOTH (overkill but valid)
+curl -H "Authorization: Bearer token123" -H "X-API-Key: key123" http://localhost:3456/api/v1/resource
+# Response: 200 OK
+
+# ❌ With NEITHER
+curl http://localhost:3456/api/v1/resource
+# Response: 401 Unauthorized
+```
+
+**Example 4: OAuth2 Simulation**
+
+```yaml
+components:
+  securitySchemes:
+    oauth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/oauth/authorize
+          tokenUrl: https://example.com/oauth/token
+          scopes:
+            read: Read access
+            write: Write access
+```
+
+**Mock Server Behavior:**
+
+- **No actual OAuth flow** - mock server doesn't redirect to authorization URL
+- **No token validation** - doesn't verify token signature or expiry
+- **No scope validation** - doesn't check if token has required scopes
+- **Presence check only** - validates that `Authorization: Bearer <token>` header exists
+
+```bash
+# ✅ Any Bearer token accepted (scopes not validated)
+curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/resource
+# Response: 200 OK
+```
 
 **Acceptance Criteria:**
-- [ ] Detect security schemes referenced in operations
-- [ ] Auto-generate missing security scheme definitions
-- [ ] Accept any Bearer token as valid (mock mode)
-- [ ] Return 401 for missing Authorization header on protected endpoints
-- [ ] Log normalized security schemes on startup
+
+- [ ] Use `@scalar/openapi-parser`'s `sanitize()` to normalize security schemes
+- [ ] Auto-generate missing `components.securitySchemes` definitions
+- [ ] Mock server validates **presence** of credentials (not validity)
+- [ ] Return 401 Unauthorized when required credentials are missing
+- [ ] Accept any non-empty credential value as valid
+- [ ] Support all OpenAPI security scheme types (http, apiKey, oauth2, openIdConnect)
+- [ ] Handle multiple security schemes with OR logic
+- [ ] Log normalized security schemes on startup:
+
+```
+[Mock] Security Schemes Detected:
+  ✓ bearerAuth (HTTP Bearer) - Used by 12 endpoints
+  ✓ apiKeyAuth (API Key in header: X-API-Key) - Used by 5 endpoints
+  ✓ oauth2 (OAuth2) - Used by 8 endpoints
+```
+
+**Edge Cases & Limitations:**
+
+1. **No Token Validation:**
+   - JWT tokens are **not decoded** or verified
+   - Token expiry is **not checked**
+   - Token signatures are **not validated**
+
+2. **No Scope Validation:**
+   - OAuth2 scopes defined in spec are **ignored**
+   - Any token has access to all endpoints
+
+3. **No Role-Based Access Control (RBAC):**
+   - Cannot simulate admin vs user permissions
+   - All authenticated requests have full access
+
+4. **Security AND Logic Not Supported:**
+   - OpenAPI supports AND logic: `security: [{ scheme1: [], scheme2: [] }]`
+   - Mock server may treat this as OR logic (implementation-dependent)
+
+5. **Custom Security Schemes:**
+   - Custom `x-` extensions in security schemes may be ignored
+
+**Development Best Practices:**
+
+1. **Test Authentication Presence:**
+   ```typescript
+   // Frontend code to test auth header is sent
+   const response = await fetch('/api/protected', {
+     headers: {
+       'Authorization': 'Bearer ' + localStorage.getItem('token')
+     }
+   });
+   
+   if (response.status === 401) {
+     // Redirect to login (auth header missing/invalid)
+   }
+   ```
+
+2. **Simulate 401 Errors:**
+   ```typescript
+   // Temporarily remove auth header to test error handling
+   const response = await fetch('/api/protected');
+   // Should get 401 - test error UI is shown
+   ```
+
+3. **Mock Different Token Values:**
+   ```typescript
+   // Mock server accepts any token, so you can use semantic values for debugging
+   headers: {
+     'Authorization': 'Bearer user-john-doe-session-123'
+   }
+   ```
+
+**Technical Implementation:**
+
+```typescript
+// In mock-server-runner.mjs
+import { sanitize } from '@scalar/openapi-parser';
+
+async function loadAndNormalizeOpenApi(filePath: string) {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  
+  // Parse and validate
+  const { valid, errors } = await validate(content);
+  if (!valid) throw new Error('Invalid OpenAPI');
+  
+  // Dereference $ref
+  const { schema } = await dereference(content);
+  
+  // Normalize security schemes (auto-generate missing definitions)
+  const normalized = sanitize(schema);
+  
+  // Log detected security schemes
+  logSecuritySchemes(normalized);
+  
+  return normalized;
+}
+
+function logSecuritySchemes(document: OpenAPIDocument) {
+  const schemes = document.components?.securitySchemes || {};
+  
+  if (Object.keys(schemes).length === 0) {
+    console.log('[Mock] ℹ No security schemes defined');
+    return;
+  }
+  
+  console.log('[Mock] Security Schemes Detected:');
+  
+  for (const [name, scheme] of Object.entries(schemes)) {
+    const usageCount = countSecurityUsage(document, name);
+    const description = formatSchemeDescription(scheme);
+    console.log(`  ✓ ${name} (${description}) - Used by ${usageCount} endpoints`);
+  }
+}
+```
 
 ---
 
@@ -1151,11 +1502,9 @@ fetch_vehicles: `
 
 ---
 
-### 5.2 Optional Features
-
 #### FR-013: Preserve Existing x-handler/x-seed in OpenAPI
 
-**Priority:** P2 (Medium)
+**Priority:** P0 (Critical)
 
 **Description:** If the OpenAPI spec already contains `x-handler` or `x-seed` extensions, preserve them unless explicitly overridden by external files.
 
@@ -1172,34 +1521,381 @@ if (operation['x-handler'] && handlers[operationId]) {
 
 ---
 
+---
+
 #### FR-014: Hot Reload for Seeds/Handlers
 
-**Priority:** P3 (Low)
+**Priority:** P1 (High)
 
-**Description:** Automatically reload seed and handler files when they change, re-inject into OpenAPI document, and restart mock server.
+**Description:** Automatically reload seed and handler files when they change, re-inject into OpenAPI document, and restart mock server without requiring full Vite dev server restart.
 
 **Prerequisites:**
-- All core FRs (FR-003 through FR-012) implemented
+- FR-003, FR-004, FR-005 implemented
+
+**Acceptance Criteria:**
+- [ ] Watch handler/seed directories for file changes
+- [ ] Detect file add/modify/delete events
+- [ ] Reload modified handler/seed files
+- [ ] Re-enhance OpenAPI document with updated x-handler/x-seed
+- [ ] Gracefully restart mock server child process
+- [ ] Preserve in-memory store data across restarts (optional but recommended)
+- [ ] Display clear reload notification in Vite console
+- [ ] Reload completes in < 2 seconds
 
 **Implementation Notes:**
-- Watch handler/seed directories with chokidar or similar
-- On file change: reload file, re-enhance document, restart mock server
-- Preserve store data across restarts (optional)
+```typescript
+import { watch } from 'chokidar';
+
+// In vite-plugin-open-api-server.ts
+const watcher = watch([handlersDir, seedsDir], {
+  ignoreInitial: true,
+  persistent: true
+});
+
+watcher.on('change', async (path) => {
+  server.config.logger.info(`[Mock] File changed: ${path}`);
+  server.config.logger.info(`[Mock] Reloading mock server...`);
+  
+  // 1. Kill existing child process
+  if (mockServerProcess) {
+    mockServerProcess.kill('SIGTERM');
+    await waitForExit(mockServerProcess, 5000);
+  }
+  
+  // 2. Respawn with same environment
+  mockServerProcess = fork('mock-server-runner.mjs', [], { env: {...} });
+  
+  // 3. Wait for READY message
+  await waitForReady(mockServerProcess, 10000);
+  
+  server.config.logger.info(`[Mock] ✓ Mock server reloaded`);
+});
+```
+
+**Benefits:**
+- Faster iteration cycle (no full Vite restart)
+- Immediate feedback on handler/seed changes
+- Maintains development flow
 
 ---
 
-#### FR-015: Web UI for Mock Management
+---
 
-**Priority:** P3 (Low)
+#### FR-015: Vue DevTools Integration for Mock Management
 
-**Description:** Browser-based interface for viewing/editing mock data at runtime.
+**Priority:** P1 (High)
 
-**Features:**
-- View endpoint registry
-- View seeded data in store
-- Manually add/edit/delete store items
-- View request/response logs
-- Trigger seed reset
+**Description:** Integration with Vue DevTools browser extension to provide a custom tab for inspecting registered endpoints and simulating edge cases, errors, and network conditions through query parameters. This provides comprehensive testing capabilities within the existing Vue DevTools workflow, enabling developers to test error handling, timeouts, slow responses, and various HTTP status codes without modifying backend code.
+
+**Acceptance Criteria:**
+- [ ] Custom "Mock Server" tab appears in Vue DevTools
+- [ ] Display complete endpoint registry (operations, methods, paths, operationIds)
+- [ ] Show which endpoints have custom handlers vs auto-generated
+- [ ] Interactive UI to configure simulation parameters for edge cases and errors
+- [ ] Simulate HTTP status codes (2xx, 4xx, 5xx ranges)
+- [ ] Simulate network conditions (slow connections, timeouts, connection drops)
+- [ ] Simulate server errors (500, 503, rate limiting)
+- [ ] Simulate edge cases (malformed responses, partial content, empty responses)
+- [ ] Configure response delays (latency simulation from 0ms to 10s+)
+- [ ] Copy endpoint URLs with simulation parameters to clipboard
+- [ ] Real-time sync with mock server registry
+- [ ] Show connection status to mock server
+- [ ] Filter endpoints by method, path, or handler type
+- [ ] Save and load simulation presets
+
+**UI Features:**
+
+1. **Connection Status:**
+   ```
+   🟢 Mock Server Connected (http://localhost:3456)
+   Endpoints: 12 | Custom Handlers: 5 | Auto-generated: 7
+   ```
+
+2. **Endpoint Registry View:**
+   ```
+   ┌─────────────────────────────────────────────────────────────────────┐
+   │ Method │ Path                    │ Operation ID      │ Handler       │
+   ├─────────────────────────────────────────────────────────────────────┤
+   │ GET    │ /api/v1/vehicles        │ fetch_vehicles    │ ✓ Custom      │
+   │ POST   │ /api/v1/vehicles        │ create_vehicle    │ ⚡ Generated   │
+   │ GET    │ /api/v1/vehicles/{id}   │ get_vehicle       │ ✓ Custom      │
+   │ PUT    │ /api/v1/vehicles/{id}   │ update_vehicle    │ ⚡ Generated   │
+   │ DELETE │ /api/v1/vehicles/{id}   │ delete_vehicle    │ ⚡ Generated   │
+   │ GET    │ /api/v1/orders          │ fetch_orders      │ ✓ Custom      │
+   │ POST   │ /api/v1/orders          │ create_order      │ ✓ Custom      │
+   └─────────────────────────────────────────────────────────────────────┘
+   ```
+
+3. **Response Simulation Panel (per endpoint):**
+   When an endpoint is selected:
+   ```
+   Selected: GET /api/v1/vehicles [fetch_vehicles]
+   
+   ┌─ Simulate Response ────────────────────────────────────────────┐
+   │                                                                  │
+   │ ━━━ HTTP Status ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+   │ Status Code:  [ 200 ▼]  (200, 201, 204, 400, 401, 403, 404,   │
+   │                          409, 422, 429, 500, 502, 503, 504)    │
+   │                                                                  │
+   │ ━━━ Network Conditions ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+   │ Latency:      [ 0 ms    ]  ⚡ Fast  🐌 Slow  ☁️ 3G  📶 4G     │
+   │               Presets: 0ms | 500ms | 2000ms | 5000ms           │
+   │                                                                  │
+   │ Timeout:      [ None ▼  ]  (None, 5s, 10s, 30s, Custom)       │
+   │                                                                  │
+   │ Connection:   [ Stable ▼]  (Stable, Intermittent, Drop)       │
+   │                                                                  │
+   │ ━━━ Error Scenarios ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+   │ Error Type:   [ None ▼  ]                                      │
+   │               • None - Normal response                          │
+   │               • Timeout - Request timeout                       │
+   │               • Network - Connection failure                    │
+   │               • Server - Internal server error                  │
+   │               • RateLimit - Too many requests (429)            │
+   │               • Maintenance - Service unavailable (503)         │
+   │                                                                  │
+   │ ━━━ Edge Cases ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+   │ Response:     [ Normal ▼]                                      │
+   │               • Normal - Valid JSON response                    │
+   │               • Empty - Empty response body                     │
+   │               • Malformed - Invalid JSON                        │
+   │               • Partial - Incomplete data                       │
+   │               • Large - Large payload (stress test)            │
+   │                                                                  │
+   │ ━━━ Advanced ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+   │ Custom Headers: [+] Add Header                                 │
+   │   X-Request-ID: abc-123                                        │
+   │   X-Custom-Error: test-scenario                                │
+   │                                                                  │
+   │ Probability:  [ 100% ▼  ]  (100%, 80%, 50%, 20% failure rate) │
+   │                                                                  │
+   │ ┌────────────────────────────────────────────────────────┐     │
+   │ │ Generated URL:                                          │     │
+   │ │ http://localhost:5173/api/v1/vehicles?                 │     │
+   │ │   simulateStatus=200&simulateDelay=500&                │     │
+   │ │   simulateConnection=stable                            │     │
+   │ │                                                          │     │
+   │ │ [Copy URL]  [Test in Browser]  [Save Preset]  [Reset] │     │
+   │ └────────────────────────────────────────────────────────┘     │
+   │                                                                  │
+   │ Query Parameters Applied:                                       │
+   │ • simulateStatus=200                                            │
+   │ • simulateDelay=500                                             │
+   │ • simulateConnection=stable                                     │
+   │                                                                  │
+   │ Saved Presets:                                                  │
+   │ • Slow 3G Network     [Load]  [Delete]                         │
+   │ • 500 Server Error    [Load]  [Delete]                         │
+   │ • Rate Limiting       [Load]  [Delete]                         │
+   │                                                                  │
+   └──────────────────────────────────────────────────────────────────┘
+   ```
+
+4. **Available Status Codes (based on OpenAPI spec):**
+   - Shows all status codes defined in the operation's responses
+   - Example: If operation defines 200, 400, 404 → only those are selectable
+   - Common additional codes: 429 (Rate Limit), 502 (Bad Gateway), 503 (Service Unavailable), 504 (Gateway Timeout)
+   - Fallback to comprehensive code list if no responses defined
+
+5. **Simulation Presets:**
+   Pre-configured scenarios for common testing situations:
+   ```
+   Fast Connection:      0ms delay, stable connection
+   Slow 3G:              2000ms delay, intermittent connection
+   4G Network:           500ms delay, stable connection
+   Server Overload:      503 status, 5000ms delay
+   Rate Limited:         429 status, 1000ms delay
+   Authentication Fail:  401 status, 200ms delay
+   Not Found:            404 status, 100ms delay
+   Timeout Scenario:     Timeout after 30s
+   Network Failure:      Connection drop simulation
+   Malformed Response:   200 status, malformed JSON
+   ```
+
+**Technical Implementation:**
+
+**Dependencies:**
+```json
+{
+  "devDependencies": {
+    "@vue/devtools-api": "^7.3.0"
+  }
+}
+```
+
+**Integration Flow:**
+
+1. **Plugin Registration** (in Vite plugin):
+   ```typescript
+   import { addCustomTab, onDevToolsClientConnected } from '@vue/devtools-api'
+   
+   // During Vite plugin initialization
+   function registerDevToolsTab(mockServerUrl: string, registry: MockEndpointRegistry) {
+     onDevToolsClientConnected(() => {
+       addCustomTab({
+         name: 'mock-server',
+         title: 'Mock Server',
+         icon: 'api',
+         view: {
+           type: 'sfc',
+           sfc: generateDevToolsSFC(mockServerUrl, registry)
+         },
+         category: 'advanced'
+       })
+     })
+   }
+   ```
+
+2. **Real-time Registry Sync:**
+   - Mock server exposes `GET /__registry` endpoint returning JSON
+   - DevTools tab polls this endpoint every 5 seconds
+   - Updates UI when registry changes (hot reload scenarios)
+
+3. **Query Parameter Generation:**
+   ```typescript
+   interface SimulationParams {
+     simulateStatus?: number
+     simulateDelay?: number
+     simulateError?: 'timeout' | 'network' | 'server' | 'ratelimit' | 'maintenance'
+     simulateConnection?: 'stable' | 'intermittent' | 'drop'
+     simulateResponse?: 'normal' | 'empty' | 'malformed' | 'partial' | 'large'
+     simulateTimeout?: number
+     simulateProbability?: number
+     customHeaders?: Record<string, string>
+   }
+   
+   function generateSimulatedUrl(
+     baseUrl: string,
+     path: string,
+     params: SimulationParams
+   ): string {
+     const url = new URL(path, baseUrl)
+     
+     if (params.simulateStatus) {
+       url.searchParams.set('simulateStatus', String(params.simulateStatus))
+     }
+     if (params.simulateDelay && params.simulateDelay > 0) {
+       url.searchParams.set('simulateDelay', String(params.simulateDelay))
+     }
+     if (params.simulateError) {
+       url.searchParams.set('simulateError', params.simulateError)
+     }
+     if (params.simulateConnection && params.simulateConnection !== 'stable') {
+       url.searchParams.set('simulateConnection', params.simulateConnection)
+     }
+     if (params.simulateResponse && params.simulateResponse !== 'normal') {
+       url.searchParams.set('simulateResponse', params.simulateResponse)
+     }
+     if (params.simulateTimeout) {
+       url.searchParams.set('simulateTimeout', String(params.simulateTimeout))
+     }
+     if (params.simulateProbability && params.simulateProbability < 100) {
+       url.searchParams.set('simulateProbability', String(params.simulateProbability))
+     }
+     if (params.customHeaders) {
+       url.searchParams.set('simulateHeaders', JSON.stringify(params.customHeaders))
+     }
+     
+     return url.toString()
+   }
+   ```
+
+4. **Mock Server Registry Endpoint:**
+   ```typescript
+   // In mock-server-runner.mjs
+   app.get('/__registry', (req, res) => {
+     res.json({
+       endpoints: registry.getAll(),
+       stats: {
+         total: registry.count(),
+         customHandlers: registry.countCustomHandlers(),
+         autoGenerated: registry.countAutoGenerated()
+       },
+       timestamp: Date.now()
+     })
+   })
+   ```
+
+**Supported Query Parameters:**
+
+| Parameter | Type | Description | Examples |
+|-----------|------|-------------|----------|
+| `simulateStatus` | number | Force specific HTTP status code | `200`, `404`, `500`, `503` |
+| `simulateDelay` | number | Add latency in milliseconds | `0`, `500`, `2000`, `5000` |
+| `simulateError` | string | Simulate error condition | `timeout`, `network`, `server`, `ratelimit`, `maintenance` |
+| `simulateConnection` | string | Simulate connection quality | `stable`, `intermittent`, `drop` |
+| `simulateResponse` | string | Simulate response edge cases | `normal`, `empty`, `malformed`, `partial`, `large` |
+| `simulateTimeout` | number | Timeout duration in seconds | `5`, `10`, `30` |
+| `simulateProbability` | number | Success probability percentage | `100`, `80`, `50`, `20` |
+| `simulateHeaders` | JSON | Custom response headers | `{"X-Custom":"value"}` |
+
+**Example URLs:**
+
+```bash
+# Slow 3G simulation
+GET /api/v1/vehicles?simulateDelay=2000&simulateConnection=intermittent
+
+# Rate limiting error
+GET /api/v1/vehicles?simulateStatus=429&simulateError=ratelimit
+
+# Server maintenance
+GET /api/v1/vehicles?simulateStatus=503&simulateError=maintenance&simulateDelay=5000
+
+# Malformed response
+GET /api/v1/vehicles?simulateStatus=200&simulateResponse=malformed
+
+# Network failure with 50% probability
+GET /api/v1/vehicles?simulateError=network&simulateProbability=50
+
+# Timeout after 10 seconds
+GET /api/v1/vehicles?simulateTimeout=10
+
+# Combined edge case
+GET /api/v1/vehicles?simulateStatus=500&simulateDelay=3000&simulateResponse=partial
+```
+
+**Benefits:**
+- **Comprehensive Testing:** Simulate all edge cases, errors, and network conditions without backend changes
+- **Seamless Integration:** Direct access from Vue DevTools alongside components and routes
+- **Zero Infrastructure:** No separate UI to maintain or navigate to
+- **Developer Workflow:** Leverages Vue DevTools' existing UI framework and styling
+- **Easy Discovery:** Automatic availability when Vue DevTools is installed
+- **Copy-Paste Ready:** Generated URLs ready to use in application code or tests
+- **Visual Feedback:** Shows available response codes and scenarios per endpoint
+- **Preset Management:** Save and load common testing scenarios
+- **Realistic Simulation:** Test slow networks, timeouts, intermittent connections
+- **Error Handling Validation:** Verify application behavior under various failure conditions
+- **Performance Testing:** Simulate slow responses and large payloads
+- **Rate Limiting Tests:** Validate 429 handling and retry logic
+- **Maintenance Mode:** Test service unavailability scenarios
+
+---
+
+### 5.2 Future Enhancements
+
+The following features are planned for future releases but not required for v1.0:
+
+#### FE-001: TypeScript Support for Handlers/Seeds
+
+**Priority:** P2 (Medium - Future)
+
+**Description:** Support `.ts` files for handlers and seeds with automatic compilation.
+
+---
+
+#### FE-002: GraphQL Support
+
+**Priority:** P3 (Low - Future)
+
+**Description:** Extend mock server to support GraphQL schemas in addition to OpenAPI/REST.
+
+---
+
+#### FE-003: Persistent Storage (SQLite)
+
+**Priority:** P3 (Low - Future)
+
+**Description:** Optional SQLite backend for persistent mock data across server restarts.
 
 ---
 
@@ -1256,7 +1952,7 @@ if (operation['x-handler'] && handlers[operationId]) {
 │  │                                                                     │   │
 │  │   ┌───────────────────┐    ┌──────────────────────────────────┐   │   │
 │  │   │                   │    │                                  │   │   │
-│  │   │  Vue Application  │───▶│  vite-plugin-mock-server        │   │   │
+│  │   │  Vue Application  │───▶│  vite-plugin-open-api-server    │   │   │
 │  │   │                   │    │                                  │   │   │
 │  │   │  - Components     │    │  - Plugin lifecycle hooks        │   │   │
 │  │   │  - BffApi calls   │    │  - Proxy configuration           │   │   │
@@ -1299,7 +1995,7 @@ if (operation['x-handler'] && handlers[operationId]) {
 
 ### 7.2 Component Details
 
-#### 7.2.1 Vite Plugin (`vite-plugin-mock-server.ts`)
+#### 7.2.1 Vite Plugin (`vite-plugin-open-api-server.ts`)
 
 **Responsibilities:**
 - Register as Vite plugin
@@ -1491,6 +2187,1206 @@ Provides TypeScript types for:
 6. Clean up process reference
 7. Vite completes shutdown
 ```
+
+### 7.4 External API Integration
+
+This section provides a deep analysis of how the plugin integrates with the three core external dependencies: Vite, @scalar/openapi-parser, and @scalar/mock-server.
+
+#### 7.4.1 Vite Plugin API Integration
+
+**Plugin Registration & Lifecycle:**
+
+```typescript
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
+
+export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
+  let config: ResolvedConfig;
+  let server: ViteDevServer;
+  let mockServerProcess: ChildProcess | null = null;
+
+  return {
+    name: 'vite-plugin-open-api-server',
+    
+    // Apply only in development mode
+    apply: 'serve',
+    
+    // Modify Vite config to add proxy rules
+    config(userConfig, { command }) {
+      if (command !== 'serve' || options.enabled === false) return;
+      
+      return {
+        server: {
+          proxy: {
+            [options.proxyPath || '/gpme/bff']: {
+              target: `http://localhost:${options.port || 3456}`,
+              changeOrigin: true,
+              rewrite: (path) => path.replace(options.proxyPath, ''),
+            },
+          },
+        },
+      };
+    },
+    
+    // Store resolved config for later use
+    configResolved(resolvedConfig) {
+      config = resolvedConfig;
+    },
+    
+    // Main hook: spawn mock server process
+    configureServer(devServer) {
+      server = devServer;
+      
+      // Spawn child process with mock server
+      mockServerProcess = fork('mock-server-runner.mjs', [], {
+        env: {
+          MOCK_SERVER_PORT: String(options.port || 3456),
+          MOCK_SERVER_OPENAPI_PATH: path.resolve(config.root, options.openApiPath),
+          MOCK_SERVER_SEEDS_DIR: options.seedsDir ? path.resolve(config.root, options.seedsDir) : '',
+          MOCK_SERVER_HANDLERS_DIR: options.handlersDir ? path.resolve(config.root, options.handlersDir) : '',
+          MOCK_SERVER_VERBOSE: String(options.verbose || false),
+        },
+      });
+      
+      // Handle IPC messages from child process
+      mockServerProcess.on('message', (msg: MockServerMessage) => {
+        if (msg.type === 'READY') {
+          server.config.logger.info(`Mock server ready on port ${msg.port}`);
+        } else if (msg.type === 'ERROR') {
+          server.config.logger.error(`Mock server error: ${msg.error}`);
+        } else if (msg.type === 'LOG') {
+          server.config.logger[msg.level](msg.message);
+        }
+      });
+    },
+    
+    // Cleanup on shutdown
+    buildEnd() {
+      if (mockServerProcess) {
+        mockServerProcess.kill('SIGTERM');
+        mockServerProcess = null;
+      }
+    },
+  };
+}
+```
+
+**Key Vite APIs Used:**
+
+| Hook/API | Purpose | Timing |
+|----------|---------|--------|
+| `apply: 'serve'` | Only activate in dev mode | Plugin registration |
+| `config()` | Add proxy configuration | Before config resolution |
+| `configResolved()` | Store final config | After config resolution |
+| `configureServer()` | Spawn child process, setup IPC | After server creation |
+| `buildEnd()` | Cleanup child process | On server shutdown |
+| `server.config.logger` | Structured logging | Throughout lifecycle |
+| `server.middlewares` | Not used (proxy handles routing) | N/A |
+
+#### 7.4.2 @vue/devtools-api Integration
+
+**Purpose:** Provides a custom tab in Vue DevTools browser extension for inspecting and managing mock server endpoints with response simulation capabilities.
+
+**Package:** `@vue/devtools-api` (^7.3.0)
+
+**Installation:**
+```bash
+npm install --save-dev @vue/devtools-api
+```
+
+**API Reference:** [https://devtools.vuejs.org/plugins/api](https://devtools.vuejs.org/plugins/api)
+
+**Integration Point:** Vite plugin (`configureServer` hook)
+
+**Implementation:**
+
+```typescript
+// vite-plugin-open-api-server.ts
+import { addCustomTab, onDevToolsClientConnected } from '@vue/devtools-api'
+import type { MockEndpointRegistry } from './types'
+
+interface DevToolsIntegration {
+  mockServerUrl: string
+  registry: MockEndpointRegistry
+}
+
+/**
+ * Registers the Mock Server custom tab in Vue DevTools
+ * 
+ * This function sets up the integration between the mock server and Vue DevTools,
+ * creating a custom tab that displays registered endpoints and provides tools
+ * for simulating different response scenarios using query parameters.
+ * 
+ * @param options - Integration configuration
+ * @param options.mockServerUrl - Base URL of the mock server (e.g., 'http://localhost:3456')
+ * @param options.registry - Reference to the mock endpoint registry
+ */
+function registerMockServerDevTools(options: DevToolsIntegration): void {
+  const { mockServerUrl, registry } = options
+  
+  // Wait for Vue DevTools to be ready
+  onDevToolsClientConnected(() => {
+    console.log('[Mock Server] Registering Vue DevTools tab...')
+    
+    addCustomTab({
+      name: 'vite-mock-server',
+      title: 'Mock Server',
+      icon: 'api',
+      view: {
+        type: 'sfc',
+        sfc: generateMockServerSFC(mockServerUrl)
+      },
+      category: 'advanced'
+    })
+    
+    console.log('[Mock Server] Vue DevTools tab registered successfully')
+  })
+}
+
+/**
+ * Generates the Single File Component (SFC) for the Mock Server DevTools tab
+ * 
+ * The SFC is a self-contained Vue component that:
+ * - Fetches endpoint registry from mock server
+ * - Displays endpoints in a searchable/filterable table
+ * - Provides UI for configuring simulation parameters
+ * - Generates URLs with query parameters for testing
+ * 
+ * @param mockServerUrl - Base URL of the mock server
+ * @returns Vue SFC as a string
+ */
+function generateMockServerSFC(mockServerUrl: string): string {
+  return /* vue */ `
+    <script setup lang="ts">
+    import { ref, computed, onMounted } from 'vue'
+    
+    interface EndpointEntry {
+      method: string
+      path: string
+      operationId: string
+      hasCustomHandler: boolean
+      availableStatusCodes: number[]
+    }
+    
+    interface RegistryResponse {
+      endpoints: EndpointEntry[]
+      stats: {
+        total: number
+        customHandlers: number
+        autoGenerated: number
+      }
+      timestamp: number
+    }
+    
+    interface SimulationParams {
+      simulateStatus: number | null
+      simulateDelay: number
+      simulateError: string | null
+    }
+    
+    const mockServerUrl = '${mockServerUrl}'
+    const endpoints = ref<EndpointEntry[]>([])
+    const stats = ref({ total: 0, customHandlers: 0, autoGenerated: 0 })
+    const loading = ref(true)
+    const error = ref<string | null>(null)
+    const connected = ref(false)
+    
+    // Filters
+    const searchQuery = ref('')
+    const methodFilter = ref('all')
+    const handlerFilter = ref('all')
+    
+    // Selected endpoint for simulation
+    const selectedEndpoint = ref<EndpointEntry | null>(null)
+    const simulationParams = ref<SimulationParams>({
+      simulateStatus: null,
+      simulateDelay: 0,
+      simulateError: null
+    })
+    
+    // Fetch registry from mock server
+    async function fetchRegistry() {
+      try {
+        loading.value = true
+        error.value = null
+        
+        const response = await fetch(\`\${mockServerUrl}/__registry\`)
+        if (!response.ok) {
+          throw new Error(\`Failed to fetch registry: \${response.statusText}\`)
+        }
+        
+        const data: RegistryResponse = await response.json()
+        endpoints.value = data.endpoints
+        stats.value = data.stats
+        connected.value = true
+      } catch (err) {
+        error.value = err instanceof Error ? err.message : 'Unknown error'
+        connected.value = false
+      } finally {
+        loading.value = false
+      }
+    }
+    
+    // Filtered endpoints based on search and filters
+    const filteredEndpoints = computed(() => {
+      return endpoints.value.filter(endpoint => {
+        // Search filter
+        if (searchQuery.value) {
+          const query = searchQuery.value.toLowerCase()
+          const matchesSearch = 
+            endpoint.path.toLowerCase().includes(query) ||
+            endpoint.operationId.toLowerCase().includes(query) ||
+            endpoint.method.toLowerCase().includes(query)
+          if (!matchesSearch) return false
+        }
+        
+        // Method filter
+        if (methodFilter.value !== 'all' && endpoint.method !== methodFilter.value) {
+          return false
+        }
+        
+        // Handler filter
+        if (handlerFilter.value !== 'all') {
+          const isCustom = endpoint.hasCustomHandler
+          if (handlerFilter.value === 'custom' && !isCustom) return false
+          if (handlerFilter.value === 'generated' && isCustom) return false
+        }
+        
+        return true
+      })
+    })
+    
+    // Available HTTP methods
+    const availableMethods = computed(() => {
+      const methods = new Set(endpoints.value.map(e => e.method))
+      return ['all', ...Array.from(methods).sort()]
+    })
+    
+    // Generate simulated URL
+    const simulatedUrl = computed(() => {
+      if (!selectedEndpoint.value) return ''
+      
+      const baseUrl = mockServerUrl.replace(/\/$/, '')
+      const url = new URL(\`\${baseUrl}\${selectedEndpoint.value.path}\`)
+      
+      if (simulationParams.value.simulateStatus) {
+        url.searchParams.set('simulateStatus', String(simulationParams.value.simulateStatus))
+      }
+      if (simulationParams.value.simulateDelay > 0) {
+        url.searchParams.set('simulateDelay', String(simulationParams.value.simulateDelay))
+      }
+      if (simulationParams.value.simulateError) {
+        url.searchParams.set('simulateError', simulationParams.value.simulateError)
+      }
+      
+      return url.toString()
+    })
+    
+    function selectEndpoint(endpoint: EndpointEntry) {
+      selectedEndpoint.value = endpoint
+      // Reset to first available status code or 200
+      simulationParams.value.simulateStatus = 
+        endpoint.availableStatusCodes[0] || 200
+      simulationParams.value.simulateDelay = 0
+      simulationParams.value.simulateError = null
+    }
+    
+    function copyUrl() {
+      navigator.clipboard.writeText(simulatedUrl.value)
+        .then(() => alert('URL copied to clipboard!'))
+        .catch(err => console.error('Failed to copy:', err))
+    }
+    
+    function openInBrowser() {
+      window.open(simulatedUrl.value, '_blank')
+    }
+    
+    function resetSimulation() {
+      if (selectedEndpoint.value) {
+        simulationParams.value.simulateStatus = 
+          selectedEndpoint.value.availableStatusCodes[0] || 200
+        simulationParams.value.simulateDelay = 0
+        simulationParams.value.simulateError = null
+      }
+    }
+    
+    // Auto-refresh registry every 5 seconds
+    let refreshInterval: number
+    onMounted(() => {
+      fetchRegistry()
+      refreshInterval = setInterval(fetchRegistry, 5000)
+    })
+    
+    onUnmounted(() => {
+      if (refreshInterval) clearInterval(refreshInterval)
+    })
+    </script>
+    
+    <template>
+      <div class="mock-server-devtools">
+        <!-- Header -->
+        <div class="header">
+          <div class="connection-status" :class="{ connected, disconnected: !connected }">
+            <span class="status-dot"></span>
+            <span v-if="connected">Mock Server Connected</span>
+            <span v-else>Mock Server Disconnected</span>
+            <span class="url">{{ mockServerUrl }}</span>
+          </div>
+          <div class="stats" v-if="connected">
+            <div class="stat">
+              <span class="label">Total:</span>
+              <span class="value">{{ stats.total }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Custom:</span>
+              <span class="value">{{ stats.customHandlers }}</span>
+            </div>
+            <div class="stat">
+              <span class="label">Generated:</span>
+              <span class="value">{{ stats.autoGenerated }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Error message -->
+        <div v-if="error" class="error-message">
+          {{ error }}
+          <button @click="fetchRegistry">Retry</button>
+        </div>
+        
+        <!-- Loading state -->
+        <div v-if="loading && !endpoints.length" class="loading">
+          Loading endpoints...
+        </div>
+        
+        <!-- Main content -->
+        <div v-else class="content">
+          <!-- Filters -->
+          <div class="filters">
+            <input 
+              v-model="searchQuery" 
+              type="text" 
+              placeholder="Search endpoints..." 
+              class="search-input"
+            />
+            <select v-model="methodFilter" class="filter-select">
+              <option v-for="method in availableMethods" :key="method" :value="method">
+                {{ method.toUpperCase() }}
+              </option>
+            </select>
+            <select v-model="handlerFilter" class="filter-select">
+              <option value="all">All Handlers</option>
+              <option value="custom">Custom Only</option>
+              <option value="generated">Generated Only</option>
+            </select>
+          </div>
+          
+          <!-- Endpoints table -->
+          <div class="endpoints-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Path</th>
+                  <th>Operation ID</th>
+                  <th>Handler</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr 
+                  v-for="endpoint in filteredEndpoints" 
+                  :key="\`\${endpoint.method}-\${endpoint.path}\`"
+                  :class="{ selected: selectedEndpoint === endpoint }"
+                >
+                  <td>
+                    <span class="method-badge" :class="endpoint.method.toLowerCase()">
+                      {{ endpoint.method }}
+                    </span>
+                  </td>
+                  <td class="path">{{ endpoint.path }}</td>
+                  <td class="operation-id">{{ endpoint.operationId }}</td>
+                  <td>
+                    <span v-if="endpoint.hasCustomHandler" class="handler-badge custom">
+                      ✓ Custom
+                    </span>
+                    <span v-else class="handler-badge generated">
+                      ⚡ Generated
+                    </span>
+                  </td>
+                  <td>
+                    <button @click="selectEndpoint(endpoint)" class="btn-simulate">
+                      Simulate
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Simulation panel -->
+          <div v-if="selectedEndpoint" class="simulation-panel">
+            <h3>Simulate Response</h3>
+            <div class="endpoint-info">
+              <span class="method-badge" :class="selectedEndpoint.method.toLowerCase()">
+                {{ selectedEndpoint.method }}
+              </span>
+              <span class="path">{{ selectedEndpoint.path }}</span>
+              <span class="operation-id">[{{ selectedEndpoint.operationId }}]</span>
+            </div>
+            
+            <div class="form-group">
+              <label>Status Code:</label>
+              <select v-model.number="simulationParams.simulateStatus">
+                <option 
+                  v-for="code in selectedEndpoint.availableStatusCodes" 
+                  :key="code" 
+                  :value="code"
+                >
+                  {{ code }}
+                </option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label>Delay (ms):</label>
+              <input 
+                v-model.number="simulationParams.simulateDelay" 
+                type="number" 
+                min="0" 
+                step="100"
+              />
+            </div>
+            
+            <div class="form-group">
+              <label>Error Type:</label>
+              <select v-model="simulationParams.simulateError">
+                <option :value="null">None</option>
+                <option value="timeout">Timeout</option>
+                <option value="network">Network Error</option>
+                <option value="server">Server Error</option>
+              </select>
+            </div>
+            
+            <div class="generated-url">
+              <label>Generated URL:</label>
+              <input :value="simulatedUrl" readonly class="url-input" />
+              <div class="url-actions">
+                <button @click="copyUrl" class="btn-primary">Copy URL</button>
+                <button @click="openInBrowser" class="btn-secondary">Test in Browser</button>
+                <button @click="resetSimulation" class="btn-secondary">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </template>
+    
+    <style scoped>
+    .mock-server-devtools {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      background: #1e1e1e;
+      color: #cccccc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
+    }
+    
+    .connection-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #666;
+    }
+    
+    .connection-status.connected .status-dot {
+      background: #4caf50;
+      box-shadow: 0 0 8px #4caf50;
+    }
+    
+    .connection-status.disconnected .status-dot {
+      background: #f44336;
+    }
+    
+    .url {
+      color: #888;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 16px;
+    }
+    
+    .stat {
+      font-size: 13px;
+    }
+    
+    .stat .label {
+      color: #888;
+      margin-right: 4px;
+    }
+    
+    .stat .value {
+      font-weight: 600;
+      color: #42b883;
+    }
+    
+    .error-message {
+      background: #f443361a;
+      border: 1px solid #f44336;
+      color: #f44336;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 16px;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+    
+    .content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .search-input {
+      flex: 1;
+      padding: 8px 12px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .filter-select {
+      padding: 8px 12px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .endpoints-table {
+      flex: 1;
+      overflow: auto;
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    
+    thead {
+      background: #252525;
+      position: sticky;
+      top: 0;
+    }
+    
+    th {
+      text-align: left;
+      padding: 12px;
+      font-weight: 600;
+      border-bottom: 1px solid #333;
+    }
+    
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+    
+    tr:hover {
+      background: #252525;
+    }
+    
+    tr.selected {
+      background: #2a4a2a;
+    }
+    
+    .method-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    
+    .method-badge.get { background: #61affe; color: #000; }
+    .method-badge.post { background: #49cc90; color: #000; }
+    .method-badge.put { background: #fca130; color: #000; }
+    .method-badge.delete { background: #f93e3e; color: #fff; }
+    .method-badge.patch { background: #50e3c2; color: #000; }
+    
+    .path {
+      font-family: 'Courier New', monospace;
+      color: #9cdcfe;
+    }
+    
+    .operation-id {
+      color: #888;
+      font-size: 12px;
+    }
+    
+    .handler-badge {
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+    }
+    
+    .handler-badge.custom {
+      background: #42b88333;
+      color: #42b883;
+    }
+    
+    .handler-badge.generated {
+      background: #fca13033;
+      color: #fca130;
+    }
+    
+    .btn-simulate {
+      padding: 4px 12px;
+      background: #42b883;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .btn-simulate:hover {
+      background: #35a372;
+    }
+    
+    .simulation-panel {
+      margin-top: 16px;
+      padding: 16px;
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 4px;
+    }
+    
+    .simulation-panel h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+    }
+    
+    .endpoint-info {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #333;
+    }
+    
+    .form-group {
+      margin-bottom: 12px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 13px;
+      color: #888;
+    }
+    
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 8px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .generated-url {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    
+    .generated-url label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #888;
+    }
+    
+    .url-input {
+      width: 100%;
+      padding: 8px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #9cdcfe;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    
+    .url-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .btn-primary,
+    .btn-secondary {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .btn-primary {
+      background: #42b883;
+      color: #fff;
+    }
+    
+    .btn-primary:hover {
+      background: #35a372;
+    }
+    
+    .btn-secondary {
+      background: #444;
+      color: #ccc;
+    }
+    
+    .btn-secondary:hover {
+      background: #555;
+    }
+    </style>
+  `
+}
+
+// Export for use in Vite plugin
+export { registerMockServerDevTools }
+```
+
+**Usage in Vite Plugin:**
+
+```typescript
+// In configureServer hook
+configureServer(server) {
+  // ... existing mock server startup code ...
+  
+  // Register Vue DevTools integration after mock server is ready
+  server.middlewares.use((req, res, next) => {
+    if (mockServerProcess && mockServerReady) {
+      registerMockServerDevTools({
+        mockServerUrl: `http://localhost:${options.port}`,
+        registry: mockEndpointRegistry
+      })
+    }
+    next()
+  })
+}
+```
+
+**Mock Server Registry Endpoint:**
+
+The mock server must expose a `/__registry` endpoint that returns:
+
+```json
+{
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/v1/vehicles",
+      "operationId": "fetch_vehicles",
+      "hasCustomHandler": true,
+      "availableStatusCodes": [200, 400, 404, 429, 500, 503]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/vehicles",
+      "operationId": "create_vehicle",
+      "hasCustomHandler": false,
+      "availableStatusCodes": [201, 400, 409, 422, 500]
+    }
+  ],
+  "stats": {
+    "total": 12,
+    "customHandlers": 5,
+    "autoGenerated": 7
+  },
+  "timestamp": 1704117600000
+}
+```
+
+**Simulation Capabilities:**
+
+The DevTools tab provides comprehensive controls for testing edge cases, errors, and network conditions:
+
+1. **HTTP Status Codes:** All status codes from OpenAPI spec (2xx, 4xx, 5xx)
+2. **Network Conditions:** Latency presets (Fast, Slow, 3G, 4G), custom delays
+3. **Error Scenarios:** Timeout, network failure, server error, rate limiting, maintenance
+4. **Edge Cases:** Empty responses, malformed JSON, partial content, large payloads
+5. **Connection Quality:** Stable, intermittent, connection drop
+6. **Advanced:** Custom headers, failure probability, timeout duration
+7. **Presets:** Save and load common testing scenarios
+
+**Query Parameters Supported:**
+
+| Parameter | Values | Example |
+|-----------|--------|---------|
+| `simulateStatus` | Any HTTP code | `?simulateStatus=429` |
+| `simulateDelay` | Milliseconds | `?simulateDelay=2000` |
+| `simulateError` | `timeout`, `network`, `server`, `ratelimit`, `maintenance` | `?simulateError=timeout` |
+| `simulateConnection` | `stable`, `intermittent`, `drop` | `?simulateConnection=intermittent` |
+| `simulateResponse` | `normal`, `empty`, `malformed`, `partial`, `large` | `?simulateResponse=malformed` |
+| `simulateTimeout` | Seconds | `?simulateTimeout=10` |
+| `simulateProbability` | 0-100 (success %) | `?simulateProbability=50` |
+| `simulateHeaders` | JSON object | `?simulateHeaders={"X-Test":"value"}` |
+
+**Benefits:**
+- **Comprehensive Testing:** Simulate all edge cases without backend changes
+- **Zero Infrastructure:** No additional UI to maintain
+- **Seamless Workflow:** Direct access from Vue DevTools
+- **Visual Controls:** Intuitive UI for complex simulation scenarios
+- **Real-time Updates:** Auto-refresh on hot reload changes
+- **Copy-Paste Ready:** Generated URLs for immediate use
+- **Preset Management:** Save and reuse common test scenarios
+- **Error Validation:** Test application resilience under various failures
+
+#### 7.4.3 @scalar/openapi-parser Integration
+
+**Purpose:** Parse, validate, and manipulate OpenAPI documents before passing to mock server.
+
+**Core API Usage:**
+
+```typescript
+import { validate, dereference, sanitize } from '@scalar/openapi-parser';
+import fs from 'node:fs';
+
+/**
+ * Load and validate OpenAPI document with comprehensive error handling
+ */
+async function loadOpenApiDocument(filePath: string) {
+  // Read file content
+  const content = fs.readFileSync(filePath, 'utf-8');
+  
+  // Step 1: Validate document structure
+  const validationResult = await validate(content);
+  
+  if (!validationResult.valid) {
+    console.error('OpenAPI validation failed:');
+    validationResult.errors.forEach(error => {
+      console.error(`  - ${error.message} at ${error.path}`);
+    });
+    throw new Error('Invalid OpenAPI specification');
+  }
+  
+  // Step 2: Dereference $ref to resolve all references
+  const { schema, errors: derefErrors } = await dereference(content);
+  
+  if (derefErrors.length > 0) {
+    console.warn('Reference resolution warnings:');
+    derefErrors.forEach(error => console.warn(`  - ${error}`));
+  }
+  
+  // Step 3: Sanitize document (normalize security schemes, collect tags, etc.)
+  const sanitized = sanitize(schema);
+  
+  return {
+    document: sanitized,
+    stats: {
+      title: sanitized.info?.title || 'Unknown',
+      version: sanitized.info?.version || '0.0.0',
+      endpointCount: countOperations(sanitized),
+      schemaCount: Object.keys(sanitized.components?.schemas || {}).length,
+    },
+  };
+}
+```
+
+**API Methods Used:**
+
+| Method | Input | Output | Purpose |
+|--------|-------|--------|---------|
+| `validate(spec)` | String (YAML/JSON) | `{valid: boolean, errors: array}` | Validate OpenAPI structure |
+| `dereference(spec)` | String or Object | `{schema: object, errors: array}` | Resolve all $ref references |
+| `sanitize(spec)` | Object | Object | Normalize document (fix missing required fields) |
+| `upgrade(spec)` | Swagger 2.0 Object | OpenAPI 3.1 Object | Upgrade old specs (future feature) |
+
+**Error Handling Strategy:**
+
+```typescript
+// Validation errors → CRITICAL (block startup)
+if (!validationResult.valid) {
+  throw new Error('OpenAPI validation failed - cannot start mock server');
+}
+
+// Dereference errors → WARNING (may work with partial resolution)
+if (derefErrors.length > 0) {
+  console.warn('Some references could not be resolved - mock generation may be incomplete');
+}
+
+// Sanitization never fails → automatic fixes applied
+const sanitized = sanitize(schema); // Always succeeds
+```
+
+**Support Matrix:**
+
+| Format | Extension | Supported | Parser Behavior |
+|--------|-----------|-----------|----------------|
+| YAML | `.yaml`, `.yml` | ✅ Yes | Auto-detected |
+| JSON | `.json` | ✅ Yes | Auto-detected |
+| OpenAPI 3.2 | N/A | ✅ Yes | Full support |
+| OpenAPI 3.1 | N/A | ✅ Yes | Full support |
+| OpenAPI 3.0 | N/A | ✅ Yes | Full support |
+| Swagger 2.0 | N/A | ✅ Yes | Use `upgrade()` first |
+
+#### 7.4.3 @scalar/mock-server Integration
+
+**Purpose:** Generate mock HTTP server with automatic responses from OpenAPI document.
+
+**Core API Usage:**
+
+```typescript
+import { serve } from '@hono/node-server';
+import { createMockServer } from '@scalar/mock-server';
+
+/**
+ * Create and start mock server with enhanced OpenAPI document
+ */
+async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) {
+  // Create Hono app with mock routes
+  const app = await createMockServer({
+    // Enhanced document with x-handler and x-seed injected
+    document: enhancedDocument,
+    
+    // Optional: Custom request logging
+    onRequest({ context, operation }) {
+      const { req } = context;
+      const operationId = operation?.operationId || 'unknown';
+      console.log(`[Mock] → ${req.method.padEnd(6)} ${req.path} [${operationId}]`);
+    },
+  });
+  
+  // Start HTTP server
+  serve(
+    {
+      fetch: app.fetch,
+      port,
+    },
+    (info) => {
+      console.log(`Mock server listening on http://localhost:${info.port}`);
+      
+      // Send IPC message to parent process
+      if (process.send) {
+        process.send({ type: 'READY', port: info.port });
+      }
+    }
+  );
+}
+```
+
+**createMockServer Options:**
+
+| Option | Type | Required | Description |
+|--------|------|----------|-------------|
+| `document` | `OpenAPIDocument` | ✅ Yes | OpenAPI spec (with x-handler/x-seed extensions) |
+| `onRequest` | `Function` | ❌ No | Callback for each request (logging, metrics) |
+
+**x-handler Extension (Custom Request Handling):**
+
+```typescript
+// In OpenAPI document (injected by our plugin):
+{
+  "paths": {
+    "/vehicles": {
+      "get": {
+        "operationId": "fetch_vehicles",
+        "x-handler": `
+          // JavaScript code executed by Scalar Mock Server
+          const items = store.list('Vehicle');
+          
+          // Apply filters from query params
+          const filtered = req.query.status 
+            ? items.filter(v => v.status === req.query.status)
+            : items;
+          
+          return {
+            data: filtered,
+            total: filtered.length
+          };
+        `
+      }
+    }
+  }
+}
+```
+
+**x-handler Runtime Context (Provided by Scalar):**
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `store` | `MockStore` | In-memory data store with CRUD operations |
+| `faker` | `Faker` | Faker.js instance for data generation |
+| `req.body` | `any` | Parsed request body (JSON) |
+| `req.params` | `Record<string, string>` | Path parameters |
+| `req.query` | `Record<string, string>` | Query string parameters |
+| `req.headers` | `Record<string, string>` | Request headers |
+| `res` | `object` | Response helper (set status: `res.status = 404`) |
+
+**Store API (Available in x-handler):**
+
+```typescript
+interface MockStore {
+  // List all items of a schema
+  list<T>(schema: string): T[];
+  
+  // Get single item by ID
+  get<T>(schema: string, id: string): T | null;
+  
+  // Create new item (auto-generates ID if not provided)
+  create<T>(schema: string, data: Partial<T>): T;
+  
+  // Update existing item
+  update<T>(schema: string, id: string, data: Partial<T>): T | null;
+  
+  // Delete item
+  delete(schema: string, id: string): boolean;
+  
+  // Clear all items of a schema (or all schemas)
+  clear(schema?: string): void;
+}
+```
+
+**Automatic Status Codes (by Scalar Mock Server):**
+
+| Store Operation | Success Status | Failure Status |
+|-----------------|----------------|----------------|
+| `store.list()` | 200 OK | N/A (always succeeds) |
+| `store.get(id)` | 200 OK | 404 Not Found (if null) |
+| `store.create()` | 201 Created | N/A (always succeeds) |
+| `store.update(id)` | 200 OK | 404 Not Found (if null) |
+| `store.delete(id)` | 204 No Content | 404 Not Found (if not found) |
+
+**x-seed Extension (Initial Data Seeding):**
+
+```typescript
+// In OpenAPI document (injected by our plugin):
+{
+  "components": {
+    "schemas": {
+      "Vehicle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "make": { "type": "string" },
+          "model": { "type": "string" }
+        },
+        "x-seed": `
+          // Seed 10 vehicles on startup
+          seed.count(10, () => ({
+            id: faker.string.uuid(),
+            make: faker.vehicle.manufacturer(),
+            model: faker.vehicle.model(),
+            year: faker.number.int({ min: 2015, max: 2024 }),
+            status: faker.helpers.arrayElement(['active', 'inactive'])
+          }))
+        `
+      }
+    }
+  }
+}
+```
+
+**x-seed Runtime Context (Provided by Scalar):**
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `seed` | `SeedHelper` | Helper for seeding data |
+| `seed.count(n, fn)` | `Function` | Generate N items using factory function |
+| `seed(array)` | `Function` | Seed from static array |
+| `seed(fn)` | `Function` | Seed from factory function (single item) |
+| `faker` | `Faker` | Faker.js instance |
+| `store` | `MockStore` | Direct store access (advanced) |
+| `schema` | `string` | Schema name being seeded |
+
+**Security Scheme Handling:**
+
+The mock server validates security schemes defined in OpenAPI:
+
+```typescript
+// OpenAPI document with security
+{
+  "paths": {
+    "/protected": {
+      "get": {
+        "security": [{ "bearerAuth": [] }],
+        // ...
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
+
+// Mock server behavior:
+// - Without Authorization header → 401 Unauthorized
+// - With any Authorization: Bearer <token> → 200 OK (mock accepts any token)
+```
+
+**Supported Security Schemes:**
+
+| Type | Location | Mock Behavior |
+|------|----------|---------------|
+| `http` (bearer) | `Authorization` header | Validates presence, accepts any token |
+| `apiKey` | Header/Query/Cookie | Validates presence, accepts any value |
+| `oauth2` | `Authorization` header | Validates presence, accepts any token |
+| `openIdConnect` | `Authorization` header | Validates presence, accepts any token |
+
+**Limitations & Considerations:**
+
+1. **No Real Authentication:** Mock server validates presence of credentials but doesn't verify validity
+2. **No Token Expiry:** JWT tokens are not decoded or validated
+3. **No Role-Based Access:** All valid credentials have full access
+4. **Development Only:** Security validation is intentionally loose for dev convenience
 
 ---
 
@@ -1795,20 +3691,397 @@ interface MockServerStore {
 
 ### 8.7 IPC Message API
 
+The plugin uses Node.js IPC (Inter-Process Communication) for bidirectional communication between the Vite plugin (parent process) and the mock server runner (child process).
+
+**Communication Pattern:**
+- **Parent → Child:** Environment variables at spawn time (no runtime IPC messages)
+- **Child → Parent:** IPC messages via `process.send()` for lifecycle events, logs, and errors
+
+#### Message Types (Child → Parent)
+
 ```typescript
-// Parent → Child: Environment variables only (no IPC messages)
-
-// Child → Parent:
+/**
+ * Union type of all IPC messages sent from mock server child process to Vite plugin parent process
+ */
 type MockServerMessage = 
-  | { type: 'ready'; port: number; registry: RegistryStats }
-  | { type: 'error'; error: string }
-  | { type: 'log'; message: string; level: 'info' | 'warn' | 'error' };
+  // Lifecycle Messages
+  | InitializingMessage
+  | ReadyMessage
+  | ShutdownMessage
+  
+  // Error Messages
+  | ErrorMessage
+  | WarningMessage
+  
+  // Logging Messages
+  | LogMessage
+  | RequestLogMessage
+  
+  // Health Messages
+  | HeartbeatMessage;
 
+/**
+ * Sent when mock server starts initialization phase
+ * Allows parent to show "Starting mock server..." status
+ */
+interface InitializingMessage {
+  type: 'INITIALIZING';
+  phase: 'parsing' | 'loading_handlers' | 'loading_seeds' | 'enhancing' | 'creating_server';
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Sent when mock server is fully ready and listening
+ * Signals to parent that proxy can start forwarding requests
+ */
+interface ReadyMessage {
+  type: 'READY';
+  port: number;
+  registry: RegistryStats;
+  uptime: number; // milliseconds from spawn to ready
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Sent when mock server is shutting down
+ */
+interface ShutdownMessage {
+  type: 'SHUTDOWN';
+  reason: 'graceful' | 'error' | 'forced' | 'parent_exit';
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Sent when a fatal error occurs in child process
+ * Parent should display error and potentially restart child
+ */
+interface ErrorMessage {
+  type: 'ERROR';
+  error: ErrorPayload;
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Sent for non-fatal issues that don't block startup
+ * e.g., handler file not found, seed file syntax error
+ */
+interface WarningMessage {
+  type: 'WARNING';
+  warning: string;
+  context?: {
+    file?: string;
+    operation?: string;
+    suggestion?: string;
+  };
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * General logging message for visibility
+ * Forwarded to Vite's logger with appropriate level
+ */
+interface LogMessage {
+  type: 'LOG';
+  level: 'debug' | 'info' | 'warn' | 'error';
+  message: string;
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Sent for each HTTP request handled by mock server
+ * Used for request/response logging in Vite console
+ */
+interface RequestLogMessage {
+  type: 'REQUEST';
+  id: string; // Unique request ID
+  method: string; // GET, POST, etc.
+  path: string; // /api/v1/vehicles
+  operationId?: string; // fetch_vehicles
+  status?: number; // 200, 404, etc. (only in REQUEST_END)
+  duration?: number; // milliseconds (only in REQUEST_END)
+  phase: 'START' | 'END';
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Periodic health check message (optional, future feature)
+ * Allows parent to detect hung child process
+ */
+interface HeartbeatMessage {
+  type: 'HEARTBEAT';
+  memoryUsage: {
+    heapUsed: number; // bytes
+    heapTotal: number; // bytes
+    external: number; // bytes
+  };
+  requestCount: number; // Total requests handled since start
+  timestamp: string; // ISO 8601
+}
+
+/**
+ * Detailed error information
+ */
+interface ErrorPayload {
+  code: string; // ERROR_OPENAPI_PARSE, ERROR_HANDLER_LOAD, etc.
+  message: string; // Human-readable error message
+  stack?: string; // Stack trace (if available)
+  context?: {
+    file?: string; // File path where error occurred
+    line?: number; // Line number (for parse errors)
+    operation?: string; // Operation being performed
+  };
+}
+
+/**
+ * Registry statistics about mocked endpoints
+ */
 interface RegistryStats {
-  total: number;
-  withCustomHandler: number;
-  withCustomSeed: number;
-  autoGenerated: number;
+  totalEndpoints: number; // Total operations in OpenAPI spec
+  withCustomHandler: number; // Operations with x-handler
+  withCustomSeed: number; // Schemas with x-seed
+  autoGenerated: number; // Operations using auto-generated responses
+  securitySchemes: number; // Number of security schemes
+}
+```
+
+#### Message Flow Examples
+
+**Successful Startup Flow:**
+
+```typescript
+// Child → Parent timeline
+
+// 1. Starting to parse OpenAPI
+{ 
+  type: 'INITIALIZING', 
+  phase: 'parsing',
+  timestamp: '2026-01-07T19:30:00.000Z'
+}
+
+// 2. Loading handler files
+{ 
+  type: 'INITIALIZING', 
+  phase: 'loading_handlers',
+  timestamp: '2026-01-07T19:30:00.125Z'
+}
+
+// 3. Loading seed files
+{ 
+  type: 'INITIALIZING', 
+  phase: 'loading_seeds',
+  timestamp: '2026-01-07T19:30:00.250Z'
+}
+
+// 4. Enhancing document with x-handler/x-seed
+{ 
+  type: 'INITIALIZING', 
+  phase: 'enhancing',
+  timestamp: '2026-01-07T19:30:00.375Z'
+}
+
+// 5. Creating mock server
+{ 
+  type: 'INITIALIZING', 
+  phase: 'creating_server',
+  timestamp: '2026-01-07T19:30:00.500Z'
+}
+
+// 6. Server ready
+{ 
+  type: 'READY', 
+  port: 3456,
+  registry: {
+    totalEndpoints: 45,
+    withCustomHandler: 8,
+    withCustomSeed: 5,
+    autoGenerated: 37,
+    securitySchemes: 2
+  },
+  uptime: 625,
+  timestamp: '2026-01-07T19:30:00.625Z'
+}
+```
+
+**Error During Startup:**
+
+```typescript
+// Child → Parent
+
+// 1. Start parsing
+{ type: 'INITIALIZING', phase: 'parsing', timestamp: '...' }
+
+// 2. Parse error
+{
+  type: 'ERROR',
+  error: {
+    code: 'ERROR_OPENAPI_PARSE',
+    message: 'Invalid YAML syntax: unexpected end of file',
+    stack: 'YAMLException: unexpected end of file\n  at parseYaml...',
+    context: {
+      file: '/path/to/openapi.yaml',
+      line: 42,
+      operation: 'parsing OpenAPI document'
+    }
+  },
+  timestamp: '2026-01-07T19:30:00.100Z'
+}
+
+// 3. Shutdown due to error
+{
+  type: 'SHUTDOWN',
+  reason: 'error',
+  timestamp: '2026-01-07T19:30:00.101Z'
+}
+
+// Process exits with code 1
+```
+
+**Request Logging Flow:**
+
+```typescript
+// Child → Parent for each request
+
+// Request starts
+{
+  type: 'REQUEST',
+  id: 'req_abc123',
+  method: 'GET',
+  path: '/api/v1/vehicles',
+  operationId: 'fetch_vehicles',
+  phase: 'START',
+  timestamp: '2026-01-07T19:30:10.000Z'
+}
+
+// Request completes
+{
+  type: 'REQUEST',
+  id: 'req_abc123',
+  method: 'GET',
+  path: '/api/v1/vehicles',
+  operationId: 'fetch_vehicles',
+  status: 200,
+  duration: 45, // 45ms
+  phase: 'END',
+  timestamp: '2026-01-07T19:30:10.045Z'
+}
+```
+
+#### Parent Process Handler
+
+```typescript
+// In vite-plugin-open-api-server.ts
+import type { ChildProcess } from 'node:child_process';
+
+function setupIpcHandler(childProcess: ChildProcess, server: ViteDevServer) {
+  childProcess.on('message', (msg: MockServerMessage) => {
+    switch (msg.type) {
+      case 'INITIALIZING':
+        server.config.logger.info(
+          `[Mock] Initializing: ${msg.phase.replace('_', ' ')}...`
+        );
+        break;
+        
+      case 'READY':
+        server.config.logger.info(
+          `[Mock] ✓ Server ready on port ${msg.port} (${msg.uptime}ms)`
+        );
+        server.config.logger.info(
+          `[Mock]   ${msg.registry.totalEndpoints} endpoints ` +
+          `(${msg.registry.withCustomHandler} custom handlers, ` +
+          `${msg.registry.autoGenerated} auto-generated)`
+        );
+        break;
+        
+      case 'ERROR':
+        server.config.logger.error(
+          `[Mock] ✖ Error: ${msg.error.message}`
+        );
+        if (msg.error.context?.file) {
+          server.config.logger.error(
+            `[Mock]   File: ${msg.error.context.file}` +
+            (msg.error.context.line ? `:${msg.error.context.line}` : '')
+          );
+        }
+        if (msg.error.stack) {
+          server.config.logger.error(`[Mock]   ${msg.error.stack}`);
+        }
+        break;
+        
+      case 'WARNING':
+        server.config.logger.warn(`[Mock] ⚠ ${msg.warning}`);
+        if (msg.context?.suggestion) {
+          server.config.logger.warn(`[Mock]   Suggestion: ${msg.context.suggestion}`);
+        }
+        break;
+        
+      case 'LOG':
+        server.config.logger[msg.level](`[Mock] ${msg.message}`);
+        break;
+        
+      case 'REQUEST':
+        if (msg.phase === 'END') {
+          const statusIcon = msg.status! < 400 ? '✔' : '✖';
+          server.config.logger.info(
+            `[Mock] ${statusIcon} ${msg.status} ${msg.method.padEnd(6)} ${msg.path} ` +
+            `${msg.operationId ? `[${msg.operationId}] ` : ''}(${msg.duration}ms)`
+          );
+        }
+        break;
+        
+      case 'SHUTDOWN':
+        server.config.logger.info(`[Mock] Shutting down (${msg.reason})...`);
+        break;
+        
+      case 'HEARTBEAT':
+        // Optional: log memory usage periodically
+        if (msg.memoryUsage.heapUsed > 100 * 1024 * 1024) { // > 100MB
+          server.config.logger.warn(
+            `[Mock] High memory usage: ${(msg.memoryUsage.heapUsed / 1024 / 1024).toFixed(1)}MB`
+          );
+        }
+        break;
+        
+      default:
+        server.config.logger.warn(`[Mock] Unknown message type: ${(msg as any).type}`);
+    }
+  });
+  
+  // Handle child process exit
+  childProcess.on('exit', (code, signal) => {
+    if (code !== 0 && code !== null) {
+      server.config.logger.error(`[Mock] Process exited with code ${code}`);
+    } else if (signal) {
+      server.config.logger.info(`[Mock] Process killed with signal ${signal}`);
+    }
+  });
+}
+```
+
+#### Error Codes Reference
+
+| Code | Description | Recovery Action |
+|------|-------------|-----------------|
+| `ERROR_OPENAPI_PARSE` | OpenAPI file parsing failed | Fix YAML/JSON syntax |
+| `ERROR_OPENAPI_VALIDATION` | OpenAPI validation failed | Fix spec structure |
+| `ERROR_HANDLER_LOAD` | Handler file loading failed | Check file path and syntax |
+| `ERROR_SEED_LOAD` | Seed file loading failed | Check file path and syntax |
+| `ERROR_ENHANCEMENT` | Document enhancement failed | Check handler/seed code |
+| `ERROR_SERVER_CREATE` | Mock server creation failed | Check @scalar/mock-server compatibility |
+| `ERROR_PORT_IN_USE` | Port already in use | Change port or kill existing process |
+| `ERROR_UNKNOWN` | Unexpected error | Check stack trace |
+
+#### Environment Variables (Parent → Child)
+
+While not IPC messages, these are passed at spawn time:
+
+```typescript
+{
+  MOCK_SERVER_PORT: '3456',
+  MOCK_SERVER_OPENAPI_PATH: '/absolute/path/to/openapi.yaml',
+  MOCK_SERVER_SEEDS_DIR: '/absolute/path/to/seeds',
+  MOCK_SERVER_HANDLERS_DIR: '/absolute/path/to/handlers',
+  MOCK_SERVER_VERBOSE: 'true',
+  NODE_ENV: 'development'
 }
 ```
 
@@ -1947,6 +4220,312 @@ USE_MOCK_SERVER=true npm run test:e2e
 - Crashes don't affect Vite dev server
 - Memory isolation prevents cross-contamination
 
+### 11.4 Error Handling Strategy
+
+This section defines a comprehensive approach to error handling across the plugin lifecycle, ensuring developers receive clear, actionable feedback when issues occur.
+
+#### 11.4.1 Error Taxonomy
+
+Errors are classified into four categories based on severity and impact:
+
+| Category | Severity | Impact | Recovery |
+|----------|----------|--------|----------|
+| **Fatal** | 🔴 Critical | Blocks startup | Manual fix required |
+| **Recoverable** | 🟠 High | Degrades functionality | Auto-retry or fallback |
+| **Warning** | 🟡 Medium | Partial functionality | Continue with warnings |
+| **Info** | 🔵 Low | No impact | Informational only |
+
+#### 11.4.2 Error Codes & Recovery Strategies
+
+**Fatal Errors (Block Startup):**
+
+| Error Code | Cause | User-Facing Message | Recovery Action |
+|------------|-------|---------------------|-----------------|
+| `ERROR_OPENAPI_NOT_FOUND` | OpenAPI file doesn't exist | "OpenAPI file not found: {path}" | Check `openApiPath` in vite.config |
+| `ERROR_OPENAPI_PARSE` | Invalid YAML/JSON syntax | "Failed to parse OpenAPI file: {error} at line {line}" | Fix YAML/JSON syntax |
+| `ERROR_OPENAPI_VALIDATION` | Invalid OpenAPI structure | "OpenAPI validation failed: {errors}" | Fix spec according to OpenAPI 3.x |
+| `ERROR_PORT_IN_USE` | Port already occupied | "Port {port} is already in use. Try a different port." | Change port or kill existing process |
+| `ERROR_SERVER_CREATE` | Scalar mock server creation failed | "Failed to create mock server: {error}" | Check @scalar/mock-server compatibility |
+
+**Example - Fatal Error Display:**
+```
+✖ [Mock] ERROR_OPENAPI_PARSE: Failed to parse OpenAPI file
+  File: src/apis/bff/openapi.yaml:42
+  Error: unexpected end of file
+  
+  → Fix: Check YAML syntax at line 42
+  → Vite dev server will continue, but mock endpoints will not be available
+```
+
+**Recoverable Errors (Degraded Functionality):**
+
+| Error Code | Cause | User-Facing Message | Recovery Action |
+|------------|-------|---------------------|-----------------|
+| `ERROR_HANDLER_FILE_NOT_FOUND` | Handler file missing | "Handler file not found: {file}" | Continue with auto-generated response |
+| `ERROR_HANDLER_LOAD` | Handler file syntax error | "Failed to load handler {file}: {error}" | Skip handler, use auto-generated |
+| `ERROR_SEED_FILE_NOT_FOUND` | Seed file missing | "Seed file not found: {file}" | Continue with auto-generated data |
+| `ERROR_SEED_LOAD` | Seed file syntax error | "Failed to load seed {file}: {error}" | Skip seed, use Faker.js |
+| `ERROR_HANDLER_EXPORT_INVALID` | Handler export structure invalid | "Handler {operationId} has invalid export format" | Skip handler, use auto-generated |
+
+**Example - Recoverable Error Display:**
+```
+⚠ [Mock] ERROR_HANDLER_LOAD: Failed to load handler file
+  File: src/apis/bff/mock/handlers/vehicles.handler.mjs
+  Error: SyntaxError: Unexpected token '}'
+  
+  → Impact: fetch_vehicles endpoint will use auto-generated response
+  → Fix: Check handler file syntax
+  → Server will continue with 44/45 endpoints working
+```
+
+**Warnings (Partial Functionality):**
+
+| Warning Code | Cause | User-Facing Message | Impact |
+|--------------|-------|---------------------|--------|
+| `WARN_HANDLER_NOT_MATCHED` | Handler operationId not found in spec | "Handler '{operationId}' not matched to any endpoint" | Unused handler code |
+| `WARN_SEED_NOT_MATCHED` | Seed schema not found in spec | "Seed '{schemaName}' not matched to any schema" | Unused seed code |
+| `WARN_DEREFERENCE_PARTIAL` | Some $ref couldn't be resolved | "Some references could not be resolved" | May affect specific endpoints |
+| `WARN_SECURITY_SCHEME_MISSING` | Security scheme referenced but not defined | "Security scheme '{name}' not defined" | Auto-generated by sanitize() |
+
+**Example - Warning Display:**
+```
+⚠ [Mock] WARN_HANDLER_NOT_MATCHED: Handler 'old_endpoint' not matched to any endpoint
+  File: src/apis/bff/mock/handlers/old.handler.mjs
+  
+  → Suggestion: Remove unused handler or check operationId spelling
+  → This will not affect server functionality
+```
+
+#### 11.4.3 Error Message Format
+
+All error messages follow a consistent structure for clarity:
+
+```typescript
+interface ErrorDisplay {
+  // Error header with severity icon
+  severity: '✖' | '⚠' | 'ℹ';
+  prefix: '[Mock]';
+  errorCode: string;
+  message: string;
+  
+  // Context information
+  file?: string;
+  line?: number;
+  operation?: string;
+  
+  // Recovery guidance
+  impact?: string;
+  suggestion?: string;
+  docsLink?: string;
+}
+```
+
+**Template:**
+```
+{severity} [Mock] {errorCode}: {message}
+  File: {file}:{line}
+  Error: {detailedError}
+  
+  → Impact: {impact}
+  → Fix: {suggestion}
+  → Docs: {docsLink}
+```
+
+#### 11.4.4 Logging Patterns
+
+**Startup Logging:**
+```
+[Mock] Starting mock server...
+[Mock] ✓ OpenAPI parsed (42 endpoints, 15 schemas)
+[Mock] ✓ Loaded 8 custom handlers
+[Mock] ✓ Loaded 5 custom seeds
+[Mock] ✓ Document enhanced with x-handler/x-seed
+[Mock] ✓ Mock server ready on port 3456 (1.2s)
+[Mock]   45 endpoints (8 custom handlers, 37 auto-generated)
+```
+
+**Request Logging (Verbose Mode):**
+```
+[Mock] → GET     /api/v1/vehicles [fetch_vehicles]
+[Mock] ✔ 200 GET /api/v1/vehicles [fetch_vehicles] (45ms)
+
+[Mock] → POST    /api/v1/orders [create_order]
+[Mock] ✔ 201 POST /api/v1/orders [create_order] (12ms)
+
+[Mock] → GET     /api/v1/orders/invalid-id [get_order]
+[Mock] ✖ 404 GET /api/v1/orders/invalid-id [get_order] (5ms)
+```
+
+**Error Logging:**
+```
+[Mock] ✖ ERROR_OPENAPI_VALIDATION: OpenAPI validation failed
+  - paths./api/v1/users.get: responses is required
+  - paths./api/v1/orders.post: requestBody.content is required
+  
+  → Fix: Add missing required fields to OpenAPI specification
+  → Docs: https://spec.openapis.org/oas/v3.1.0
+```
+
+#### 11.4.5 User-Facing Error Messages
+
+**Principle:** Error messages should be:
+1. **Clear**: Describe what went wrong in plain language
+2. **Actionable**: Provide specific steps to fix the issue
+3. **Contextual**: Include file paths, line numbers, and operation names
+4. **Progressive**: Show impact and suggest next steps
+
+**Bad Example:**
+```
+Error: undefined is not a function
+```
+
+**Good Example:**
+```
+✖ [Mock] ERROR_HANDLER_LOAD: Failed to load handler file
+  File: src/apis/bff/mock/handlers/vehicles.handler.mjs:15
+  Error: ReferenceError: faker is not defined
+  
+  → Impact: fetch_vehicles endpoint will use auto-generated response
+  → Fix: Import faker at top of file: import { faker } from '@faker-js/faker';
+  → Docs: https://fakerjs.dev/api/
+```
+
+#### 11.4.6 Error Recovery Strategies
+
+**Strategy 1: Graceful Degradation**
+- When handler fails → Fall back to auto-generated response
+- When seed fails → Fall back to Faker.js defaults
+- When single endpoint fails → Continue with other endpoints
+
+**Strategy 2: Auto-Retry (Future)**
+- Port in use → Retry with port+1
+- Transient network errors → Retry with exponential backoff (3 attempts max)
+
+**Strategy 3: Circuit Breaker (Future)**
+- If child process crashes 3+ times in 30s → Stop auto-restart
+- Display error and require manual intervention
+
+**Strategy 4: Fail-Fast**
+- Fatal errors (OpenAPI parse, validation) → Immediate failure
+- No point continuing if core document is invalid
+
+#### 11.4.7 Error Handling in Code
+
+**Child Process (mock-server-runner.mjs):**
+```typescript
+try {
+  // Parse OpenAPI
+  const { valid, errors } = await validate(content);
+  
+  if (!valid) {
+    process.send({
+      type: 'ERROR',
+      error: {
+        code: 'ERROR_OPENAPI_VALIDATION',
+        message: 'OpenAPI validation failed',
+        context: { errors: errors.map(e => e.message) }
+      },
+      timestamp: new Date().toISOString()
+    });
+    process.exit(1); // Fatal error
+  }
+  
+  // Continue with startup...
+  
+} catch (error) {
+  process.send({
+    type: 'ERROR',
+    error: {
+      code: 'ERROR_UNKNOWN',
+      message: error.message,
+      stack: error.stack,
+    },
+    timestamp: new Date().toISOString()
+  });
+  process.exit(1);
+}
+```
+
+**Parent Process (vite-plugin-open-api-server.ts):**
+```typescript
+childProcess.on('message', (msg: MockServerMessage) => {
+  if (msg.type === 'ERROR') {
+    const { error } = msg;
+    
+    // Display formatted error
+    server.config.logger.error(
+      `\n✖ [Mock] ${error.code}: ${error.message}`
+    );
+    
+    if (error.context?.file) {
+      server.config.logger.error(
+        `  File: ${error.context.file}` +
+        (error.context.line ? `:${error.context.line}` : '')
+      );
+    }
+    
+    if (error.context?.errors) {
+      error.context.errors.forEach(e => {
+        server.config.logger.error(`  - ${e}`);
+      });
+    }
+    
+    // Show recovery guidance
+    const recovery = getRecoveryGuidance(error.code);
+    if (recovery) {
+      server.config.logger.error(`\n  → Fix: ${recovery.fix}`);
+      if (recovery.docs) {
+        server.config.logger.error(`  → Docs: ${recovery.docs}`);
+      }
+    }
+  }
+});
+
+function getRecoveryGuidance(errorCode: string) {
+  const guidance = {
+    ERROR_OPENAPI_PARSE: {
+      fix: 'Check YAML/JSON syntax in your OpenAPI file',
+      docs: 'https://spec.openapis.org/oas/v3.1.0'
+    },
+    ERROR_PORT_IN_USE: {
+      fix: 'Change port in vite.config or kill existing process',
+      docs: 'https://github.com/webssublime/vite-plugin-open-api-server#configuration'
+    },
+    // ... more mappings
+  };
+  
+  return guidance[errorCode];
+}
+```
+
+#### 11.4.8 Testing Error Scenarios
+
+**Manual Testing Checklist:**
+- [ ] Invalid OpenAPI YAML syntax → Shows parse error with line number
+- [ ] Missing OpenAPI file → Shows file not found with path
+- [ ] Port already in use → Shows port conflict error
+- [ ] Handler file with syntax error → Shows warning, continues with auto-generated
+- [ ] Seed file with syntax error → Shows warning, continues with Faker.js
+- [ ] Handler with non-existent operationId → Shows warning about unused handler
+- [ ] Invalid OpenAPI structure → Shows validation errors with field paths
+
+**Automated Error Testing (Future):**
+```typescript
+describe('Error Handling', () => {
+  it('should handle missing OpenAPI file', async () => {
+    const plugin = mockServerPlugin({ openApiPath: 'nonexistent.yaml' });
+    await expect(startPlugin(plugin)).rejects.toThrow('ERROR_OPENAPI_NOT_FOUND');
+  });
+  
+  it('should continue with invalid handler file', async () => {
+    // Mock handler file with syntax error
+    const result = await startPlugin(pluginWithBadHandler);
+    expect(result.warnings).toContain('ERROR_HANDLER_LOAD');
+    expect(result.running).toBe(true); // Server still running
+  });
+});
+```
+
 ---
 
 ## 12. Testing Strategy
@@ -2001,16 +4580,16 @@ packages/foc-gpme/vite-plugins/
 ├── mock-server.types.ts
 ├── mock-server-runner.mjs
 ├── mock-server-runner.ts
-└── vite-plugin-mock-server.ts
+└── vite-plugin-open-api-server.ts
 ```
 
 ### 13.2 Future: NPM Package
 
-**Package Name:** `@mbio/vite-plugin-mock-server` (proposed)
+**Package Name:** `@webssublime/vite-plugin-open-api-server`
 
 **Package Structure:**
 ```
-@mbio/vite-plugin-mock-server/
+@webssublime/vite-plugin-open-api-server/
 ├── dist/
 │   ├── index.js
 │   ├── index.d.ts
@@ -2021,16 +4600,90 @@ packages/foc-gpme/vite-plugins/
 
 ### 13.3 Dependencies
 
+This plugin relies on three core external dependencies that provide the foundation for its functionality:
+
+#### Core Dependencies
+
+**1. Vite (`vite`)**
+- **Purpose:** Development server framework and build tool
+- **Version:** `^5.0.0` (peer dependency)
+- **Usage:** Plugin system integration, dev server lifecycle hooks, proxy configuration
+- **Key APIs Used:**
+  - `configureServer` hook - Configure dev server and add middlewares
+  - `config` hook - Modify Vite configuration (proxy rules)
+  - `configResolved` hook - Access final resolved configuration
+  - Plugin ordering with `enforce` property
+  - `server.middlewares` - Connect middleware integration
+
+**2. @scalar/openapi-parser (`@scalar/openapi-parser`)**
+- **Purpose:** OpenAPI document parsing, validation, and manipulation
+- **Version:** `^0.x` (direct dependency)
+- **Usage:** Parse and validate OpenAPI 3.x and Swagger 2.0 specifications
+- **Key APIs Used:**
+  - `validate(spec)` - Validate OpenAPI document structure
+  - `dereference(spec)` - Resolve $ref references
+  - `upgrade(spec)` - Upgrade Swagger 2.0 to OpenAPI 3.1
+  - `sanitize(spec)` - Normalize and fix common issues
+- **Supported Formats:** YAML (.yaml, .yml), JSON (.json)
+- **Supported Versions:** OpenAPI 3.2, 3.1, 3.0, Swagger 2.0
+
+**3. @scalar/mock-server (`@scalar/mock-server`)**
+- **Purpose:** Generate mock API responses from OpenAPI specifications
+- **Version:** `^0.x` (direct dependency)
+- **Usage:** Create HTTP mock server with automatic response generation
+- **Key APIs Used:**
+  - `createMockServer(options)` - Create mock server instance
+  - `onRequest` callback - Hook for logging and monitoring
+  - `x-handler` extension - Custom request handling with JavaScript
+  - `x-seed` extension - Initial data seeding for schemas
+- **Built on:** Hono web framework
+- **Features:**
+  - Automatic response generation from schemas
+  - Security scheme validation (Bearer, API Key, OAuth2)
+  - In-memory data store with CRUD operations
+  - Faker.js integration for realistic data
+
+#### Supporting Dependencies
+
+**4. @hono/node-server (`@hono/node-server`)**
+- **Purpose:** Node.js server adapter for Hono framework
+- **Version:** `^1.x` (direct dependency)
+- **Usage:** Run the mock server in Node.js environment
+- **Key APIs Used:**
+  - `serve(options)` - Start HTTP server with Hono app
+
+**5. @vue/devtools-api (`@vue/devtools-api`)**
+- **Purpose:** Vue DevTools plugin integration for custom tabs
+- **Version:** `^7.3.0` (dev dependency)
+- **Usage:** Register custom "Mock Server" tab in Vue DevTools for endpoint inspection and response simulation
+- **Documentation:** https://devtools.vuejs.org/plugins/api
+- **Key APIs Used:**
+  - `addCustomTab(options)` - Register custom tab with SFC view
+  - `onDevToolsClientConnected(callback)` - Hook for DevTools connection event
+- **Benefits:**
+  - Zero additional UI infrastructure
+  - Seamless integration into developer workflow
+  - Real-time endpoint registry inspection
+  - Query parameter simulation for status codes, delays, and errors
+
+**6. yaml (`yaml`)**
+- **Purpose:** YAML parsing and serialization
+- **Version:** `^2.x` (direct dependency)
+- **Usage:** Parse OpenAPI YAML specifications (fallback if @scalar/openapi-parser doesn't handle it)
+
 **Required:**
 ```json
 {
   "dependencies": {
-    "@hono/node-server": "^1.x",
-    "@scalar/mock-server": "^0.x",
-    "yaml": "^2.x"
-  },
-  "peerDependencies": {
-    "vite": "^5.0.0"
+    dependencies:
+      "@hono/node-server": "^1.12.0"
+      "@scalar/mock-server": "^0.1.15"
+      "@scalar/openapi-parser": "^0.7.2"
+      "yaml": "^2.3.4"
+    devDependencies:
+      "@vue/devtools-api": "^7.3.0"
+    peerDependencies:
+      "vite": "^5.0.0"
   }
 }
 ```
@@ -2052,19 +4705,19 @@ packages/foc-gpme/vite-plugins/
 
 | Feature | Priority | Effort |
 |---------|----------|--------|
-| Hot reload for seeds/handlers | P2 | Medium |
 | Auto-restart on crash | P2 | Low |
 | Request/response recording | P2 | Medium |
 | TypeScript seed/handler support | P2 | High |
+| Performance profiling tools | P2 | Medium |
 
 ### 14.2 Medium-Term (v1.2)
 
 | Feature | Priority | Effort |
 |---------|----------|--------|
-| Web UI for mock management | P3 | High |
-| OpenAPI x-handler support | P2 | Medium |
-| OpenAPI x-seed support | P2 | Medium |
 | GraphQL support | P3 | High |
+| Contract testing integration | P3 | High |
+| Multi-environment configs | P2 | Medium |
+| Mock response delays/throttling | P2 | Low |
 
 ### 14.3 Long-Term (v2.0)
 
@@ -2072,8 +4725,8 @@ packages/foc-gpme/vite-plugins/
 |---------|----------|--------|
 | Persistent mock data (SQLite) | P3 | High |
 | Multi-spec support | P3 | Medium |
-| Contract testing integration | P3 | High |
 | Shared mock library (mono-repo) | P3 | Medium |
+| Cloud-based mock collaboration | P3 | High |
 
 ---
 
@@ -2081,6 +4734,7 @@ packages/foc-gpme/vite-plugins/
 
 ### 15.1 MVP Criteria (v1.0)
 
+**Core Functionality:**
 - [x] Plugin integrates with Vite dev server
 - [x] Mock server starts automatically
 - [x] Proxy configuration works transparently
@@ -2092,7 +4746,7 @@ packages/foc-gpme/vite-plugins/
 - [x] Graceful shutdown on server close
 - [x] Documentation available (README)
 
-**v1.0.1 Critical Fixes (Required):**
+**v1.0 Critical Requirements:**
 - [ ] **FR-003:** Use @scalar/openapi-parser for document loading and validation
 - [ ] **FR-003:** Report validation errors with clear messages
 - [ ] **FR-004:** Load and validate handler/seed files with clear feedback
@@ -2101,6 +4755,10 @@ packages/foc-gpme/vite-plugins/
 - [ ] **FR-006:** Build endpoint registry from enhanced document
 - [ ] **FR-006:** Display registry table on startup
 - [ ] **FR-006:** Expose `/_mock/registry` endpoint
+- [ ] **FR-010:** Security scheme normalization with @scalar/openapi-parser sanitize()
+- [ ] **FR-013:** Preserve existing x-handler/x-seed in OpenAPI (with override warnings)
+- [ ] **FR-014:** Hot reload for seeds/handlers with file watching
+- [ ] **FR-015:** Vue DevTools integration with custom "Mock Server" tab for endpoint inspection and response simulation
 
 ### 15.2 Quality Criteria
 
@@ -2129,23 +4787,33 @@ packages/foc-gpme/vite-plugins/
 
 ### 16.2 References
 
-- [Scalar Mock Server Documentation](https://github.com/scalar/scalar/tree/main/packages/mock-server)
+**Core Dependencies:**
+- [@scalar/openapi-parser Documentation](https://github.com/scalar/scalar/tree/main/packages/openapi-parser)
+- [@scalar/mock-server Documentation](https://github.com/scalar/scalar/tree/main/packages/mock-server)
+- [Scalar Mock Server Guide](https://guides.scalar.com/scalar/scalar-mock-server/getting-started)
 - [Vite Plugin API](https://vitejs.dev/guide/api-plugin.html)
+
+**Specifications & Standards:**
+- [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [OpenAPI 3.0 Specification](https://spec.openapis.org/oas/v3.0.3)
+- [Swagger 2.0 Specification](https://swagger.io/specification/v2/)
+
+**Supporting Libraries:**
 - [Hono Framework](https://hono.dev/)
 - [Faker.js Documentation](https://fakerjs.dev/)
+- [@hono/node-server](https://github.com/honojs/node-server)
 
 ### 16.3 File Structure
 
 ```
 packages/foc-gpme/
 ├── vite-plugins/
-│   ├── index.ts                      # Plugin exports
-│   ├── vite-plugin-mock-server.ts    # Main Vite plugin
-│   ├── mock-server-runner.mjs        # ESM runner (child process)
-│   ├── mock-server-runner.ts         # TS version (reference)
-│   ├── mock-server.types.ts          # TypeScript type definitions
-│   └── openapi-enhancer.mjs          # Document enhancer & registry (NEW)
+│   ├── index.ts                           # Plugin exports
+│   ├── vite-plugin-open-api-server.ts     # Main Vite plugin
+│   ├── mock-server-runner.mjs             # ESM runner (child process)
+│   ├── mock-server-runner.ts              # TS version (reference)
+│   ├── mock-server.types.ts               # TypeScript type definitions
+│   └── openapi-enhancer.mjs               # Document enhancer & registry (NEW)
 │
 ├── src/apis/bff/
 │   ├── gpme-bff-service.openapi.bundle.yaml  # OpenAPI spec
@@ -2173,8 +4841,13 @@ packages/foc-gpme/
 |---------|------|---------|
 | 1.0.0-draft | 2025-01-XX | Initial specification draft |
 | 1.0.1-draft | 2025-01-XX | Reorganized FRs for logical implementation order |
-| 1.0.2-draft | 2025-01-XX | Complete FR renumbering: FR-003 (Parser), FR-004 (File Loading), FR-005 (Enhancement), FR-006 (Registry), FR-007-012 (Core), FR-013-015 (Optional) |
+| 1.0.2-draft | 2025-01-XX | Complete FR renumbering: FR-003 (Parser), FR-004 (File Loading), FR-005 (Enhancement), FR-006 (Registry), FR-007-012 (Core), FR-013-015 (initially marked as Optional, later moved to Core in 1.0.7) |
 | 1.0.3-draft | 2025-01-15 | **FR-004 Enhancement**: Added support for function exports in handlers/seeds. Values can now be either strings (static) or functions (dynamic code generation). Added HandlerCodeContext and SeedCodeContext APIs. Added Use Cases & Best Practices section. Updated validation rules and API specifications (sections 8.2-8.5). |
+| 1.0.4-draft | 2026-01-07 | **Product Name Correction**: Changed product name from `vite-plugin-mock-server` to `vite-plugin-open-api-server` throughout document. Updated NPM package name to `@webssublime/vite-plugin-open-api-server`. Added section 1.1.1 "Why OpenAPI-First?" explaining the OpenAPI-first philosophy, contract-driven development approach, and differentiation from generic mock servers. Updated all file names and references in architecture diagrams and file structure sections. |
+| 1.0.5-draft | 2026-01-07 | **External API Integration**: Added `@scalar/openapi-parser` as core dependency. Expanded section 13.3 with detailed documentation of all three core dependencies (Vite, @scalar/openapi-parser, @scalar/mock-server) including purpose, version requirements, and key APIs used. Added comprehensive section 7.4 "External API Integration" with deep analysis of: (1) Vite Plugin API integration with code examples and lifecycle hooks, (2) @scalar/openapi-parser usage for validation, dereferencing, and sanitization with error handling strategies, (3) @scalar/mock-server integration including x-handler/x-seed runtime context, Store API specification, automatic status codes, and security scheme handling. Updated References section (16.2) with all official documentation links. |
+| 1.0.6-draft | 2026-01-07 | **Critical Gaps Resolved**: (1) **FR-010 Security Scheme Normalization** - Completely expanded with technical documentation, supported security schemes table, before/after examples for Bearer/API Key/OAuth2, mock server behavior specifications, edge cases, limitations, and implementation code. Added 4 detailed examples showing authentication flows. (2) **Section 8.7 IPC Message API** - Expanded from 3 message types to complete protocol specification with 8 message types (INITIALIZING, READY, SHUTDOWN, ERROR, WARNING, LOG, REQUEST, HEARTBEAT), detailed interfaces, message flow examples for successful startup and error scenarios, parent process handler implementation, error codes reference table, and environment variables documentation (~400 lines). (3) **Section 11.4 Error Handling Strategy** - New comprehensive section covering error taxonomy (4 severity levels), error codes with recovery strategies, error message format specification, logging patterns, user-facing message guidelines, error recovery strategies (graceful degradation, auto-retry, circuit breaker, fail-fast), code examples for child/parent error handling, and testing checklist (~300 lines). |
+| 1.0.7-draft | 2026-01-07 | **FR-013/014/015 Reclassified as Core Features**: Moved FR-013 (Preserve Existing x-handler/x-seed), FR-014 (Hot Reload), and FR-015 (Web UI for Mock Management) from section 5.2 "Optional Features" to section 5.1 "Core Features" as they are mandatory requirements, not optional. Updated priorities: FR-013 from P2→P0 (Critical), FR-014 from P3→P1 (High), FR-015 from P3→P1 (High). Expanded FR-014 with complete implementation notes including chokidar file watching, graceful restart logic, and reload timing requirements (<2s). Expanded FR-015 with comprehensive UI specification including dashboard, endpoints view, store data view, request logs, actions (reset/clear/export/import), technical implementation details, and benefits. Added new section 5.2 "Future Enhancements" for actual optional features (FE-001: TypeScript support, FE-002: GraphQL, FE-003: SQLite persistence). |
+| 1.0.8-draft | 2026-01-07 | **FR-015 Replaced with Vue DevTools Integration for Comprehensive Edge Case Testing**: Replaced FR-015 standalone Web UI (`/__mock-ui`) with Vue DevTools Plugin API integration (`@vue/devtools-api` ^7.3.0). Added custom "Mock Server" tab in Vue DevTools browser extension aligned with Value Proposition (section 1.2): "Simulate edge cases, errors, and network conditions". **Comprehensive Simulation Capabilities:** (1) HTTP status codes (2xx, 4xx, 5xx ranges), (2) Network conditions (latency presets: Fast/Slow/3G/4G, custom delays 0-10000ms), (3) Error scenarios (timeout, network failure, server error, rate limiting, maintenance), (4) Edge cases (empty responses, malformed JSON, partial content, large payloads), (5) Connection quality (stable, intermittent, drop), (6) Advanced options (custom headers, failure probability 0-100%, timeout duration, simulation presets). **Query Parameters:** `simulateStatus`, `simulateDelay`, `simulateError`, `simulateConnection`, `simulateResponse`, `simulateTimeout`, `simulateProbability`, `simulateHeaders`. **Features:** Endpoint registry with filters, simulation panel with visual controls, preset management (save/load scenarios like "Slow 3G", "Rate Limited", "Server Overload"), real-time sync via `GET /__registry` (5s polling), copy-to-clipboard and test-in-browser actions. Updated section 7.4.2 with @vue/devtools-api integration including simulation capabilities reference and query parameters table. Updated section 13.3 Supporting Dependencies with @vue/devtools-api details. Benefits: comprehensive error handling validation, realistic network simulation, zero UI infrastructure, seamless workflow integration. |
 
 ---
 
