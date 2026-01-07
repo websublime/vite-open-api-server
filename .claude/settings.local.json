@@ -1,4 +1,6 @@
 {
+  "model": "opus",
+  "includeCoAuthoredBy": false,
   "hooks": {
     "PreCompact": [
       {
