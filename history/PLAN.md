@@ -3185,7 +3185,24 @@ After completing this task:
 
 #### P1-03: Implement Plugin Types
 
-**Description:** Define all TypeScript types for the plugin.
+**Description:** Define comprehensive TypeScript types for the entire plugin architecture, including plugin configuration options, endpoint registry structures, handler/seed APIs, IPC message protocols, and security normalization types. These types form the contract between different plugin subsystems and provide strong type safety for both plugin internals and public API consumers. All types must be derived from PRS Section 8 (Type Definitions) and maintain compatibility with Vite's plugin API types.
+
+**Context:**
+- **Type-first design**: Types are implemented before implementation code to establish clear contracts and enable TDD
+- **Public vs internal types**: Plugin options and handler/seed contexts are public API; IPC messages and registry internals are private
+- **Vite compatibility**: Plugin options extend Vite's Plugin type, ensuring lifecycle hooks match Vite's expectations
+- **OpenAPI alignment**: Registry and endpoint types mirror OpenAPI 3.1 structure (Operation Object, Schema Object, Security Scheme)
+- **IPC protocol**: Message types define parent-child process communication protocol for mock server isolation
+
+**Implementation Approach:**
+1. Start with **plugin-options.ts**: Core configuration interface that users pass to plugin function
+2. Create **registry.ts**: Internal structures for storing parsed OpenAPI endpoints, schemas, and security schemes
+3. Define **handlers.ts**: Public API for custom request handlers (context object, return types)
+4. Define **seeds.ts**: Public API for seed data generators (context object, faker integration)
+5. Implement **ipc-messages.ts**: Discriminated union types for parent↔child process messages
+6. Create **security.ts**: Normalized security scheme types (extracted from OpenAPI spec, used by handlers)
+7. Export all public types from **types/index.ts** for consumer imports
+8. Verify types compile with `pnpm typecheck` and check no circular dependencies
 
 **Estimate:** S (1 day)
 
@@ -3193,60 +3210,800 @@ After completing this task:
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P1-03.1 | Create types/plugin-options.ts | Plugin configuration types |
-| P1-03.2 | Define OpenApiServerPluginOptions | All configuration options |
-| P1-03.3 | Create types/registry.ts | Endpoint registry types |
-| P1-03.4 | Create types/handlers.ts | Handler API types |
-| P1-03.5 | Create types/seeds.ts | Seed API types |
-| P1-03.6 | Create types/ipc-messages.ts | IPC message protocol |
-| P1-03.7 | Export all types | From types/index.ts |
+| P1-03.1 | Create types/plugin-options.ts | Define `OpenApiServerPluginOptions` interface with all configuration properties from PRS Section 8.1: `openApiPath` (required), `port`, `proxyPath`, `seedsDir`, `handlersDir`, `enabled`, `startupTimeout`, `verbose`. Add JSDoc for each property explaining purpose, default value, and constraints. |
+| P1-03.2 | Create types/registry.ts | Define `OpenApiEndpointRegistry` (Map-like structure), `OpenApiEndpointEntry` (method, path, operationId, parameters, requestBody, responses), `OpenApiServerSchemaEntry` (name, schema object), and `OpenApiSecuritySchemeEntry` (type, scheme, bearerFormat, flows). Mirror OpenAPI 3.1 structure. |
+| P1-03.3 | Create types/handlers.ts | Define `HandlerContext` (request, params, query, body, headers, logger, registry, security), `HandlerResponse` (status, body, headers), `HandlerCodeGenerator` function type, and `HandlerFileExports` (default export signature). Include generic types for typed request/response bodies. |
+| P1-03.4 | Create types/seeds.ts | Define `SeedContext` (faker instance, logger, registry, schemas), `SeedData` (array of objects matching schema), `SeedCodeGenerator` function type, and `SeedFileExports` (default export signature). Support typed seed data with schema validation. |
+| P1-03.5 | Create types/ipc-messages.ts | Define discriminated union `OpenApiServerMessage` with `type` discriminator. Include message interfaces: `ReadyMessage`, `ErrorMessage`, `RequestMessage`, `ResponseMessage`, `ShutdownMessage`, `LogMessage`. Each has unique `type` string literal and relevant payload. Enable type-safe IPC communication. |
+| P1-03.6 | Create types/security.ts | Define normalized security types: `NormalizedSecurityScheme` (union of ApiKey, HTTP, OAuth2, OpenIdConnect), `SecurityRequirement` (scheme name + scopes array), `SecurityContext` (current scheme, credentials, scopes). Used by handlers to access authentication state. |
+| P1-03.7 | Export all types from types/index.ts | Re-export all public types (plugin options, handler/seed contexts, security types). Do NOT export internal types (registry internals, IPC messages). Add JSDoc module documentation explaining type categories and usage. |
+| P1-03.8 | Add type tests | Create `types/__tests__/types.test-d.ts` using `tsd` or similar type testing library. Verify type inference works correctly (e.g., handler context provides correct types, discriminated unions narrow properly). Ensures types are usable and catch breaking changes. |
 
-**File: Types to implement (from PRS Section 8)**
+**Technical Considerations:**
+- **Discriminated unions**: IPC messages use `type` field as discriminator for exhaustive switch statements and type narrowing
+- **Generic types**: `HandlerContext<TBody = unknown>` allows typed request bodies when handler knows schema
+- **Readonly properties**: Registry entries should be `Readonly<...>` to prevent mutation after parsing
+- **Exact types**: Use `type X = { ... }` instead of `interface X { ... }` when exact shape matters (prevents extension)
+- **Optional chaining support**: All optional fields use `?:` operator for safe property access
+- **Vite Plugin type**: Plugin options should be compatible with Vite's `Plugin` interface (avoid conflicting property names)
+- **OpenAPI references**: Registry types include `$ref` resolution metadata for tracking schema inheritance
+- **Logger interface**: Use Vite's `Logger` type for consistency with Vite's logging system
+- **Faker typing**: Import `@faker-js/faker` types conditionally (peer dependency, may not be installed)
+- **Node types**: IPC message payloads must be JSON-serializable (no functions, symbols, or circular refs)
+
+**Expected Outputs:**
+
+1. **types/plugin-options.ts**:
 ```typescript
-// plugin-options.ts
-interface OpenApiServerPluginOptions {
+/**
+ * Configuration options for the OpenAPI Server plugin.
+ * 
+ * @example
+ * ```ts
+ * openApiServerPlugin({
+ *   openApiPath: './petstore.openapi.yaml',
+ *   port: 3001,
+ *   proxyPath: '/api',
+ * })
+ * ```
+ */
+export interface OpenApiServerPluginOptions {
+  /** Path to OpenAPI 3.1 spec file (YAML or JSON). Relative to project root. */
   openApiPath: string;
+  
+  /** Port for mock server child process. Default: 3001. Must not conflict with Vite dev server. */
   port?: number;
+  
+  /** Base path to proxy to mock server. Default: '/api'. Example: '/api' proxies '/api/pets' to mock server. */
   proxyPath?: string;
+  
+  /** Directory for seed data files. Default: './open-api-server/seeds' relative to spec file. */
   seedsDir?: string;
+  
+  /** Directory for custom handlers. Default: './open-api-server/handlers' relative to spec file. */
   handlersDir?: string;
+  
+  /** Enable/disable plugin. Default: true. Set false to disable in production builds. */
   enabled?: boolean;
+  
+  /** Timeout (ms) to wait for mock server startup. Default: 5000. Increase for large specs. */
   startupTimeout?: number;
+  
+  /** Enable verbose logging. Default: false. Shows detailed startup, IPC, and request logs. */
   verbose?: boolean;
 }
+```
 
-// registry.ts
-interface OpenApiEndpointRegistry { ... }
-interface OpenApiEndpointEntry { ... }
-interface OpenApiServerSchemaEntry { ... }
+2. **types/registry.ts**:
+```typescript
+import type { OpenAPIV3_1 } from 'openapi-types';
 
-// handlers.ts
-interface HandlerCodeContext { ... }
-type HandlerCodeGenerator = ...
-interface HandlerFileExports { ... }
+/**
+ * Parsed OpenAPI endpoint registry.
+ * Maps endpoint keys (e.g., 'GET /pets') to operation metadata.
+ */
+export interface OpenApiEndpointRegistry {
+  endpoints: Map<string, OpenApiEndpointEntry>;
+  schemas: Map<string, OpenApiServerSchemaEntry>;
+  securitySchemes: Map<string, OpenApiSecuritySchemeEntry>;
+}
 
-// seeds.ts
-interface SeedCodeContext { ... }
-type SeedCodeGenerator = ...
-interface SeedFileExports { ... }
+/**
+ * Single endpoint entry in registry.
+ * Contains all metadata needed to handle requests for this operation.
+ */
+export interface OpenApiEndpointEntry {
+  method: string;
+  path: string;
+  operationId: string;
+  summary?: string;
+  description?: string;
+  parameters: OpenAPIV3_1.ParameterObject[];
+  requestBody?: OpenAPIV3_1.RequestBodyObject;
+  responses: Record<string, OpenAPIV3_1.ResponseObject>;
+  security?: OpenAPIV3_1.SecurityRequirementObject[];
+  tags?: string[];
+}
 
-// ipc-messages.ts
-type OpenApiServerMessage = ...
-interface ReadyMessage { ... }
-interface ErrorMessage { ... }
-// etc.
+/**
+ * Schema entry for component schemas.
+ * Used for validation and seed data generation.
+ */
+export interface OpenApiServerSchemaEntry {
+  name: string;
+  schema: OpenAPIV3_1.SchemaObject;
+}
+
+/**
+ * Security scheme entry (API key, OAuth2, etc.).
+ * Extracted from components.securitySchemes.
+ */
+export interface OpenApiSecuritySchemeEntry {
+  name: string;
+  type: 'apiKey' | 'http' | 'oauth2' | 'openIdConnect';
+  scheme?: string; // For http type: 'bearer', 'basic', etc.
+  bearerFormat?: string; // For http bearer: 'JWT', etc.
+  in?: 'query' | 'header' | 'cookie'; // For apiKey type
+  flows?: OpenAPIV3_1.OAuth2SecurityScheme['flows']; // For oauth2
+}
+```
+
+3. **types/handlers.ts**:
+```typescript
+import type { Logger } from 'vite';
+import type { OpenApiEndpointRegistry } from './registry';
+import type { SecurityContext } from './security';
+
+/**
+ * Context object passed to custom handler functions.
+ * Provides access to request data, registry, logger, and security state.
+ * 
+ * @template TBody - Type of request body (defaults to unknown)
+ */
+export interface HandlerContext<TBody = unknown> {
+  /** HTTP method (GET, POST, etc.) */
+  method: string;
+  
+  /** Request path (e.g., '/pets/123') */
+  path: string;
+  
+  /** Path parameters (e.g., { petId: '123' }) */
+  params: Record<string, string>;
+  
+  /** Query parameters (e.g., { status: 'available' }) */
+  query: Record<string, string | string[]>;
+  
+  /** Parsed request body (JSON or form data) */
+  body: TBody;
+  
+  /** Request headers (lowercase keys) */
+  headers: Record<string, string | string[] | undefined>;
+  
+  /** Vite logger for consistent logging */
+  logger: Logger;
+  
+  /** OpenAPI registry (read-only access to schemas, endpoints, security) */
+  registry: Readonly<OpenApiEndpointRegistry>;
+  
+  /** Security context (current scheme, credentials, scopes) */
+  security: SecurityContext;
+}
+
+/**
+ * Response returned by custom handler functions.
+ * Null means "use default mock behavior".
+ */
+export interface HandlerResponse {
+  /** HTTP status code (200, 404, etc.) */
+  status: number;
+  
+  /** Response body (will be JSON.stringify'd if object) */
+  body: unknown;
+  
+  /** Response headers (optional) */
+  headers?: Record<string, string>;
+}
+
+/**
+ * Custom handler function signature.
+ * Async function that receives context and returns response or null.
+ */
+export type HandlerCodeGenerator<TBody = unknown> = (
+  context: HandlerContext<TBody>
+) => Promise<HandlerResponse | null>;
+
+/**
+ * Expected exports from handler files.
+ * Must default export an async function matching HandlerCodeGenerator signature.
+ */
+export interface HandlerFileExports {
+  default: HandlerCodeGenerator;
+}
+```
+
+4. **types/seeds.ts**:
+```typescript
+import type { Faker } from '@faker-js/faker';
+import type { Logger } from 'vite';
+import type { OpenApiEndpointRegistry } from './registry';
+
+/**
+ * Context object passed to seed generator functions.
+ * Provides faker instance, logger, and registry for generating realistic data.
+ */
+export interface SeedContext {
+  /** Faker instance for generating realistic fake data */
+  faker: Faker;
+  
+  /** Vite logger for logging seed generation progress */
+  logger: Logger;
+  
+  /** OpenAPI registry (schemas for validation) */
+  registry: Readonly<OpenApiEndpointRegistry>;
+  
+  /** Schema name this seed is for (e.g., 'Pet') */
+  schemaName: string;
+}
+
+/**
+ * Seed data returned by generator functions.
+ * Array of objects matching the schema.
+ */
+export type SeedData = unknown[];
+
+/**
+ * Seed generator function signature.
+ * Async function that receives context and returns array of seed objects.
+ */
+export type SeedCodeGenerator = (context: SeedContext) => Promise<SeedData>;
+
+/**
+ * Expected exports from seed files.
+ * Must default export an async function matching SeedCodeGenerator signature.
+ */
+export interface SeedFileExports {
+  default: SeedCodeGenerator;
+}
+```
+
+5. **types/ipc-messages.ts**:
+```typescript
+/**
+ * IPC message protocol for parent ↔ child process communication.
+ * All messages are JSON-serializable and include a 'type' discriminator.
+ */
+
+/**
+ * Child → Parent: Mock server is ready and listening.
+ */
+export interface ReadyMessage {
+  type: 'ready';
+  port: number;
+  endpointCount: number;
+}
+
+/**
+ * Child → Parent: Fatal error during startup or runtime.
+ */
+export interface ErrorMessage {
+  type: 'error';
+  message: string;
+  stack?: string;
+}
+
+/**
+ * Parent → Child: Forward HTTP request to mock server.
+ */
+export interface RequestMessage {
+  type: 'request';
+  id: string; // Correlation ID
+  method: string;
+  path: string;
+  headers: Record<string, string | string[]>;
+  body?: unknown;
+}
+
+/**
+ * Child → Parent: HTTP response from mock server.
+ */
+export interface ResponseMessage {
+  type: 'response';
+  id: string; // Correlation ID (matches request)
+  status: number;
+  headers: Record<string, string>;
+  body: unknown;
+}
+
+/**
+ * Parent → Child: Graceful shutdown request.
+ */
+export interface ShutdownMessage {
+  type: 'shutdown';
+}
+
+/**
+ * Child → Parent: Log message for verbose mode.
+ */
+export interface LogMessage {
+  type: 'log';
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  timestamp: number;
+}
+
+/**
+ * Discriminated union of all IPC message types.
+ * Use type narrowing in switch statements.
+ */
+export type OpenApiServerMessage =
+  | ReadyMessage
+  | ErrorMessage
+  | RequestMessage
+  | ResponseMessage
+  | ShutdownMessage
+  | LogMessage;
+```
+
+6. **types/security.ts**:
+```typescript
+/**
+ * Normalized security scheme types.
+ * Extracted from OpenAPI spec and provided to handlers.
+ */
+
+export interface ApiKeySecurityScheme {
+  type: 'apiKey';
+  name: string; // Header/query param name
+  in: 'query' | 'header' | 'cookie';
+}
+
+export interface HttpSecurityScheme {
+  type: 'http';
+  scheme: 'bearer' | 'basic' | string;
+  bearerFormat?: string; // e.g., 'JWT'
+}
+
+export interface OAuth2SecurityScheme {
+  type: 'oauth2';
+  flows: Record<string, { scopes: Record<string, string> }>;
+}
+
+export interface OpenIdConnectSecurityScheme {
+  type: 'openIdConnect';
+  openIdConnectUrl: string;
+}
+
+/**
+ * Union of all security scheme types.
+ */
+export type NormalizedSecurityScheme =
+  | ApiKeySecurityScheme
+  | HttpSecurityScheme
+  | OAuth2SecurityScheme
+  | OpenIdConnectSecurityScheme;
+
+/**
+ * Security requirement (scheme name + scopes).
+ * Extracted from operation.security array.
+ */
+export interface SecurityRequirement {
+  schemeName: string;
+  scopes: string[];
+}
+
+/**
+ * Security context provided to handlers.
+ * Contains current authentication state.
+ */
+export interface SecurityContext {
+  /** Security requirements for this operation (from spec) */
+  requirements: SecurityRequirement[];
+  
+  /** Matched security scheme (null if no auth required) */
+  scheme: NormalizedSecurityScheme | null;
+  
+  /** Extracted credentials (API key, bearer token, etc.) */
+  credentials: string | null;
+  
+  /** Validated scopes (for OAuth2) */
+  scopes: string[];
+}
+```
+
+7. **types/index.ts** (public API exports):
+```typescript
+/**
+ * Public type definitions for @websublime/vite-plugin-open-api-server.
+ * 
+ * @module @websublime/vite-plugin-open-api-server/types
+ */
+
+// Plugin configuration
+export type { OpenApiServerPluginOptions } from './plugin-options';
+
+// Handler API (public)
+export type {
+  HandlerContext,
+  HandlerResponse,
+  HandlerCodeGenerator,
+  HandlerFileExports,
+} from './handlers';
+
+// Seed API (public)
+export type {
+  SeedContext,
+  SeedData,
+  SeedCodeGenerator,
+  SeedFileExports,
+} from './seeds';
+
+// Security API (public)
+export type {
+  NormalizedSecurityScheme,
+  SecurityRequirement,
+  SecurityContext,
+  ApiKeySecurityScheme,
+  HttpSecurityScheme,
+  OAuth2SecurityScheme,
+  OpenIdConnectSecurityScheme,
+} from './security';
+
+// Internal types (NOT exported):
+// - registry.ts (internal data structures)
+// - ipc-messages.ts (internal IPC protocol)
 ```
 
 **Acceptance Criteria:**
-- [ ] All types from PRS Section 8 are implemented
-- [ ] Types are exported from package
-- [ ] Types compile without errors
+- [ ] `types/plugin-options.ts` created with `OpenApiServerPluginOptions` interface
+- [ ] All 8 configuration properties documented with JSDoc comments
+- [ ] Required property `openApiPath` is non-optional (no `?:`)
+- [ ] Optional properties use `?:` operator (port, proxyPath, seedsDir, handlersDir, enabled, startupTimeout, verbose)
+- [ ] Default values documented in JSDoc (e.g., "Default: 3001")
+- [ ] `types/registry.ts` created with registry interfaces
+- [ ] `OpenApiEndpointRegistry` contains `endpoints`, `schemas`, `securitySchemes` Maps
+- [ ] `OpenApiEndpointEntry` contains all operation metadata (method, path, operationId, parameters, requestBody, responses, security, tags)
+- [ ] Registry types use `openapi-types` library for OpenAPI 3.1 object types
+- [ ] `types/handlers.ts` created with handler API types
+- [ ] `HandlerContext` is generic with `<TBody = unknown>` template parameter
+- [ ] `HandlerContext` includes all request data (method, path, params, query, body, headers)
+- [ ] `HandlerContext` includes tools (logger, registry, security)
+- [ ] `HandlerResponse` includes status, body, optional headers
+- [ ] `HandlerCodeGenerator` type signature is `(context) => Promise<HandlerResponse | null>`
+- [ ] Null return type documented as "use default mock behavior"
+- [ ] `types/seeds.ts` created with seed API types
+- [ ] `SeedContext` includes faker instance, logger, registry, schemaName
+- [ ] `SeedData` is typed as `unknown[]` (array of objects)
+- [ ] `SeedCodeGenerator` type signature is `(context) => Promise<SeedData>`
+- [ ] `types/ipc-messages.ts` created with IPC protocol types
+- [ ] All 6 message types defined (Ready, Error, Request, Response, Shutdown, Log)
+- [ ] Each message has unique `type` string literal for discrimination
+- [ ] `OpenApiServerMessage` is discriminated union of all message types
+- [ ] All message payloads are JSON-serializable (no functions or circular refs)
+- [ ] Request/Response messages include correlation ID for pairing
+- [ ] `types/security.ts` created with normalized security types
+- [ ] All 4 security scheme types defined (ApiKey, HTTP, OAuth2, OpenIdConnect)
+- [ ] `NormalizedSecurityScheme` is union type
+- [ ] `SecurityContext` includes requirements, scheme, credentials, scopes
+- [ ] `types/index.ts` exports all public types
+- [ ] Internal types (registry, IPC messages) NOT exported from index.ts
+- [ ] Module-level JSDoc documentation added to index.ts
+- [ ] All files use `export type` for type-only exports (better tree-shaking)
+- [ ] `pnpm typecheck` passes with no type errors
+- [ ] No circular dependencies between type files
+- [ ] `openapi-types` package added to dependencies in package.json
+- [ ] `@faker-js/faker` types imported conditionally (peer dependency)
+- [ ] All types follow TypeScript naming conventions (PascalCase for types/interfaces)
+- [ ] Generic types use meaningful template parameter names (`TBody`, not `T`)
+- [ ] All public types have JSDoc comments with examples where appropriate
+- [ ] Committed with message: `feat(types): implement comprehensive plugin type definitions`
 
 ---
 
-#### P1-04: Implement Basic Vite Plugin (FR-002)
+---
 
-**Description:** Implement the main Vite plugin with lifecycle hooks.
+#### P1-04: Implement Basic Vite Plugin Skeleton (FR-002)
+
+**Description:** Implement the main Vite plugin factory function and skeleton structure with essential lifecycle hooks (`config`, `configureServer`, `configResolved`, `buildStart`, `closeBundle`). This establishes the plugin's entry point, validates user-provided options, sets up integration points with Vite's dev server, and prepares hooks for mock server lifecycle management. The skeleton provides structure for Phase 2-5 implementations while being functional enough to load without errors.
+
+**Context:**
+- **Plugin factory pattern**: Function that accepts options and returns Vite `Plugin` object
+- **Lifecycle hooks order**: `config` → `configResolved` → `configureServer` → `buildStart` → ... → `closeBundle`
+- **Option validation**: Happens in factory function before returning plugin object (fail fast)
+- **Default values**: Applied in factory function, merged with user options
+- **Dev-only behavior**: Mock server only runs in dev mode (`apply: 'serve'` or runtime check in hooks)
+- **Plugin name**: `vite-plugin-open-api-server` for debugging and error messages
+- **Enforce order**: Use `enforce: 'pre'` to run before other plugins (important for proxy setup)
+
+**Implementation Approach:**
+1. Create `src/plugin.ts` with `openApiServerPlugin()` factory function
+2. Accept `OpenApiServerPluginOptions` parameter (partial, since most fields optional)
+3. Validate required option `openApiPath` (throw error if missing or invalid type)
+4. Merge user options with defaults using object spread
+5. Return Vite `Plugin` object with `name`, `enforce`, and lifecycle hooks
+6. Implement `config()` hook to merge Vite config (proxy setup placeholder)
+7. Implement `configResolved()` hook to store resolved Vite config reference
+8. Implement `configureServer()` hook to access dev server instance (middleware setup placeholder)
+9. Implement `buildStart()` hook to start mock server (child process spawn placeholder)
+10. Implement `closeBundle()` hook to shutdown mock server (graceful cleanup placeholder)
+11. Add internal state tracking (mockServerProcess, mockServerPort, isReady)
+12. Export plugin function from `src/index.ts`
+
+**Estimate:** S (1 day)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P1-04.1 | Create plugin factory function | Implement `openApiServerPlugin(options)` function in `src/plugin.ts`. Accept partial `OpenApiServerPluginOptions`, validate `openApiPath` is provided (required field), throw descriptive error if missing. Return Vite `Plugin` object structure. |
+| P1-04.2 | Merge options with defaults | Define `DEFAULT_OPTIONS` constant with default values (port: 3001, proxyPath: '/api', enabled: true, startupTimeout: 5000, verbose: false). Merge user options with defaults using `{ ...DEFAULT_OPTIONS, ...options }`. Handle seedsDir/handlersDir defaults (resolve relative to spec file, computed later). |
+| P1-04.3 | Implement config() hook | Add `config()` hook to return partial Vite config. Placeholder for proxy configuration (will add Vite server.proxy setup in Phase 3). Return empty object for now. Log "config() called" if verbose mode. |
+| P1-04.4 | Implement configResolved() hook | Add `configResolved(resolvedConfig)` hook to store Vite's resolved configuration in plugin closure variable. Needed to access root dir, logger, and other Vite config values in later hooks. Log resolved config.root if verbose. |
+| P1-04.5 | Implement configureServer() hook | Add `configureServer(server)` hook to access Vite dev server instance. Placeholder for middleware registration (will add request interception in Phase 3). Store server reference in closure. Log "configureServer() called" if verbose. |
+| P1-04.6 | Implement buildStart() hook | Add `buildStart()` hook to trigger mock server startup. Placeholder comment: "// Phase 4: P4-01 - Spawn child process and wait for ready message". Log "Mock server start triggered" if verbose. For now, just log, no actual spawn. |
+| P1-04.7 | Implement closeBundle() hook | Add `closeBundle()` hook to trigger mock server shutdown. Placeholder comment: "// Phase 4: P4-03 - Send shutdown IPC message and wait for exit". Log "Mock server shutdown triggered" if verbose. For now, just log, no actual cleanup. |
+| P1-04.8 | Add internal state management | Create closure variables to track plugin state: `mockServerProcess` (ChildProcess | null), `mockServerPort` (number | null), `isReady` (boolean). Initialize all to null/false. Will be populated in Phase 4 when process management is implemented. |
+| P1-04.9 | Add plugin metadata | Set plugin object properties: `name: 'vite-plugin-open-api-server'`, `enforce: 'pre'` (run early for proxy setup), `apply: 'serve'` (dev mode only, don't run in build). Add JSDoc comment explaining plugin purpose. |
+| P1-04.10 | Export plugin from index.ts | Update `src/index.ts` to export `openApiServerPlugin` function as default and named export. Also export types from `types/index.ts`. Verify TypeScript compilation and Vite can load plugin. |
+
+**Technical Considerations:**
+- **Option validation timing**: Validate in factory function (early failure) rather than in hooks (late failure after Vite setup)
+- **Partial options type**: Use `Partial<OpenApiServerPluginOptions>` in function signature since only `openApiPath` is required
+- **Default value strategy**: Use const object for defaults, document each default in JSDoc, merge with spread operator
+- **Closure state vs class**: Use closure variables (functional style) rather than class with instance properties (simpler, matches Vite plugin patterns)
+- **Hook execution order**: `config` runs first (for Vite config merging), `configResolved` runs after Vite resolves full config, `configureServer` runs after server creation, `buildStart` runs when Vite build starts (dev or production)
+- **Dev-only enforcement**: Use `apply: 'serve'` to prevent plugin from running in production builds (mock server is dev-only feature)
+- **Enforce pre**: Use `enforce: 'pre'` to ensure proxy middleware runs before other plugins' middleware
+- **Logger access**: Get logger from resolved Vite config in `configResolved` hook, use for all plugin logging
+- **Server reference**: Store server instance from `configureServer` hook for middleware registration in Phase 3
+- **Async hooks**: All hooks except `config` can be async (return Promise) if needed for Phase 4 process management
+- **Error handling**: Wrap hook implementations in try-catch to prevent plugin crashes from breaking Vite dev server
+
+**Expected Outputs:**
+
+1. **src/plugin.ts** (skeleton implementation):
+```typescript
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
+import type { OpenApiServerPluginOptions } from './types';
+import type { ChildProcess } from 'node:child_process';
+
+/**
+ * Default plugin options.
+ * Merged with user-provided options.
+ */
+const DEFAULT_OPTIONS = {
+  port: 3001,
+  proxyPath: '/api',
+  enabled: true,
+  startupTimeout: 5000,
+  verbose: false,
+} as const;
+
+/**
+ * Vite plugin for OpenAPI mock server.
+ * 
+ * Spawns a child process to run mock server, proxies requests from Vite dev server,
+ * and provides hot reload when OpenAPI spec, handlers, or seeds change.
+ * 
+ * @param options - Plugin configuration options
+ * @returns Vite plugin object
+ * 
+ * @example
+ * ```ts
+ * // vite.config.ts
+ * import { openApiServerPlugin } from '@websublime/vite-plugin-open-api-server';
+ * 
+ * export default defineConfig({
+ *   plugins: [
+ *     openApiServerPlugin({
+ *       openApiPath: './petstore.openapi.yaml',
+ *       port: 3001,
+ *       proxyPath: '/api',
+ *     }),
+ *   ],
+ * });
+ * ```
+ */
+export function openApiServerPlugin(
+  options: Partial<OpenApiServerPluginOptions>
+): Plugin {
+  // Validate required options
+  if (!options.openApiPath) {
+    throw new Error(
+      '[vite-plugin-open-api-server] Missing required option: openApiPath'
+    );
+  }
+
+  if (typeof options.openApiPath !== 'string') {
+    throw new Error(
+      '[vite-plugin-open-api-server] openApiPath must be a string'
+    );
+  }
+
+  // Merge with defaults
+  const pluginOptions: OpenApiServerPluginOptions = {
+    ...DEFAULT_OPTIONS,
+    ...options,
+    openApiPath: options.openApiPath, // Required, no default
+  };
+
+  // Plugin state (managed in closure)
+  let resolvedConfig: ResolvedConfig | null = null;
+  let devServer: ViteDevServer | null = null;
+  let mockServerProcess: ChildProcess | null = null;
+  let mockServerPort: number | null = null;
+  let isReady = false;
+
+  const plugin: Plugin = {
+    name: 'vite-plugin-open-api-server',
+    enforce: 'pre', // Run early to set up proxy before other plugins
+    apply: 'serve', // Dev mode only (don't run in production build)
+
+    /**
+     * Modify Vite config before it's resolved.
+     * Used to add proxy configuration for mock server.
+     */
+    config() {
+      if (pluginOptions.verbose) {
+        console.log('[vite-plugin-open-api-server] config() called');
+      }
+
+      // Phase 3: P3-01 - Add proxy configuration
+      // return {
+      //   server: {
+      //     proxy: {
+      //       [pluginOptions.proxyPath]: {
+      //         target: `http://localhost:${pluginOptions.port}`,
+      //         changeOrigin: true,
+      //         rewrite: (path) => path.replace(new RegExp(`^${pluginOptions.proxyPath}`), ''),
+      //       },
+      //     },
+      //   },
+      // };
+
+      return {};
+    },
+
+    /**
+     * Store resolved Vite config for later use.
+     */
+    configResolved(config) {
+      resolvedConfig = config;
+
+      if (pluginOptions.verbose) {
+        console.log(
+          `[vite-plugin-open-api-server] configResolved() - root: ${config.root}`
+        );
+      }
+    },
+
+    /**
+     * Access Vite dev server to register middleware.
+     */
+    configureServer(server) {
+      devServer = server;
+
+      if (pluginOptions.verbose) {
+        console.log('[vite-plugin-open-api-server] configureServer() called');
+      }
+
+      // Phase 3: P3-02 - Register request interception middleware
+      // server.middlewares.use((req, res, next) => {
+      //   // Intercept requests matching proxyPath
+      //   // Forward to mock server child process via IPC
+      // });
+    },
+
+    /**
+     * Start mock server child process when Vite dev server starts.
+     */
+    async buildStart() {
+      if (!pluginOptions.enabled) {
+        if (pluginOptions.verbose) {
+          console.log('[vite-plugin-open-api-server] Plugin disabled via options');
+        }
+        return;
+      }
+
+      if (pluginOptions.verbose) {
+        console.log('[vite-plugin-open-api-server] buildStart() - Mock server start triggered');
+      }
+
+      // Phase 4: P4-01 - Spawn child process
+      // mockServerProcess = spawn('node', ['./dist/mock-server.mjs'], { ... });
+      // mockServerProcess.on('message', (msg: OpenApiServerMessage) => { ... });
+      // Wait for ReadyMessage with timeout
+    },
+
+    /**
+     * Shutdown mock server child process when Vite dev server closes.
+     */
+    async closeBundle() {
+      if (pluginOptions.verbose) {
+        console.log('[vite-plugin-open-api-server] closeBundle() - Mock server shutdown triggered');
+      }
+
+      // Phase 4: P4-03 - Graceful shutdown
+      // if (mockServerProcess) {
+      //   mockServerProcess.send({ type: 'shutdown' });
+      //   await waitForExit(mockServerProcess, 5000);
+      //   mockServerProcess = null;
+      // }
+    },
+  };
+
+  return plugin;
+}
+```
+
+2. **src/index.ts** (updated exports):
+```typescript
+/**
+ * @websublime/vite-plugin-open-api-server
+ * 
+ * Vite plugin for OpenAPI-driven mock servers with custom handlers and seed data.
+ * 
+ * @packageDocumentation
+ */
+
+export { openApiServerPlugin } from './plugin';
+export { openApiServerPlugin as default } from './plugin';
+
+export type {
+  OpenApiServerPluginOptions,
+  HandlerContext,
+  HandlerResponse,
+  HandlerCodeGenerator,
+  HandlerFileExports,
+  SeedContext,
+  SeedData,
+  SeedCodeGenerator,
+  SeedFileExports,
+  NormalizedSecurityScheme,
+  SecurityRequirement,
+  SecurityContext,
+} from './types';
+```
+
+3. **Verification** (playground app can load plugin):
+```typescript
+// playground/petstore-app/vite.config.ts
+import { defineConfig } from 'vite';
+import { openApiServerPlugin } from '@websublime/vite-plugin-open-api-server';
+
+export default defineConfig({
+  plugins: [
+    openApiServerPlugin({
+      openApiPath: './src/apis/petstore/petstore.openapi.yaml',
+      port: 3001,
+      proxyPath: '/api',
+      verbose: true, // See plugin hooks in console
+    }),
+  ],
+});
+```
+
+4. **Console output** when running `pnpm playground`:
+```
+[vite-plugin-open-api-server] config() called
+[vite-plugin-open-api-server] configResolved() - root: /path/to/playground/petstore-app
+[vite-plugin-open-api-server] configureServer() called
+[vite-plugin-open-api-server] buildStart() - Mock server start triggered
+```
+
+**Acceptance Criteria:**
+- [ ] `src/plugin.ts` created with `openApiServerPlugin()` factory function
+- [ ] Function accepts `Partial<OpenApiServerPluginOptions>` parameter
+- [ ] Required option `openApiPath` is validated (throw error if missing or wrong type)
+- [ ] Error message is descriptive: "[vite-plugin-open-api-server] Missing required option: openApiPath"
+- [ ] `DEFAULT_OPTIONS` constant defined with all default values
+- [ ] User options merged with defaults using spread operator
+- [ ] Plugin object has `name: 'vite-plugin-open-api-server'`
+- [ ] Plugin object has `enforce: 'pre'` (run before other plugins)
+- [ ] Plugin object has `apply: 'serve'` (dev mode only)
+- [ ] `config()` hook implemented (returns empty object with placeholder comment)
+- [ ] `configResolved()` hook implemented (stores resolved config)
+- [ ] `configureServer()` hook implemented (stores server instance)
+- [ ] `buildStart()` hook implemented (logs "start triggered" with placeholder comment)
+- [ ] `closeBundle()` hook implemented (logs "shutdown triggered" with placeholder comment)
+- [ ] Verbose logging works (console.log statements conditional on `pluginOptions.verbose`)
+- [ ] Closure state variables declared (mockServerProcess, mockServerPort, isReady)
+- [ ] All state variables initialized to null/false
+- [ ] Placeholder comments reference Phase 3/4 tasks for future implementation
+- [ ] Function has comprehensive JSDoc documentation with @param, @returns, @example
+- [ ] `src/index.ts` exports plugin function as default and named export
+- [ ] `src/index.ts` re-exports all public types from `types/index.ts`
+- [ ] Package documentation added at top of index.ts with @packageDocumentation
+- [ ] `pnpm typecheck` passes with no type errors
+- [ ] Plugin compiles to `dist/index.mjs` and `dist/index.d.mts` with tsdown
+- [ ] Playground app can import and use plugin without errors
+- [ ] Running `pnpm playground` shows plugin hook logs in console (when verbose: true)
+- [ ] Plugin does not throw errors during Vite dev server startup
+- [ ] Plugin does not throw errors during Vite dev server shutdown
+- [ ] Vite dev server starts successfully with plugin enabled
+- [ ] Default values are correct (port: 3001, proxyPath: '/api', enabled: true, startupTimeout: 5000, verbose: false)
+- [ ] Committed with message: `feat(plugin): implement basic Vite plugin skeleton with lifecycle hooks`
+
+---
 
 **Estimate:** M (2 days)
 
@@ -3272,7 +4029,28 @@ interface ErrorMessage { ... }
 
 #### P1-05: Implement Mock Server Integration (FR-001)
 
-**Description:** Integrate @scalar/mock-server for response generation.
+**Description:** Integrate @scalar/mock-server library to create a standalone HTTP server that generates mock responses from OpenAPI specs. The mock server runs as a child process, using Hono as the HTTP framework and @hono/node-server as the Node.js adapter. This task implements the core mock server logic that will be spawned by the Vite plugin in Phase 4, focusing on Scalar integration, HTTP server setup, configuration via environment variables, and basic request logging.
+
+**Context:**
+- **@scalar/mock-server**: Library that generates mock responses from OpenAPI specs using realistic data
+- **Hono**: Lightweight web framework (Express alternative) with excellent TypeScript support and performance
+- **@hono/node-server**: Node.js adapter for Hono (serves Hono apps on Node's http.Server)
+- **Child process design**: Mock server runs in isolation, communicates with parent via IPC (Phase 4)
+- **Configuration via env vars**: Parent process passes config (port, spec path, etc.) via environment variables
+- **ESM module**: Runner script is `.mts` (ESM TypeScript) for modern Node.js compatibility
+- **Request logging**: Hono middleware logs all incoming requests for debugging
+
+**Implementation Approach:**
+1. Create `src/runner/openapi-server-runner.mts` as the child process entry point
+2. Read configuration from environment variables (PORT, OPENAPI_SPEC_PATH, VERBOSE, etc.)
+3. Load and parse OpenAPI spec file using parser from P1-01
+4. Create Scalar mock server instance with parsed spec
+5. Wrap Scalar mock server in Hono app (Hono provides routing, middleware, error handling)
+6. Add request logging middleware (log method, path, status code)
+7. Start HTTP server using @hono/node-server on configured port
+8. Send "ready" IPC message to parent process with port and endpoint count
+9. Set up graceful shutdown handler (listen for SIGTERM and IPC shutdown message)
+10. Test with Petstore spec to verify all 19 endpoints work
 
 **Estimate:** M (3 days)
 
@@ -3280,27 +4058,260 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P1-05.1 | Create runner/openapi-server-runner.mts | ESM runner script |
-| P1-05.2 | Implement createOpenApiServer() | Create Scalar mock server |
-| P1-05.3 | Implement @hono/node-server integration | HTTP server |
-| P1-05.4 | Implement environment variable reading | Configuration from parent |
-| P1-05.5 | Implement basic request logging | Log incoming requests |
-| P1-05.6 | Test with Petstore spec | End-to-end verification |
+| P1-05.1 | Create runner/openapi-server-runner.mts | Create ESM TypeScript entry point file at `src/runner/openapi-server-runner.mts`. This will be compiled by tsdown and executed by child process. Add shebang `#!/usr/bin/env node` for direct execution. |
+| P1-05.2 | Read environment variables | Read config from env vars: `PORT` (default 3001), `OPENAPI_SPEC_PATH` (required), `VERBOSE` (default false), `HANDLERS_DIR`, `SEEDS_DIR`. Throw error if OPENAPI_SPEC_PATH missing. Parse boolean/number values correctly. |
+| P1-05.3 | Load and parse OpenAPI spec | Import `parseOpenApiSpec()` from P1-01 parser. Load spec file from `OPENAPI_SPEC_PATH`. Parse YAML/JSON. Validate spec structure. Exit with error code 1 if parsing fails. Log parse errors to stderr. |
+| P1-05.4 | Create Scalar mock server | Import `createMockServer` from `@scalar/mock-server`. Pass parsed OpenAPI spec. Configure Scalar options (strict mode, faker seed, response selection). Get Hono app instance from Scalar. |
+| P1-05.5 | Add request logging middleware | Add Hono middleware before Scalar routes to log all requests: `app.use('*', async (c, next) => { ... })`. Log: timestamp, method, path, query params, status code, response time. Conditional on VERBOSE env var. |
+| P1-05.6 | Start HTTP server | Import `serve` from `@hono/node-server`. Call `serve({ fetch: app.fetch, port })` to start Node.js HTTP server. Listen on configured PORT. Log "Server listening on http://localhost:{port}" to stdout. |
+| P1-05.7 | Send ready IPC message | After server starts, send IPC message to parent: `process.send({ type: 'ready', port, endpointCount })`. Count endpoints from parsed spec. Parent waits for this message before considering server ready. |
+| P1-05.8 | Implement graceful shutdown | Listen for `process.on('SIGTERM')` and `process.on('message')` (IPC shutdown). On shutdown signal, stop HTTP server gracefully, close connections, exit with code 0. Timeout after 5 seconds and force exit. |
+| P1-05.9 | Add error handling | Wrap main logic in try-catch. Send IPC error message on uncaught exceptions: `process.send({ type: 'error', message, stack })`. Exit with code 1 on fatal errors. Handle promise rejections. |
+| P1-05.10 | Test with Petstore spec | Run `node dist/runner/openapi-server-runner.mjs` with Petstore spec path. Verify all 19 endpoints respond. Test GET /pet/findByStatus, POST /pet, DELETE /pet/{petId}. Check response schemas match spec. Verify logging output. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Support OpenAPI 3.0 and 3.1 specifications
-- [ ] Support YAML and JSON specification formats
-- [ ] Generate responses matching schema definitions
-- [ ] Respect response content types (application/json, etc.)
-- [ ] Handle all HTTP methods (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD)
-- [ ] Support path parameters, query parameters, and request bodies
-- [ ] Generate realistic data based on field types and formats
+**Technical Considerations:**
+- **ESM vs CommonJS**: Use `.mts` extension and `"type": "module"` in package.json for native ESM support
+- **Environment variable precedence**: Env vars override defaults, command-line args (if added) override env vars
+- **Boolean parsing**: Env vars are strings; parse "true"/"false" with `value === 'true'`
+- **Port conflicts**: If port in use, server should fail fast with clear error message
+- **IPC availability**: `process.send()` only exists when spawned with `{ ipc: true }` option (Phase 4 ensures this)
+- **Scalar response selection**: Scalar supports multiple responses (200, 404, etc.); configure to prefer 2xx responses
+- **Hono middleware order**: Logging middleware must run before Scalar routes to capture all requests
+- **Error serialization**: IPC messages must be JSON-serializable; serialize Error objects to { message, stack }
+- **Graceful shutdown timing**: Allow time for in-flight requests to complete before forcing exit
+- **Faker integration**: Scalar uses faker internally; seed should be deterministic for reproducible responses
+- **OpenAPI versions**: Test with both 3.0 and 3.1 specs to ensure compatibility
+
+**Expected Outputs:**
+
+1. **src/runner/openapi-server-runner.mts**:
+```typescript
+#!/usr/bin/env node
+/**
+ * OpenAPI Mock Server Runner
+ * 
+ * Standalone HTTP server that generates mock responses from OpenAPI specs.
+ * Runs as a child process, communicates with Vite plugin via IPC.
+ * 
+ * Configuration via environment variables:
+ * - PORT: HTTP server port (default: 3001)
+ * - OPENAPI_SPEC_PATH: Path to OpenAPI spec file (required)
+ * - VERBOSE: Enable verbose logging (default: false)
+ * - HANDLERS_DIR: Custom handlers directory
+ * - SEEDS_DIR: Seed data directory
+ */
+
+import { serve } from '@hono/node-server';
+import { createMockServer } from '@scalar/mock-server';
+import { parseOpenApiSpec } from '../parser/openapi-parser';
+import type { OpenApiServerMessage } from '../types/ipc-messages';
+
+// Read configuration from environment variables
+const PORT = parseInt(process.env.PORT || '3001', 10);
+const OPENAPI_SPEC_PATH = process.env.OPENAPI_SPEC_PATH;
+const VERBOSE = process.env.VERBOSE === 'true';
+
+if (!OPENAPI_SPEC_PATH) {
+  console.error('[mock-server] ERROR: OPENAPI_SPEC_PATH environment variable is required');
+  process.exit(1);
+}
+
+async function startServer() {
+  try {
+    // Parse OpenAPI spec
+    if (VERBOSE) {
+      console.log(`[mock-server] Loading OpenAPI spec from: ${OPENAPI_SPEC_PATH}`);
+    }
+
+    const spec = await parseOpenApiSpec(OPENAPI_SPEC_PATH);
+    const endpointCount = Object.keys(spec.paths || {}).length;
+
+    if (VERBOSE) {
+      console.log(`[mock-server] Parsed ${endpointCount} endpoints from spec`);
+    }
+
+    // Create Scalar mock server (returns Hono app)
+    const app = createMockServer({
+      specification: spec,
+      options: {
+        strict: false, // Allow requests not in spec
+        fakerSeed: 42, // Deterministic fake data
+        preferredResponseCode: 200, // Prefer success responses
+      },
+    });
+
+    // Add request logging middleware
+    if (VERBOSE) {
+      app.use('*', async (c, next) => {
+        const start = Date.now();
+        const method = c.req.method;
+        const path = c.req.path;
+
+        await next();
+
+        const duration = Date.now() - start;
+        const status = c.res.status;
+        console.log(`[mock-server] ${method} ${path} - ${status} (${duration}ms)`);
+      });
+    }
+
+    // Start HTTP server
+    const server = serve({
+      fetch: app.fetch,
+      port: PORT,
+    });
+
+    console.log(`[mock-server] Server listening on http://localhost:${PORT}`);
+
+    // Send ready message to parent process (via IPC)
+    if (process.send) {
+      const readyMessage: OpenApiServerMessage = {
+        type: 'ready',
+        port: PORT,
+        endpointCount,
+      };
+      process.send(readyMessage);
+    }
+
+    // Graceful shutdown
+    const shutdown = async () => {
+      console.log('[mock-server] Shutting down...');
+      // Hono/serve doesn't expose server.close(), so just exit
+      process.exit(0);
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+    
+    // Listen for IPC shutdown message
+    process.on('message', (msg: unknown) => {
+      if (typeof msg === 'object' && msg !== null && 'type' in msg) {
+        const message = msg as OpenApiServerMessage;
+        if (message.type === 'shutdown') {
+          shutdown();
+        }
+      }
+    });
+
+  } catch (error) {
+    const err = error as Error;
+    console.error('[mock-server] Fatal error:', err.message);
+
+    // Send error message to parent (if IPC available)
+    if (process.send) {
+      const errorMessage: OpenApiServerMessage = {
+        type: 'error',
+        message: err.message,
+        stack: err.stack,
+      };
+      process.send(errorMessage);
+    }
+
+    process.exit(1);
+  }
+}
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[mock-server] Unhandled rejection:', reason);
+  process.exit(1);
+});
+
+// Start server
+startServer();
+```
+
+2. **package.json** (add dependencies):
+```json
+{
+  "dependencies": {
+    "@scalar/mock-server": "^0.2.0",
+    "@hono/node-server": "^1.12.0",
+    "hono": "^4.5.0"
+  }
+}
+```
+
+3. **Test output** (running `PORT=3001 OPENAPI_SPEC_PATH=./petstore.openapi.yaml VERBOSE=true node dist/runner/openapi-server-runner.mjs`):
+```
+[mock-server] Loading OpenAPI spec from: ./petstore.openapi.yaml
+[mock-server] Parsed 19 endpoints from spec
+[mock-server] Server listening on http://localhost:3001
+[mock-server] GET /pet/findByStatus?status=available - 200 (45ms)
+[mock-server] POST /pet - 200 (23ms)
+[mock-server] GET /pet/123 - 200 (12ms)
+```
+
+**Acceptance Criteria:**
+- [ ] `src/runner/openapi-server-runner.mts` created with shebang and ESM imports
+- [ ] Environment variables read and validated (PORT, OPENAPI_SPEC_PATH, VERBOSE)
+- [ ] OPENAPI_SPEC_PATH is required; process exits with code 1 if missing
+- [ ] PORT defaults to 3001 if not provided
+- [ ] VERBOSE defaults to false if not provided
+- [ ] OpenAPI spec loaded and parsed using parser from P1-01
+- [ ] Parser errors logged to stderr with helpful messages
+- [ ] Scalar mock server created with `createMockServer()` from `@scalar/mock-server`
+- [ ] Scalar configured with options: strict=false, fakerSeed=42, preferredResponseCode=200
+- [ ] Hono app instance obtained from Scalar
+- [ ] Request logging middleware added to Hono app (runs on all routes)
+- [ ] Logging conditional on VERBOSE env var
+- [ ] Logged data includes: method, path, status code, response time
+- [ ] HTTP server started with `serve()` from `@hono/node-server`
+- [ ] Server listens on configured PORT
+- [ ] "Server listening" message logged to stdout
+- [ ] Ready IPC message sent to parent with `process.send()`
+- [ ] Ready message includes port and endpointCount
+- [ ] SIGTERM signal handler registered for graceful shutdown
+- [ ] SIGINT signal handler registered (Ctrl+C support)
+- [ ] IPC shutdown message handler registered (listens for `{ type: 'shutdown' }`)
+- [ ] Shutdown handler stops server and exits with code 0
+- [ ] Uncaught exceptions caught and logged
+- [ ] Error IPC message sent to parent on fatal errors
+- [ ] Error message includes message and stack trace
+- [ ] Process exits with code 1 on fatal errors
+- [ ] Unhandled promise rejections caught and logged
+- [ ] Tested with Petstore spec (all 19 endpoints)
+- [ ] GET /pet/findByStatus returns 200 with array of pets
+- [ ] POST /pet returns 200 with created pet object
+- [ ] GET /pet/{petId} returns 200 with single pet object
+- [ ] DELETE /pet/{petId} returns 200 or 204
+- [ ] Response bodies match OpenAPI schema definitions
+- [ ] Response content-type headers set correctly (application/json)
+- [ ] Path parameters extracted correctly (e.g., petId from /pet/123)
+- [ ] Query parameters extracted correctly (e.g., status from ?status=available)
+- [ ] All HTTP methods supported (GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD)
+- [ ] TypeScript compiles without errors
+- [ ] Runner script compiles to `dist/runner/openapi-server-runner.mjs`
+- [ ] Script is executable: `chmod +x dist/runner/openapi-server-runner.mjs`
+- [ ] @scalar/mock-server, @hono/node-server, hono added to package.json dependencies
+- [ ] Committed with message: `feat(runner): implement mock server with Scalar and Hono integration`
 
 ---
 
-#### P1-06: Implement Startup Banner
+#### P1-06: Implement Startup Banner (FR-014)
 
-**Description:** Implement console output banners for server startup.
+**Description:** Implement colorful console banners for mock server startup and error states. Banners provide visual feedback during plugin initialization, show OpenAPI spec loading progress, display parsed endpoint counts, and highlight errors with helpful formatting. Uses ANSI color codes and box-drawing characters for clear visual hierarchy. Banners appear in Vite dev server console when plugin starts.
+
+**Context:**
+- **Visual feedback**: Helps developers understand plugin state without reading verbose logs
+- **PRS examples**: Section 4.1 shows expected banner format with colors and ASCII art
+- **ANSI colors**: Use standard color codes (green for success, red for errors, cyan for info)
+- **Box drawing**: Use Unicode box-drawing characters (┌─┐│└─┘) for visual structure
+- **Vite logger**: Use Vite's logger API for consistency with Vite's output style
+- **Timing**: Loading banner shows during spec parsing; success banner shows when server ready; error banner shows on failures
+- **Information density**: Show critical info (port, endpoint count, spec path) without clutter
+
+**Implementation Approach:**
+1. Create `src/logging/startup-banner.ts` utility module
+2. Implement `printLoadingBanner(specPath, logger)` for spec loading state
+3. Implement `printSuccessBanner(port, endpointCount, specPath, logger)` for ready state
+4. Implement `printErrorBanner(error, specPath, logger)` for error state
+5. Use ANSI escape codes for colors (green=\x1b[32m, red=\x1b[31m, cyan=\x1b[36m, reset=\x1b[0m)
+6. Use Unicode box-drawing characters for borders (┌─┬─┐, │, └─┴─┘)
+7. Format endpoint count, port, and timing information
+8. Add helpful error messages with suggestions (e.g., "Check file path", "Validate YAML syntax")
+9. Call banner functions from plugin hooks (buildStart for loading, ready message handler for success)
+10. Test with Petstore spec to verify output matches PRS examples
 
 **Estimate:** S (1 day)
 
@@ -3308,15 +4319,239 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P1-06.1 | Create logging/startup-banner.ts | Banner generation |
-| P1-06.2 | Implement loading banner | OpenAPI spec loading |
-| P1-06.3 | Implement error banner | Spec validation errors |
-| P1-06.4 | Use colors and formatting | Visual clarity |
+| P1-06.1 | Create logging/startup-banner.ts | Create utility module at `src/logging/startup-banner.ts`. Export banner functions with Vite logger parameter for consistent output. Import color constants and box-drawing characters. |
+| P1-06.2 | Define color constants | Create constants for ANSI color codes: `GREEN`, `RED`, `CYAN`, `YELLOW`, `RESET`. Add `dim` and `bold` codes for text styling. Export for reuse in other modules. |
+| P1-06.3 | Define box-drawing characters | Create constants for Unicode box-drawing: `BOX_TOP_LEFT`, `BOX_TOP_RIGHT`, `BOX_BOTTOM_LEFT`, `BOX_BOTTOM_RIGHT`, `BOX_HORIZONTAL`, `BOX_VERTICAL`. Use single-line style (─│┌┐└┘). |
+| P1-06.4 | Implement printLoadingBanner() | Show "Loading OpenAPI spec..." with animated spinner or static icon. Display spec file path. Use cyan color for info state. Call from plugin buildStart() hook before parsing spec. |
+| P1-06.5 | Implement printSuccessBanner() | Show "Mock server ready!" with checkmark (✓). Display: port (http://localhost:3001), endpoint count (e.g., "19 endpoints"), spec path. Use green color for success. Include box border for emphasis. Call when ready IPC message received. |
+| P1-06.6 | Implement printErrorBanner() | Show "Failed to start mock server" with cross (✗). Display error message and stack trace (truncated). Use red color for errors. Include helpful suggestions based on error type (file not found → check path, YAML parse error → validate syntax). Call when error IPC message received or parsing fails. |
+| P1-06.7 | Format endpoint statistics | In success banner, show endpoint breakdown by method: "GET: 10, POST: 5, PUT: 2, DELETE: 2". Calculate from endpoint registry. Makes it easy to see API surface area at a glance. |
+| P1-06.8 | Add timing information | Track time between loading banner and success banner. Display startup time in success banner: "Ready in 1.2s". Helps identify slow startup (large specs, slow file I/O). |
+| P1-06.9 | Integrate with plugin hooks | Call `printLoadingBanner()` in plugin buildStart() hook. Call `printSuccessBanner()` when ready IPC message received. Call `printErrorBanner()` when error IPC message received or spec parsing throws. Pass Vite logger to all banner functions. |
+| P1-06.10 | Test banner output | Run `pnpm playground` with verbose mode. Verify loading banner appears immediately. Verify success banner appears when server ready with correct port/endpoint count. Test error banner by providing invalid spec path. Verify colors display correctly in terminal. |
+
+**Technical Considerations:**
+- **ANSI color support**: Check `process.stdout.isTTY` to detect if colors are supported; fallback to plain text
+- **Vite logger API**: Use `logger.info()` for success/loading, `logger.error()` for errors (respects Vite's log level config)
+- **Unicode support**: Ensure terminal encoding is UTF-8 for box-drawing characters to display correctly
+- **Multi-line formatting**: Use `\n` for line breaks, align text within boxes using spaces
+- **Error truncation**: Limit stack traces to 5-10 lines to avoid console spam
+- **Color reset**: Always reset colors after colored text to prevent bleeding into subsequent output
+- **CI/CD compatibility**: Colors may not work in CI logs; provide `--no-color` option (read from Vite config)
+- **Timing accuracy**: Use `performance.now()` for sub-millisecond precision
+- **Error suggestions**: Use pattern matching on error messages to provide relevant help (e.g., "ENOENT" → file not found)
+- **Internationalization**: Banner text in English; structure allows for i18n in future
+
+**Expected Outputs:**
+
+1. **src/logging/startup-banner.ts**:
+```typescript
+import type { Logger } from 'vite';
+
+// ANSI color codes
+export const GREEN = '\x1b[32m';
+export const RED = '\x1b[31m';
+export const CYAN = '\x1b[36m';
+export const YELLOW = '\x1b[33m';
+export const RESET = '\x1b[0m';
+export const DIM = '\x1b[2m';
+export const BOLD = '\x1b[1m';
+
+// Unicode box-drawing characters
+const BOX_TOP_LEFT = '┌';
+const BOX_TOP_RIGHT = '┐';
+const BOX_BOTTOM_LEFT = '└';
+const BOX_BOTTOM_RIGHT = '┘';
+const BOX_HORIZONTAL = '─';
+const BOX_VERTICAL = '│';
+
+/**
+ * Check if terminal supports colors.
+ */
+function supportsColor(): boolean {
+  return process.stdout.isTTY === true;
+}
+
+/**
+ * Apply color if terminal supports it.
+ */
+function color(text: string, colorCode: string): string {
+  return supportsColor() ? `${colorCode}${text}${RESET}` : text;
+}
+
+/**
+ * Print loading banner during OpenAPI spec parsing.
+ */
+export function printLoadingBanner(specPath: string, logger: Logger): void {
+  const banner = [
+    '',
+    color('⏳ Loading OpenAPI spec...', CYAN),
+    color(`   ${DIM}${specPath}${RESET}`, CYAN),
+    '',
+  ].join('\n');
+
+  logger.info(banner, { timestamp: true });
+}
+
+/**
+ * Print success banner when mock server is ready.
+ */
+export function printSuccessBanner(
+  port: number,
+  endpointCount: number,
+  specPath: string,
+  startTime: number,
+  logger: Logger
+): void {
+  const duration = ((performance.now() - startTime) / 1000).toFixed(2);
+  const url = `http://localhost:${port}`;
+
+  const banner = [
+    '',
+    color(BOX_TOP_LEFT + BOX_HORIZONTAL.repeat(50) + BOX_TOP_RIGHT, GREEN),
+    color(`${BOX_VERTICAL} ${BOLD}✓ Mock Server Ready!${RESET}${' '.repeat(28)}${color(BOX_VERTICAL, GREEN)}`, GREEN),
+    color(BOX_VERTICAL + ' '.repeat(50) + BOX_VERTICAL, GREEN),
+    color(`${BOX_VERTICAL}   URL:       ${url}${' '.repeat(50 - 14 - url.length)}${BOX_VERTICAL}`, GREEN),
+    color(`${BOX_VERTICAL}   Endpoints: ${endpointCount} operations${' '.repeat(50 - 14 - `${endpointCount} operations`.length)}${BOX_VERTICAL}`, GREEN),
+    color(`${BOX_VERTICAL}   Spec:      ${specPath}${' '.repeat(50 - 14 - specPath.length)}${BOX_VERTICAL}`, GREEN),
+    color(`${BOX_VERTICAL}   Ready in:  ${duration}s${' '.repeat(50 - 14 - `${duration}s`.length)}${BOX_VERTICAL}`, GREEN),
+    color(BOX_BOTTOM_LEFT + BOX_HORIZONTAL.repeat(50) + BOX_BOTTOM_RIGHT, GREEN),
+    '',
+  ].join('\n');
+
+  logger.info(banner, { timestamp: true });
+}
+
+/**
+ * Print error banner when mock server fails to start.
+ */
+export function printErrorBanner(
+  error: Error,
+  specPath: string,
+  logger: Logger
+): void {
+  // Provide helpful suggestions based on error type
+  let suggestion = 'Check the error message above for details.';
+  if (error.message.includes('ENOENT')) {
+    suggestion = 'File not found. Check the path to your OpenAPI spec.';
+  } else if (error.message.includes('YAML') || error.message.includes('parse')) {
+    suggestion = 'YAML/JSON parse error. Validate your spec with a linter.';
+  } else if (error.message.includes('Invalid OpenAPI')) {
+    suggestion = 'Invalid OpenAPI spec. Ensure it follows OpenAPI 3.0/3.1 format.';
+  }
+
+  const banner = [
+    '',
+    color(BOX_TOP_LEFT + BOX_HORIZONTAL.repeat(60) + BOX_TOP_RIGHT, RED),
+    color(`${BOX_VERTICAL} ${BOLD}✗ Failed to start mock server${RESET}${' '.repeat(29)}${color(BOX_VERTICAL, RED)}`, RED),
+    color(BOX_VERTICAL + ' '.repeat(60) + BOX_VERTICAL, RED),
+    color(`${BOX_VERTICAL}   Spec: ${specPath}${' '.repeat(60 - 9 - specPath.length)}${BOX_VERTICAL}`, RED),
+    color(`${BOX_VERTICAL}   Error: ${error.message}${' '.repeat(60 - 10 - error.message.length)}${BOX_VERTICAL}`, RED),
+    color(BOX_VERTICAL + ' '.repeat(60) + BOX_VERTICAL, RED),
+    color(`${BOX_VERTICAL}   ${DIM}${suggestion}${RESET}${' '.repeat(60 - 3 - suggestion.length)}${color(BOX_VERTICAL, RED)}`, RED),
+    color(BOX_BOTTOM_LEFT + BOX_HORIZONTAL.repeat(60) + BOX_BOTTOM_RIGHT, RED),
+    '',
+  ].join('\n');
+
+  logger.error(banner, { timestamp: true });
+}
+```
+
+2. **Usage in plugin.ts** (buildStart hook):
+```typescript
+import { printLoadingBanner, printSuccessBanner, printErrorBanner } from './logging/startup-banner';
+
+// In buildStart() hook:
+async buildStart() {
+  const startTime = performance.now();
+  
+  printLoadingBanner(pluginOptions.openApiPath, resolvedConfig.logger);
+  
+  try {
+    // Parse spec, spawn process, wait for ready message
+    // ... (Phase 4 implementation)
+    
+    // When ready message received:
+    printSuccessBanner(
+      mockServerPort,
+      endpointCount,
+      pluginOptions.openApiPath,
+      startTime,
+      resolvedConfig.logger
+    );
+  } catch (error) {
+    printErrorBanner(
+      error as Error,
+      pluginOptions.openApiPath,
+      resolvedConfig.logger
+    );
+    throw error;
+  }
+}
+```
+
+3. **Console output** (success case):
+```
+⏳ Loading OpenAPI spec...
+   ./src/apis/petstore/petstore.openapi.yaml
+
+┌──────────────────────────────────────────────────┐
+│ ✓ Mock Server Ready!                             │
+│                                                  │
+│   URL:       http://localhost:3001              │
+│   Endpoints: 19 operations                      │
+│   Spec:      ./src/apis/petstore/petstore.op... │
+│   Ready in:  1.23s                              │
+└──────────────────────────────────────────────────┘
+```
+
+4. **Console output** (error case):
+```
+⏳ Loading OpenAPI spec...
+   ./missing.yaml
+
+┌────────────────────────────────────────────────────────────┐
+│ ✗ Failed to start mock server                              │
+│                                                            │
+│   Spec: ./missing.yaml                                     │
+│   Error: ENOENT: no such file or directory                │
+│                                                            │
+│   File not found. Check the path to your OpenAPI spec.    │
+└────────────────────────────────────────────────────────────┘
+```
 
 **Acceptance Criteria:**
-- [ ] Startup banner matches PRS examples
-- [ ] Error banner is clear and helpful
-- [ ] Consistent formatting
+- [ ] `src/logging/startup-banner.ts` created with banner functions
+- [ ] ANSI color constants defined (GREEN, RED, CYAN, YELLOW, RESET, DIM, BOLD)
+- [ ] Unicode box-drawing constants defined (┌─┐│└─┘)
+- [ ] `supportsColor()` function checks `process.stdout.isTTY` for color support
+- [ ] `color()` helper function applies colors conditionally
+- [ ] `printLoadingBanner()` implemented with cyan loading icon and spec path
+- [ ] `printSuccessBanner()` implemented with green checkmark and box border
+- [ ] Success banner displays: URL, endpoint count, spec path, startup time
+- [ ] `printErrorBanner()` implemented with red cross and box border
+- [ ] Error banner displays: spec path, error message, helpful suggestion
+- [ ] Error suggestions provided for common errors (ENOENT, YAML parse, invalid spec)
+- [ ] Timing tracked with `performance.now()` for accurate duration
+- [ ] All banner functions accept Vite logger parameter
+- [ ] Banners use `logger.info()` or `logger.error()` for output
+- [ ] Loading banner called in plugin buildStart() hook
+- [ ] Success banner called when ready IPC message received
+- [ ] Error banner called when error IPC message received or parsing fails
+- [ ] Startup time calculated between loading and success banners
+- [ ] Colors display correctly in terminal (green for success, red for errors, cyan for info)
+- [ ] Box borders render correctly with Unicode characters
+- [ ] Text alignment within boxes is correct (no overlapping or wrapping)
+- [ ] Banners work without colors in CI/CD environments (fallback to plain text)
+- [ ] Multi-line text formatted correctly with `\n` breaks
+- [ ] Color codes reset after colored text (prevents bleeding)
+- [ ] Tested with Petstore spec (success case)
+- [ ] Tested with missing spec file (error case with "File not found" suggestion)
+- [ ] Tested with invalid YAML (error case with "Validate syntax" suggestion)
+- [ ] Tested in terminal with color support (verified colors display)
+- [ ] Tested in CI environment without TTY (verified plain text fallback)
+- [ ] TypeScript compiles without errors
+- [ ] Committed with message: `feat(logging): implement colorful startup and error banners`
 
 ---
 
@@ -3360,7 +4595,28 @@ interface ErrorMessage { ... }
 
 #### P2-01: Implement Handler Loader (FR-004)
 
-**Description:** Implement loading and validation of handler .mjs files.
+**Description:** Implement the handler file loading system that scans a directory for custom handler files (`.handler.ts` pattern), dynamically imports them as ESM modules, validates their default export signature matches `HandlerCodeGenerator`, and builds a map of operationId → handler function. Handlers allow developers to override default mock responses with custom logic. The loader must be resilient (continue on individual file errors) and provide detailed validation errors.
+
+**Context:**
+- **Handler files**: TypeScript files with `.handler.ts` suffix (e.g., `add-pet.handler.ts`)
+- **Naming convention**: Filename (before `.handler.ts`) should match operationId in kebab-case for clarity, but operationId comes from file content
+- **Default export**: Each handler file must export a default async function matching `HandlerCodeGenerator` signature
+- **Dynamic import**: Use ESM `import()` to load handler files at runtime (enables hot reload in Phase 5)
+- **Validation**: Check function signature, parameter count, return type (HandlerResponse | null)
+- **Resilience**: If one handler file fails to load/validate, log error and continue with others
+- **Context provision**: Handlers receive `HandlerContext` with request data, registry, logger, security info
+
+**Implementation Approach:**
+1. Create `src/loaders/handler-loader.ts` module
+2. Implement `loadHandlers(handlersDir, registry, logger)` function
+3. Scan `handlersDir` for files matching `*.handler.{ts,js,mts,mjs}` pattern using glob
+4. For each file, use dynamic `import(filePath)` to load ESM module
+5. Validate default export exists and is a function
+6. Validate function signature matches `HandlerCodeGenerator` (async, accepts context, returns Promise)
+7. Extract operationId from file content or metadata (handlers self-identify their operationId)
+8. Map operationId → handler function in a Map structure
+9. Cross-reference operationIds with registry to warn about handlers for non-existent operations
+10. Return `Map<string, HandlerCodeGenerator>` for use in mock server
 
 **Estimate:** M (3 days)
 
@@ -3368,34 +4624,203 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P2-01.1 | Create enhancer/handler-loader.ts | Handler loading logic |
-| P2-01.2 | Implement directory scanning | Find all .mjs files |
-| P2-01.3 | Implement dynamic import | Load ESM modules |
-| P2-01.4 | Implement export validation | Check default export format |
-| P2-01.5 | Implement string value handling | Direct code strings |
-| P2-01.6 | Implement function value handling | Code generator functions |
-| P2-01.7 | Build HandlerCodeContext | Context for functions |
-| P2-01.8 | Add error handling | Graceful failure on bad files |
-| P2-01.9 | Add unit tests | Test loader functionality |
+| P2-01.1 | Create loaders/handler-loader.ts | Create module at `src/loaders/handler-loader.ts`. Export `loadHandlers()` function. Import types: `HandlerCodeGenerator`, `OpenApiEndpointRegistry`, `Logger`. Set up error handling wrapper. |
+| P2-01.2 | Implement directory scanning | Use `fast-glob` package to scan `handlersDir` for `*.handler.{ts,js,mts,mjs}` files. Handle missing directory gracefully (return empty map with warning). Support recursive subdirectories. Log found file count if verbose. |
+| P2-01.3 | Implement dynamic import | For each file path, use `await import(filePath)` to load ESM module. Handle import errors (syntax errors, missing files). Wrap in try-catch per file to continue on failure. Log import errors with file path. |
+| P2-01.4 | Validate default export | Check `module.default` exists and is a function (`typeof module.default === 'function'`). Throw validation error if missing or wrong type. Include filename in error message. Check function is async (returns Promise). |
+| P2-01.5 | Extract operationId from handler | Use filename as operationId hint (convert kebab-case to camelCase). Alternatively, expect handler to declare operationId in JSDoc comment or via exported constant. For now, derive from filename: `add-pet.handler.ts` → `addPet`. |
+| P2-01.6 | Build handler map | Create `Map<string, HandlerCodeGenerator>` to store operationId → handler function mappings. Add each valid handler to map. Warn on duplicate operationIds (later handler overwrites earlier). |
+| P2-01.7 | Cross-reference with registry | Compare handler operationIds with `registry.endpoints.keys()`. Log warnings for handlers that don't match any endpoint in OpenAPI spec. Log info for endpoints that have handlers (useful for debugging). |
+| P2-01.8 | Add error handling | Wrap file loading in try-catch per file. Collect errors in array. Continue loading other files on individual failures. At end, log summary: "Loaded X handlers, Y errors". Don't throw on partial failures. |
+| P2-01.9 | Add unit tests | Create `loaders/__tests__/handler-loader.test.ts`. Test: empty directory, valid handlers, invalid exports, syntax errors, missing files, duplicate operationIds. Mock filesystem with test fixtures. Verify error resilience. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Load handler files from configurable directory
-- [ ] Support `.mjs` and `.js` file extensions
-- [ ] Validate file exports have correct structure (default export as object)
-- [ ] Validate each key is a string (operationId)
-- [ ] Validate each value is either:
-  - A non-empty string (JavaScript code), OR
-  - A function that returns a non-empty string (dynamic code generation)
-- [ ] Support async functions for dynamic code generation
-- [ ] Provide rich context to functions (operation/schema details, document)
-- [ ] Report syntax errors with file name and details
-- [ ] Continue loading other files if one fails (resilient)
+**Technical Considerations:**
+- **ESM dynamic import**: `import()` returns Promise, requires `await`, works with relative and absolute paths
+- **File extensions**: Support both `.ts` (source) and `.js/.mjs` (compiled) for flexibility
+- **Path resolution**: Convert relative paths to absolute using `path.resolve()` before import
+- **URL format**: Node.js ESM requires `file://` URL protocol on some systems; use `pathToFileURL()` from `node:url`
+- **Hot reload**: Store file paths alongside handlers to enable re-import on file change (Phase 5)
+- **Validation depth**: Don't validate handler implementation (runtime errors handled by mock server), only signature
+- **OperationId casing**: OpenAPI operationIds are camelCase; filenames are kebab-case; convert consistently
+- **Glob patterns**: `**/*.handler.{ts,js}` matches recursively; `*.handler.ts` matches only top-level
+- **Error types**: Distinguish between import errors (syntax), validation errors (wrong export), and registry mismatches (warning)
+- **Performance**: Dynamic imports are async and cached by Node.js; subsequent imports of same module are instant
+
+**Expected Outputs:**
+
+1. **src/loaders/handler-loader.ts**:
+```typescript
+import { glob } from 'fast-glob';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+import type { Logger } from 'vite';
+import type { HandlerCodeGenerator } from '../types/handlers';
+import type { OpenApiEndpointRegistry } from '../types/registry';
+
+/**
+ * Load custom handler files from a directory.
+ * 
+ * Scans for `*.handler.{ts,js,mts,mjs}` files, validates exports,
+ * and returns a map of operationId → handler function.
+ * 
+ * @param handlersDir - Directory containing handler files
+ * @param registry - OpenAPI endpoint registry (for validation)
+ * @param logger - Vite logger
+ * @returns Map of operationId to handler function
+ */
+export async function loadHandlers(
+  handlersDir: string,
+  registry: OpenApiEndpointRegistry,
+  logger: Logger
+): Promise<Map<string, HandlerCodeGenerator>> {
+  const handlers = new Map<string, HandlerCodeGenerator>();
+  const errors: string[] = [];
+
+  try {
+    // Scan for handler files
+    const files = await glob('**/*.handler.{ts,js,mts,mjs}', {
+      cwd: handlersDir,
+      absolute: true,
+    });
+
+    if (files.length === 0) {
+      logger.warn(`[handler-loader] No handler files found in ${handlersDir}`);
+      return handlers;
+    }
+
+    logger.info(`[handler-loader] Found ${files.length} handler file(s)`);
+
+    // Load each handler file
+    for (const filePath of files) {
+      try {
+        // Dynamic import (ESM)
+        const fileUrl = pathToFileURL(filePath).href;
+        const module = await import(fileUrl);
+
+        // Validate default export
+        if (!module.default || typeof module.default !== 'function') {
+          throw new Error(
+            `Handler file must export a default async function: ${filePath}`
+          );
+        }
+
+        // Extract operationId from filename
+        const filename = path.basename(filePath, path.extname(filePath));
+        const operationId = kebabToCamelCase(filename.replace('.handler', ''));
+
+        // Add to map
+        if (handlers.has(operationId)) {
+          logger.warn(
+            `[handler-loader] Duplicate handler for ${operationId}, overwriting`
+          );
+        }
+
+        handlers.set(operationId, module.default as HandlerCodeGenerator);
+        logger.info(`[handler-loader] Loaded handler: ${operationId}`);
+      } catch (error) {
+        const err = error as Error;
+        errors.push(`${filePath}: ${err.message}`);
+        logger.error(`[handler-loader] Failed to load ${filePath}: ${err.message}`);
+      }
+    }
+
+    // Cross-reference with registry
+    for (const [operationId, handler] of handlers) {
+      if (!registry.endpoints.has(operationId)) {
+        logger.warn(
+          `[handler-loader] Handler "${operationId}" does not match any endpoint in OpenAPI spec`
+        );
+      }
+    }
+
+    // Log summary
+    const successCount = handlers.size;
+    const errorCount = errors.length;
+    logger.info(
+      `[handler-loader] Loaded ${successCount} handler(s), ${errorCount} error(s)`
+    );
+
+    return handlers;
+  } catch (error) {
+    const err = error as Error;
+    logger.error(`[handler-loader] Fatal error: ${err.message}`);
+    return handlers;
+  }
+}
+
+/**
+ * Convert kebab-case to camelCase.
+ * Example: "add-pet" → "addPet"
+ */
+function kebabToCamelCase(str: string): string {
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+```
+
+2. **Usage in mock server runner**:
+```typescript
+// In openapi-server-runner.mts
+import { loadHandlers } from '../loaders/handler-loader';
+
+const handlersDir = process.env.HANDLERS_DIR || './handlers';
+const handlers = await loadHandlers(handlersDir, registry, logger);
+
+// Pass handlers to Scalar mock server (Phase 3 integration)
+```
+
+**Acceptance Criteria:**
+- [ ] `src/loaders/handler-loader.ts` created
+- [ ] `loadHandlers()` function exported with correct signature
+- [ ] Function accepts `handlersDir` (string), `registry` (OpenApiEndpointRegistry), `logger` (Logger)
+- [ ] Function returns `Promise<Map<string, HandlerCodeGenerator>>`
+- [ ] Directory scanned using `fast-glob` with pattern `**/*.handler.{ts,js,mts,mjs}`
+- [ ] Missing directory handled gracefully (returns empty map with warning)
+- [ ] Empty directory handled gracefully (returns empty map with warning)
+- [ ] Each file imported using `await import(fileUrl)` with `pathToFileURL()` conversion
+- [ ] Import errors caught per file (syntax errors, missing files)
+- [ ] Default export validated (exists and is a function)
+- [ ] Validation errors logged with filename
+- [ ] OperationId extracted from filename (kebab-case → camelCase conversion)
+- [ ] Filename pattern: `<operationId>.handler.ts` → operationId
+- [ ] Duplicate operationIds logged as warnings (later handler overwrites)
+- [ ] Handler map built: `Map<string, HandlerCodeGenerator>`
+- [ ] Cross-reference check: handlers without matching endpoints → warning logged
+- [ ] Error handling: individual file failures don't stop loader
+- [ ] Errors collected in array and logged at end
+- [ ] Summary logged: "Loaded X handlers, Y errors"
+- [ ] `kebabToCamelCase()` utility function implemented
+- [ ] Unit tests created in `loaders/__tests__/handler-loader.test.ts`
+- [ ] Tests cover: empty directory, valid handlers, invalid exports, syntax errors, duplicates
+- [ ] Tests use filesystem mocks (e.g., `memfs` or fixture files)
+- [ ] `fast-glob` package added to dependencies
+- [ ] TypeScript compiles without errors
+- [ ] Committed with message: `feat(loaders): implement handler file loader with validation`
 
 ---
 
 #### P2-02: Implement Seed Loader (FR-004)
 
-**Description:** Implement loading and validation of seed .mjs files.
+**Description:** Implement the seed data loader that scans a directory for seed generator files (`.seed.ts` pattern), dynamically imports them as ESM modules, validates their default export signature matches `SeedCodeGenerator`, and builds a map of schemaName → seed function. Seeds provide pre-populated data for schemas (e.g., sample pets, users). The loader must validate exports, handle errors gracefully, and cross-reference schema names with OpenAPI components.
+
+**Context:**
+- **Seed files**: TypeScript files with `.seed.ts` suffix (e.g., `pets.seed.ts`)
+- **Naming convention**: Filename maps to schema name (singular or plural, e.g., `pets.seed.ts` → `Pet` schema)
+- **Default export**: Each seed file exports a default async function matching `SeedCodeGenerator` signature
+- **Faker integration**: Seed functions receive `faker` instance in context for realistic data generation
+- **Dynamic import**: ESM `import()` enables hot reload (Phase 5)
+- **Schema validation**: Cross-reference seed schema names with `components.schemas` in OpenAPI spec
+- **Return type**: Seed functions return array of objects matching schema shape
+
+**Implementation Approach:**
+1. Create `src/loaders/seed-loader.ts` module (mirror structure of handler-loader)
+2. Implement `loadSeeds(seedsDir, registry, logger)` function
+3. Scan `seedsDir` for `*.seed.{ts,js,mts,mjs}` files
+4. For each file, use dynamic `import()` to load module
+5. Validate default export is async function matching `SeedCodeGenerator`
+6. Extract schema name from filename (e.g., `pets.seed.ts` → `Pet`)
+7. Map schemaName → seed function in Map structure
+8. Cross-reference schema names with `registry.schemas` to warn about seeds for non-existent schemas
+9. Return `Map<string, SeedCodeGenerator>` for mock server initialization
 
 **Estimate:** M (2 days)
 
@@ -3403,51 +4828,241 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P2-02.1 | Create enhancer/seed-loader.ts | Seed loading logic |
-| P2-02.2 | Implement directory scanning | Find all .mjs files |
-| P2-02.3 | Implement dynamic import | Load ESM modules |
-| P2-02.4 | Implement export validation | Check default export format |
-| P2-02.5 | Implement string value handling | Direct code strings |
-| P2-02.6 | Implement function value handling | Code generator functions |
-| P2-02.7 | Build SeedCodeContext | Context for functions |
-| P2-02.8 | Add unit tests | Test loader functionality |
+| P2-02.1 | Create loaders/seed-loader.ts | Create module at `src/loaders/seed-loader.ts`. Export `loadSeeds()` function. Import types: `SeedCodeGenerator`, `OpenApiEndpointRegistry`, `Logger`. Mirror handler-loader structure. |
+| P2-02.2 | Implement directory scanning | Use `fast-glob` to scan `seedsDir` for `*.seed.{ts,js,mts,mjs}` files. Handle missing/empty directory gracefully (return empty map). Support recursive subdirectories. Log found file count if verbose. |
+| P2-02.3 | Implement dynamic import | For each file, use `await import(pathToFileURL(filePath).href)` to load ESM module. Catch import errors per file. Continue on failure. Log import errors with filename. |
+| P2-02.4 | Validate default export | Check `module.default` exists and is a function. Throw validation error if missing or wrong type. Check function is async (returns Promise). Include filename in error messages. |
+| P2-02.5 | Extract schema name from filename | Use filename as schema name hint. Convert to PascalCase (e.g., `pets.seed.ts` → `Pet` or `Pets`). Allow plural forms (try both singular and plural against registry). Store mapping. |
+| P2-02.6 | Build seed map | Create `Map<string, SeedCodeGenerator>` to store schemaName → seed function. Add each valid seed to map. Warn on duplicate schema names (later seed overwrites). |
+| P2-02.7 | Cross-reference with registry | Compare seed schema names with `registry.schemas.keys()`. Warn for seeds that don't match any schema in OpenAPI spec. Log info for schemas that have seed data. |
+| P2-02.8 | Add error handling | Wrap file loading in try-catch per file. Collect errors. Continue loading other files on individual failures. Log summary at end: "Loaded X seeds, Y errors". |
+| P2-02.9 | Add unit tests | Create `loaders/__tests__/seed-loader.test.ts`. Test: empty directory, valid seeds, invalid exports, syntax errors, missing schemas, duplicates. Mock filesystem. Verify error resilience. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Load seed files from configurable directory
-- [ ] Support `.mjs` and `.js` file extensions
-- [ ] Validate each key is a string (schemaName)
-- [ ] Validate each value is string or function
-- [ ] Continue loading other files if one fails
+**Technical Considerations:**
+- **Schema name resolution**: OpenAPI schemas are PascalCase; filenames are lowercase; conversion logic must handle plurals
+- **Faker availability**: `@faker-js/faker` is peer dependency; loader should handle case where it's not installed
+- **Seed data size**: Large seed arrays (thousands of objects) may slow startup; consider lazy loading
+- **Deterministic data**: Use seeded faker (`faker.seed(42)`) for reproducible results across runs
+- **Schema validation**: Don't validate seed data against schema at load time (expensive); validate at runtime if needed
+- **Singular/plural**: `pets.seed.ts` could map to `Pet` or `Pets` schema; try both, warn if neither exists
+- **File extensions**: Same as handlers (`.ts`, `.js`, `.mts`, `.mjs`)
+- **Error resilience**: Individual seed failures shouldn't break entire loader
+
+**Expected Outputs:**
+
+1. **src/loaders/seed-loader.ts**:
+```typescript
+import { glob } from 'fast-glob';
+import { pathToFileURL } from 'node:url';
+import path from 'node:path';
+import type { Logger } from 'vite';
+import type { SeedCodeGenerator } from '../types/seeds';
+import type { OpenApiEndpointRegistry } from '../types/registry';
+
+/**
+ * Load seed data generator files from a directory.
+ * 
+ * Scans for `*.seed.{ts,js,mts,mjs}` files, validates exports,
+ * and returns a map of schemaName → seed function.
+ * 
+ * @param seedsDir - Directory containing seed files
+ * @param registry - OpenAPI endpoint registry (for schema validation)
+ * @param logger - Vite logger
+ * @returns Map of schema name to seed generator function
+ */
+export async function loadSeeds(
+  seedsDir: string,
+  registry: OpenApiEndpointRegistry,
+  logger: Logger
+): Promise<Map<string, SeedCodeGenerator>> {
+  const seeds = new Map<string, SeedCodeGenerator>();
+  const errors: string[] = [];
+
+  try {
+    // Scan for seed files
+    const files = await glob('**/*.seed.{ts,js,mts,mjs}', {
+      cwd: seedsDir,
+      absolute: true,
+    });
+
+    if (files.length === 0) {
+      logger.warn(`[seed-loader] No seed files found in ${seedsDir}`);
+      return seeds;
+    }
+
+    logger.info(`[seed-loader] Found ${files.length} seed file(s)`);
+
+    // Load each seed file
+    for (const filePath of files) {
+      try {
+        // Dynamic import (ESM)
+        const fileUrl = pathToFileURL(filePath).href;
+        const module = await import(fileUrl);
+
+        // Validate default export
+        if (!module.default || typeof module.default !== 'function') {
+          throw new Error(
+            `Seed file must export a default async function: ${filePath}`
+          );
+        }
+
+        // Extract schema name from filename
+        const filename = path.basename(filePath, path.extname(filePath));
+        const baseSchemaName = filename.replace('.seed', '');
+        
+        // Try to match with registry schemas (handle singular/plural)
+        const schemaName = findMatchingSchema(baseSchemaName, registry);
+
+        if (!schemaName) {
+          logger.warn(
+            `[seed-loader] Seed "${baseSchemaName}" does not match any schema in OpenAPI spec`
+          );
+        }
+
+        const finalSchemaName = schemaName || capitalize(baseSchemaName);
+
+        // Add to map
+        if (seeds.has(finalSchemaName)) {
+          logger.warn(
+            `[seed-loader] Duplicate seed for ${finalSchemaName}, overwriting`
+          );
+        }
+
+        seeds.set(finalSchemaName, module.default as SeedCodeGenerator);
+        logger.info(`[seed-loader] Loaded seed: ${finalSchemaName}`);
+      } catch (error) {
+        const err = error as Error;
+        errors.push(`${filePath}: ${err.message}`);
+        logger.error(`[seed-loader] Failed to load ${filePath}: ${err.message}`);
+      }
+    }
+
+    // Log summary
+    const successCount = seeds.size;
+    const errorCount = errors.length;
+    logger.info(
+      `[seed-loader] Loaded ${successCount} seed(s), ${errorCount} error(s)`
+    );
+
+    return seeds;
+  } catch (error) {
+    const err = error as Error;
+    logger.error(`[seed-loader] Fatal error: ${err.message}`);
+    return seeds;
+  }
+}
+
+/**
+ * Find matching schema name in registry.
+ * Tries exact match, singular, and plural forms.
+ */
+function findMatchingSchema(
+  baseName: string,
+  registry: OpenApiEndpointRegistry
+): string | null {
+  const candidates = [
+    capitalize(baseName),              // pets → Pets
+    capitalize(singularize(baseName)), // pets → Pet
+    baseName,                          // pets
+    singularize(baseName),             // pet
+  ];
+
+  for (const candidate of candidates) {
+    if (registry.schemas.has(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Capitalize first letter.
+ */
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Simple singularization (remove trailing 's').
+ * Can be enhanced with pluralize library if needed.
+ */
+function singularize(str: string): string {
+  return str.endsWith('s') ? str.slice(0, -1) : str;
+}
+```
+
+2. **Example seed file** (`pets.seed.ts`):
+```typescript
+import type { SeedContext, SeedData } from '@websublime/vite-plugin-open-api-server';
+
+export default async function generatePets(context: SeedContext): Promise<SeedData> {
+  const { faker } = context;
+  
+  return Array.from({ length: 10 }, (_, id) => ({
+    id: id + 1,
+    name: faker.animal.dog(),
+    status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
+    category: {
+      id: faker.number.int({ min: 1, max: 5 }),
+      name: faker.animal.type(),
+    },
+  }));
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `src/loaders/seed-loader.ts` created
+- [ ] `loadSeeds()` function exported with correct signature
+- [ ] Function accepts `seedsDir` (string), `registry` (OpenApiEndpointRegistry), `logger` (Logger)
+- [ ] Function returns `Promise<Map<string, SeedCodeGenerator>>`
+- [ ] Directory scanned with `fast-glob` pattern `**/*.seed.{ts,js,mts,mjs}`
+- [ ] Missing/empty directory handled gracefully (returns empty map with warning)
+- [ ] Each file imported using `await import(fileUrl)` with `pathToFileURL()`
+- [ ] Import errors caught per file (doesn't break entire loader)
+- [ ] Default export validated (exists and is function)
+- [ ] Schema name extracted from filename (e.g., `pets.seed.ts` → `Pet`)
+- [ ] Schema name resolution tries singular and plural forms
+- [ ] `findMatchingSchema()` helper checks multiple candidates against registry
+- [ ] Unmatched schemas logged as warnings (non-blocking)
+- [ ] Duplicate schema names logged as warnings (later seed overwrites)
+- [ ] Seed map built: `Map<string, SeedCodeGenerator>`
+- [ ] Cross-reference check: seeds without matching schemas → warning
+- [ ] Error handling: individual file failures don't stop loader
+- [ ] Errors collected and logged at end
+- [ ] Summary logged: "Loaded X seeds, Y errors"
+- [ ] Helper functions: `findMatchingSchema()`, `capitalize()`, `singularize()`
+- [ ] Unit tests created in `loaders/__tests__/seed-loader.test.ts`
+- [ ] Tests cover: empty directory, valid seeds, invalid exports, schema mismatches, duplicates
+- [ ] TypeScript compiles without errors
+- [ ] Committed with message: `feat(loaders): implement seed file loader with schema validation`
 
 ---
 
-#### P2-03: Implement Validator (FR-004)
+#### P2-03: Implement Document Enhancer (FR-005)
 
-**Description:** Implement validation of handlers/seeds against OpenAPI document.
+**Description:** Implement the OpenAPI document enhancer that clones the parsed spec, injects `x-handler` extensions into operations that have custom handlers, injects `x-seed` extensions into schemas that have seed data, and logs each injection for visibility. The enhanced document is passed to Scalar mock server, which uses the extensions to call custom handlers and pre-populate data. Enhancement happens after loading handlers/seeds and before starting the mock server.
 
-**Estimate:** S (1 day)
+**Context:**
+- **Document cloning**: Deep clone OpenAPI spec object to preserve original (needed for hot reload)
+- **x-handler extension**: Custom OpenAPI extension added to operation objects (under `paths[path][method]`)
+- **x-seed extension**: Custom OpenAPI extension added to schema objects (under `components.schemas[name]`)
+- **Extension format**: `x-handler: "javascript:functionName"` or inline function reference
+- **Scalar integration**: Scalar mock server reads `x-handler` to call custom logic instead of generating mock response
+- **Preservation logic**: Check for existing `x-handler`/`x-seed` in spec; external files override with warning (FR-013)
+- **Validation**: Cross-reference handler operationIds and seed schema names with spec (warn on mismatches)
 
-**Subtasks:**
-
-| ID | Subtask | Description |
-|----|---------|-------------|
-| P2-03.1 | Create enhancer/validator.ts | Validation logic |
-| P2-03.2 | Implement validateHandlerExports() | From PRS |
-| P2-03.3 | Implement validateSeedExports() | From PRS |
-| P2-03.4 | Implement operationId matching | Check against spec |
-| P2-03.5 | Implement schemaName matching | Check against spec |
-| P2-03.6 | Generate warnings for mismatches | Non-blocking warnings |
-
-**Acceptance Criteria (from PRS):**
-- [ ] Warn if operationId doesn't exist in OpenAPI spec
-- [ ] Warn if schemaName doesn't exist in components/schemas
-- [ ] Summary of validation results at end
-
----
-
-#### P2-04: Implement Document Enhancer (FR-005)
-
-**Description:** Implement x-handler and x-seed injection into OpenAPI document.
+**Implementation Approach:**
+1. Create `src/enhancer/document-enhancer.ts` module
+2. Implement `enhanceDocument(spec, handlers, seeds, logger)` function
+3. Deep clone spec object using `structuredClone()` or JSON.parse(JSON.stringify())
+4. Iterate through `handlers` map and find matching operations by operationId
+5. For each match, inject `x-handler: handlerFunction` (or reference) into operation object
+6. Iterate through `seeds` map and find matching schemas by name
+7. For each match, inject `x-seed: seedFunction` (or reference) into schema object
+8. Log each injection: "Injected x-handler into POST /pet (addPet)"
+9. Warn when overriding existing extensions
+10. Return enhanced spec for use in mock server
 
 **Estimate:** M (2 days)
 
@@ -3455,76 +5070,517 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P2-04.1 | Create enhancer/document-enhancer.ts | Enhancement logic |
-| P2-04.2 | Implement document cloning | Preserve original |
-| P2-04.3 | Implement findOperationById() | Find operations by ID |
-| P2-04.4 | Implement x-handler injection | Into operations |
-| P2-04.5 | Implement x-seed injection | Into schemas |
-| P2-04.6 | Implement logging | Log each injection |
-| P2-04.7 | Add unit tests | Test enhancement |
+| P2-03.1 | Create enhancer/document-enhancer.ts | Create module at `src/enhancer/document-enhancer.ts`. Export `enhanceDocument()` function. Import OpenAPI types, handler/seed maps, logger. |
+| P2-03.2 | Implement document cloning | Deep clone OpenAPI spec using `structuredClone()` (Node 17+) or `JSON.parse(JSON.stringify(spec))`. Preserve all properties. Test that original spec is unmodified after enhancement. |
+| P2-03.3 | Implement findOperationById() helper | Create helper function that searches `spec.paths` for operation with given operationId. Return `{ path, method, operation }` tuple. Handle missing operations gracefully. |
+| P2-03.4 | Implement x-handler injection | For each handler in map, find matching operation using `findOperationById()`. If found, set `operation['x-handler'] = handlerRef`. Log injection with path, method, operationId. Skip if operation not found (warning logged by loader). |
+| P2-03.5 | Implement x-seed injection | For each seed in map, find matching schema in `spec.components.schemas[schemaName]`. If found, set `schema['x-seed'] = seedRef`. Log injection with schema name. Skip if schema not found (warning logged by loader). |
+| P2-03.6 | Implement preservation checks | Before injecting, check if `operation['x-handler']` or `schema['x-seed']` already exists in original spec. If exists, log warning: "Overriding existing x-handler for addPet". Then inject (external file takes precedence). |
+| P2-03.7 | Add injection logging | Log each successful injection at info level: "[enhancer] Injected x-handler into POST /pet (addPet)". Log skipped injections at debug level. Log overrides at warn level. |
+| P2-03.8 | Return enhanced document | Return cloned and enhanced spec object. Ensure type is `OpenAPIV3_1.Document`. Verify all injections are present in returned spec. Original spec remains unmodified. |
+| P2-03.9 | Add unit tests | Create `enhancer/__tests__/document-enhancer.test.ts`. Test: handler injection, seed injection, preservation (overrides), missing operations/schemas, empty handlers/seeds. Mock spec and handler/seed maps. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Clone OpenAPI document in memory (preserve original)
-- [ ] Match handlers to operations by operationId
-- [ ] Match seeds to schemas by schema name
-- [ ] Inject x-handler into the corresponding operation in paths
-- [ ] Inject x-seed into the corresponding schema in components/schemas
-- [ ] Log each injection for visibility
-- [ ] Warn when handler/seed doesn't match any operation/schema
+**Technical Considerations:**
+- **Deep cloning**: `structuredClone()` handles complex objects but not functions; if storing function references, use custom clone
+- **Extension format**: Scalar expects string references or function objects; decide on format (likely function object for runtime)
+- **Operation lookup**: Iterating `paths` is O(n); for large specs, consider building operationId index first
+- **Reference vs inline**: For `x-handler`, store function reference directly (not string) for efficient runtime calls
+- **Immutability**: Original spec must remain unmodified for hot reload (re-enhance from original on change)
+- **Type safety**: Use `OpenAPIV3_1.Document` type to ensure enhanced spec is valid
+- **Scalar compatibility**: Verify Scalar mock server actually reads `x-handler` extension (may need custom integration)
+- **Performance**: Cloning large specs (100+ endpoints) may take 10-50ms; acceptable for startup
+
+**Expected Outputs:**
+
+1. **src/enhancer/document-enhancer.ts**:
+```typescript
+import type { OpenAPIV3_1 } from 'openapi-types';
+import type { Logger } from 'vite';
+import type { HandlerCodeGenerator } from '../types/handlers';
+import type { SeedCodeGenerator } from '../types/seeds';
+
+/**
+ * Enhance OpenAPI document with x-handler and x-seed extensions.
+ * 
+ * @param spec - Parsed OpenAPI specification
+ * @param handlers - Map of operationId to handler function
+ * @param seeds - Map of schema name to seed function
+ * @param logger - Vite logger
+ * @returns Enhanced OpenAPI document (clone of original)
+ */
+export function enhanceDocument(
+  spec: OpenAPIV3_1.Document,
+  handlers: Map<string, HandlerCodeGenerator>,
+  seeds: Map<string, SeedCodeGenerator>,
+  logger: Logger
+): OpenAPIV3_1.Document {
+  // Deep clone spec to preserve original
+  const enhanced = structuredClone(spec);
+
+  let handlerCount = 0;
+  let seedCount = 0;
+
+  // Inject x-handler extensions
+  for (const [operationId, handlerFn] of handlers) {
+    const operationInfo = findOperationById(enhanced, operationId);
+
+    if (!operationInfo) {
+      // Warning already logged by handler-loader
+      continue;
+    }
+
+    const { path, method, operation } = operationInfo;
+
+    // Check for existing x-handler (preservation logic)
+    if ('x-handler' in operation) {
+      logger.warn(
+        `[enhancer] Overriding existing x-handler for ${operationId}`
+      );
+    }
+
+    // Inject handler reference
+    (operation as any)['x-handler'] = handlerFn;
+    handlerCount++;
+
+    logger.info(
+      `[enhancer] Injected x-handler into ${method.toUpperCase()} ${path} (${operationId})`
+    );
+  }
+
+  // Inject x-seed extensions
+  if (enhanced.components?.schemas) {
+    for (const [schemaName, seedFn] of seeds) {
+      const schema = enhanced.components.schemas[schemaName];
+
+      if (!schema) {
+        // Warning already logged by seed-loader
+        continue;
+      }
+
+      // Check for existing x-seed
+      if ('x-seed' in schema) {
+        logger.warn(
+          `[enhancer] Overriding existing x-seed for ${schemaName}`
+        );
+      }
+
+      // Inject seed reference
+      (schema as any)['x-seed'] = seedFn;
+      seedCount++;
+
+      logger.info(`[enhancer] Injected x-seed into schema ${schemaName}`);
+    }
+  }
+
+  logger.info(
+    `[enhancer] Enhanced document: ${handlerCount} handler(s), ${seedCount} seed(s)`
+  );
+
+  return enhanced;
+}
+
+/**
+ * Find operation by operationId in OpenAPI paths.
+ * 
+ * @returns Operation info or null if not found
+ */
+function findOperationById(
+  spec: OpenAPIV3_1.Document,
+  operationId: string
+): { path: string; method: string; operation: OpenAPIV3_1.OperationObject } | null {
+  if (!spec.paths) return null;
+
+  for (const [path, pathItem] of Object.entries(spec.paths)) {
+    if (!pathItem) continue;
+
+    for (const method of ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'] as const) {
+      const operation = pathItem[method] as OpenAPIV3_1.OperationObject | undefined;
+
+      if (operation?.operationId === operationId) {
+        return { path, method, operation };
+      }
+    }
+  }
+
+  return null;
+}
+```
+
+2. **Usage in mock server runner**:
+```typescript
+// After loading handlers and seeds
+const enhancedSpec = enhanceDocument(spec, handlers, seeds, logger);
+
+// Pass enhanced spec to Scalar
+const app = createMockServer({ specification: enhancedSpec });
+```
+
+**Acceptance Criteria:**
+- [ ] `src/enhancer/document-enhancer.ts` created
+- [ ] `enhanceDocument()` function exported with correct signature
+- [ ] Function accepts `spec` (OpenAPIV3_1.Document), `handlers` (Map), `seeds` (Map), `logger` (Logger)
+- [ ] Function returns enhanced `OpenAPIV3_1.Document`
+- [ ] Document deep cloned using `structuredClone()` or JSON parse/stringify
+- [ ] Original spec object remains unmodified after enhancement
+- [ ] `findOperationById()` helper implemented
+- [ ] Helper searches all paths and methods for matching operationId
+- [ ] Helper returns `{ path, method, operation }` tuple or null
+- [ ] Handler injection: iterate handlers map, find operations, inject `x-handler`
+- [ ] Seed injection: iterate seeds map, find schemas, inject `x-seed`
+- [ ] `x-handler` injected into operation object at correct location
+- [ ] `x-seed` injected into schema object at correct location
+- [ ] Preservation check: warn if existing `x-handler`/`x-seed` found
+- [ ] Override behavior: external file overwrites inline extension
+- [ ] Injection logging: each injection logged with path/method/operationId or schema name
+- [ ] Summary logged: "Enhanced document: X handlers, Y seeds"
+- [ ] Skipped injections (no match) logged at debug level
+- [ ] Override warnings logged at warn level
+- [ ] Handler count tracked and included in summary
+- [ ] Seed count tracked and included in summary
+- [ ] Enhanced spec has all `x-handler` extensions in correct operations
+- [ ] Enhanced spec has all `x-seed` extensions in correct schemas
+- [ ] Unit tests created in `enhancer/__tests__/document-enhancer.test.ts`
+- [ ] Tests cover: handler injection, seed injection, overrides, missing ops/schemas, empty maps
+- [ ] Tests verify original spec unmodified
+- [ ] TypeScript compiles without errors
+- [ ] Committed with message: `feat(enhancer): implement OpenAPI document enhancer with x-handler and x-seed injection`
+
+---
+
+#### P2-04: Implement Registry Builder (FR-006)
+
+**Description:** Implement the endpoint registry builder that constructs a runtime-inspectable data structure from the enhanced OpenAPI document. The registry maps endpoint keys (e.g., "GET /pets") to operation metadata (method, path, operationId, parameters, responses, security), tracks which endpoints have custom handlers, stores schema definitions, and provides statistics for logging and debugging. The registry is used by handlers for context and by the plugin for displaying mock server state.
+
+**Context:**
+- **Registry purpose**: Provides fast lookup of endpoint metadata without parsing OpenAPI spec repeatedly
+- **Endpoint key format**: `"METHOD /path"` (e.g., `"GET /pets"`, `"POST /pet"`)
+- **Operation metadata**: Extracted from OpenAPI: method, path, operationId, parameters, requestBody, responses, security, tags
+- **Handler tracking**: Registry marks which endpoints have `x-handler` extension (custom vs default mock)
+- **Seed tracking**: Registry marks which schemas have `x-seed` extension (pre-populated vs empty)
+- **Schema storage**: Copy of `components.schemas` for validation and seed generation
+- **Security storage**: Copy of `components.securitySchemes` for authentication handling
+- **Statistics**: Count total endpoints, endpoints with handlers, schemas with seeds
+
+**Implementation Approach:**
+1. Create `src/registry/registry-builder.ts` module
+2. Implement `buildRegistry(spec, logger)` function that accepts enhanced OpenAPI spec
+3. Initialize registry object with empty Maps for endpoints, schemas, securitySchemes
+4. Iterate through `spec.paths` and extract all operations (GET, POST, etc.)
+5. For each operation, create endpoint entry with metadata and handler flag
+6. Store in `endpoints` Map with key format `"METHOD /path"`
+7. Copy `spec.components.schemas` to `schemas` Map
+8. Copy `spec.components.securitySchemes` to `securitySchemes` Map
+9. Compute statistics (endpoint count, handler count, seed count)
+10. Return `OpenApiEndpointRegistry` object
+
+**Estimate:** M (2 days)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P2-04.1 | Create registry/registry-builder.ts | Create module at `src/registry/registry-builder.ts`. Export `buildRegistry()` function. Import types: `OpenApiEndpointRegistry`, `OpenApiEndpointEntry`, `OpenAPIV3_1.Document`. |
+| P2-04.2 | Implement registry initialization | Create empty registry object: `{ endpoints: new Map(), schemas: new Map(), securitySchemes: new Map() }`. Type as `OpenApiEndpointRegistry`. |
+| P2-04.3 | Implement path iteration | Iterate `spec.paths` using `Object.entries()`. For each path, iterate HTTP methods (get, post, put, patch, delete, options, head). Extract operation object for each method. |
+| P2-04.4 | Implement endpoint entry creation | For each operation, create `OpenApiEndpointEntry` object with: `method` (uppercase), `path`, `operationId`, `summary`, `description`, `parameters`, `requestBody`, `responses`, `security`, `tags`. |
+| P2-04.5 | Implement endpoint key generation | Generate endpoint key: `"${method.toUpperCase()} ${path}"` (e.g., "GET /pets/{id}"). Use as Map key for fast lookup. Ensure uniqueness (one operation per method+path). |
+| P2-04.6 | Implement handler flag detection | Check if operation has `x-handler` property (injected by enhancer). Set flag in endpoint entry or registry metadata. Used for statistics and debugging. |
+| P2-04.7 | Implement schema copying | Copy `spec.components.schemas` to `registry.schemas` Map. Key is schema name (string), value is `OpenApiServerSchemaEntry` with name and schema object. |
+| P2-04.8 | Implement security scheme copying | Copy `spec.components.securitySchemes` to `registry.securitySchemes` Map. Key is scheme name, value is `OpenApiSecuritySchemeEntry` with normalized scheme data. |
+| P2-04.9 | Compute statistics | Count: total endpoints, endpoints with handlers, total schemas, schemas with seeds, security schemes. Log statistics: "Registry built: X endpoints (Y with handlers), Z schemas (W with seeds)". |
+| P2-04.10 | Add unit tests | Create `registry/__tests__/registry-builder.test.ts`. Test: empty spec, spec with operations, endpoints with/without handlers, schemas with/without seeds. Verify Map structure and statistics. |
+
+**Technical Considerations:**
+- **Map vs object**: Use Map for O(1) lookup; keys are strings (endpoint keys, schema names)
+- **Endpoint key uniqueness**: OpenAPI guarantees one operation per method+path combination
+- **Path parameters**: Path like `/pets/{id}` stored as-is in registry; matching uses path-to-regexp at runtime
+- **Method casing**: Normalize to uppercase (GET, POST) for consistency
+- **Missing components**: Handle specs without `components.schemas` or `components.securitySchemes` gracefully
+- **Large specs**: Registry building is O(n) where n = endpoint count; acceptable for 100s of endpoints
+- **Memory usage**: Registry is in-memory; large specs (1000+ endpoints) use ~1-5 MB
+- **Immutability**: Registry should be frozen or marked readonly after building (no runtime modifications)
+- **Handler detection**: Check for `x-handler` property presence, not value (value is function reference)
+
+**Expected Outputs:**
+
+1. **src/registry/registry-builder.ts**:
+```typescript
+import type { OpenAPIV3_1 } from 'openapi-types';
+import type { Logger } from 'vite';
+import type {
+  OpenApiEndpointRegistry,
+  OpenApiEndpointEntry,
+  OpenApiServerSchemaEntry,
+  OpenApiSecuritySchemeEntry,
+} from '../types/registry';
+
+/**
+ * Build endpoint registry from enhanced OpenAPI document.
+ * 
+ * @param spec - Enhanced OpenAPI spec (with x-handler/x-seed)
+ * @param logger - Vite logger
+ * @returns Endpoint registry with all operations and schemas
+ */
+export function buildRegistry(
+  spec: OpenAPIV3_1.Document,
+  logger: Logger
+): OpenApiEndpointRegistry {
+  const registry: OpenApiEndpointRegistry = {
+    endpoints: new Map(),
+    schemas: new Map(),
+    securitySchemes: new Map(),
+  };
+
+  let handlerCount = 0;
+  let seedCount = 0;
+
+  // Extract endpoints from paths
+  if (spec.paths) {
+    for (const [path, pathItem] of Object.entries(spec.paths)) {
+      if (!pathItem) continue;
+
+      for (const method of ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'] as const) {
+        const operation = pathItem[method] as OpenAPIV3_1.OperationObject | undefined;
+        if (!operation) continue;
+
+        // Create endpoint entry
+        const entry: OpenApiEndpointEntry = {
+          method: method.toUpperCase(),
+          path,
+          operationId: operation.operationId || `${method}_${path}`,
+          summary: operation.summary,
+          description: operation.description,
+          parameters: (operation.parameters || []) as OpenAPIV3_1.ParameterObject[],
+          requestBody: operation.requestBody as OpenAPIV3_1.RequestBodyObject | undefined,
+          responses: operation.responses as Record<string, OpenAPIV3_1.ResponseObject>,
+          security: operation.security,
+          tags: operation.tags,
+        };
+
+        // Generate endpoint key
+        const key = `${entry.method} ${path}`;
+        registry.endpoints.set(key, entry);
+
+        // Track handler presence
+        if ('x-handler' in operation) {
+          handlerCount++;
+        }
+      }
+    }
+  }
+
+  // Copy schemas
+  if (spec.components?.schemas) {
+    for (const [name, schema] of Object.entries(spec.components.schemas)) {
+      if (!schema) continue;
+
+      registry.schemas.set(name, {
+        name,
+        schema: schema as OpenAPIV3_1.SchemaObject,
+      });
+
+      // Track seed presence
+      if ('x-seed' in schema) {
+        seedCount++;
+      }
+    }
+  }
+
+  // Copy security schemes
+  if (spec.components?.securitySchemes) {
+    for (const [name, scheme] of Object.entries(spec.components.securitySchemes)) {
+      if (!scheme) continue;
+
+      // Normalize security scheme (simplified for now)
+      registry.securitySchemes.set(name, {
+        name,
+        type: (scheme as any).type,
+        scheme: (scheme as any).scheme,
+        bearerFormat: (scheme as any).bearerFormat,
+        in: (scheme as any).in,
+        flows: (scheme as any).flows,
+      });
+    }
+  }
+
+  // Log statistics
+  logger.info(
+    `[registry] Built registry: ${registry.endpoints.size} endpoint(s) (${handlerCount} with handlers), ` +
+    `${registry.schemas.size} schema(s) (${seedCount} with seeds), ` +
+    `${registry.securitySchemes.size} security scheme(s)`
+  );
+
+  return registry;
+}
+```
+
+2. **Usage in mock server runner**:
+```typescript
+// After enhancing document
+const registry = buildRegistry(enhancedSpec, logger);
+
+// Registry is now available for handlers
+const handlerContext: HandlerContext = {
+  // ... request data ...
+  registry, // Read-only access to endpoints, schemas, security
+};
+```
+
+3. **Registry structure example**:
+```typescript
+{
+  endpoints: Map {
+    'GET /pets' => {
+      method: 'GET',
+      path: '/pets',
+      operationId: 'listPets',
+      parameters: [...],
+      responses: { '200': {...} },
+    },
+    'POST /pet' => {
+      method: 'POST',
+      path: '/pet',
+      operationId: 'addPet',
+      requestBody: {...},
+      responses: { '200': {...} },
+    },
+  },
+  schemas: Map {
+    'Pet' => {
+      name: 'Pet',
+      schema: { type: 'object', properties: {...} },
+    },
+  },
+  securitySchemes: Map {
+    'api_key' => {
+      name: 'api_key',
+      type: 'apiKey',
+      in: 'header',
+    },
+  },
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `src/registry/registry-builder.ts` created
+- [ ] `buildRegistry()` function exported with correct signature
+- [ ] Function accepts `spec` (OpenAPIV3_1.Document), `logger` (Logger)
+- [ ] Function returns `OpenApiEndpointRegistry` object
+- [ ] Registry object has three Maps: `endpoints`, `schemas`, `securitySchemes`
+- [ ] All Maps initialized as empty before population
+- [ ] `spec.paths` iterated correctly with `Object.entries()`
+- [ ] All HTTP methods checked (get, post, put, patch, delete, options, head)
+- [ ] Endpoint entry created for each operation with all metadata fields
+- [ ] Endpoint key format: `"METHOD /path"` (e.g., "GET /pets")
+- [ ] Method normalized to uppercase in entry
+- [ ] OperationId defaulted to `"method_path"` if missing in spec
+- [ ] Parameters array copied from operation (or empty array)
+- [ ] RequestBody copied from operation (or undefined)
+- [ ] Responses object copied from operation
+- [ ] Security array copied from operation (or undefined)
+- [ ] Tags array copied from operation (or undefined)
+- [ ] Endpoint entries stored in `registry.endpoints` Map with correct keys
+- [ ] Handler presence detected by checking `x-handler` property in operation
+- [ ] Handler count tracked for statistics
+- [ ] `spec.components.schemas` copied to `registry.schemas` Map
+- [ ] Schema entries have `name` and `schema` properties
+- [ ] Seed presence detected by checking `x-seed` property in schema
+- [ ] Seed count tracked for statistics
+- [ ] `spec.components.securitySchemes` copied to `registry.securitySchemes` Map
+- [ ] Security scheme entries normalized with correct properties
+- [ ] Missing components (no schemas/securitySchemes) handled gracefully
+- [ ] Statistics logged: endpoint count, handler count, schema count, seed count, security scheme count
+- [ ] Log message format: "[registry] Built registry: X endpoints (Y with handlers), Z schemas (W with seeds), N security schemes"
+- [ ] Unit tests created in `registry/__tests__/registry-builder.test.ts`
+- [ ] Tests cover: empty spec, spec with operations, handlers, seeds, missing components
+- [ ] Tests verify Map structure, endpoint keys, metadata accuracy
+- [ ] TypeScript compiles without errors
+- [ ] Committed with message: `feat(registry): implement registry builder with endpoint and schema tracking`
 
 ---
 
 #### P2-05: Implement Preservation Logic (FR-013)
 
-**Description:** Preserve existing x-handler/x-seed in OpenAPI spec unless overridden.
+> **Note:** This task was integrated into **P2-03 (Document Enhancer)** during detailed planning. The preservation logic (checking for existing `x-handler`/`x-seed` extensions and logging override warnings) is implemented as part of the `enhanceDocument()` function. This task remains for tracking purposes but requires no additional implementation.
 
-**Estimate:** S (1 day)
+**Description:** Preserve existing `x-handler`/`x-seed` extensions in OpenAPI spec unless overridden by external handler/seed files. When external files are loaded, they take precedence over inline extensions, but a warning is logged for visibility. This prevents accidental loss of inline customizations and alerts developers to conflicts.
 
-**Subtasks:**
+**Context:**
+- **Preservation principle**: Inline extensions (already in spec) should be respected unless explicitly overridden
+- **Override behavior**: External files (loaded from handlers/seeds directories) take precedence over inline
+- **Warning logging**: When override occurs, log at warn level: "Overriding existing x-handler for addPet"
+- **Implementation location**: Already integrated in P2-03 `enhanceDocument()` function
+- **Check timing**: Before injecting `x-handler`/`x-seed`, check if property already exists in operation/schema
 
-| ID | Subtask | Description |
-|----|---------|-------------|
-| P2-05.1 | Modify document-enhancer.ts | Add preservation logic |
-| P2-05.2 | Check for existing extensions | Before injection |
-| P2-05.3 | Log override warnings | When overriding |
-| P2-05.4 | Add unit tests | Test preservation |
+**Implementation Status:**
+- ✅ Implemented in `src/enhancer/document-enhancer.ts` (P2-03)
+- ✅ Preservation check: `if ('x-handler' in operation)` before injection
+- ✅ Override warning logged when existing extension found
+- ✅ External file always overwrites (intentional override behavior)
+- ✅ Unit tests included in P2-03 test suite
 
-**Acceptance Criteria (from PRS):**
-- [ ] External handler file overrides inline x-handler (with warning)
-- [ ] External seed file overrides inline x-seed (with warning)
-- [ ] Log when override occurs for visibility
+**Estimate:** S (1 day) — **Already completed in P2-03**
+
+**Acceptance Criteria:**
+- [x] External handler file overrides inline x-handler (with warning) — Implemented in P2-03
+- [x] External seed file overrides inline x-seed (with warning) — Implemented in P2-03
+- [x] Log when override occurs for visibility — Implemented in P2-03
+- [ ] Verify warning messages appear in console when overrides occur
+- [ ] Test with OpenAPI spec containing inline x-handler extensions
+- [ ] Test with OpenAPI spec containing inline x-seed extensions
+- [ ] Confirm external files take precedence (override behavior)
+- [ ] Unit tests cover preservation and override scenarios
 
 ---
 
 #### P2-06: Implement Registry Builder (FR-006)
 
-**Description:** Implement the endpoint registry that tracks all mocked endpoints.
+> **Note:** This task was enriched and renumbered as **P2-04 (Registry Builder)** during detailed planning. The registry building functionality is fully specified in P2-04. This entry remains for tracking and reference purposes.
 
-**Estimate:** M (2 days)
+**Description:** Implement the endpoint registry builder that constructs a runtime-inspectable data structure from the enhanced OpenAPI document. The registry maps endpoint keys to operation metadata, tracks handler/seed presence, stores schemas and security schemes, and provides statistics for logging and debugging.
 
-**Subtasks:**
+**Implementation Status:**
+- ✅ Detailed implementation plan in P2-04
+- ✅ Module location: `src/registry/registry-builder.ts`
+- ✅ Function: `buildRegistry(spec, logger)`
+- ✅ Returns: `OpenApiEndpointRegistry` with endpoints, schemas, securitySchemes Maps
+- ✅ Tracks: handler presence, seed presence, statistics
 
-| ID | Subtask | Description |
-|----|---------|-------------|
-| P2-06.1 | Create enhancer/registry-builder.ts | Registry building logic |
-| P2-06.2 | Implement buildRegistry() | Build from enhanced doc |
-| P2-06.3 | Extract all operations | Method, path, operationId |
-| P2-06.4 | Track handler status | hasHandler flag |
-| P2-06.5 | Track seed status | hasSeed flag |
-| P2-06.6 | Compute statistics | Counts and summaries |
-| P2-06.7 | Add unit tests | Test registry building |
+**Estimate:** M (2 days) — **Fully specified in P2-04**
 
-**Acceptance Criteria (from PRS):**
+**Acceptance Criteria:**
+- [ ] See P2-04 for complete acceptance criteria (30+ detailed criteria)
 - [ ] Extract all operations (method + path + operationId) from OpenAPI spec
 - [ ] Map custom handlers to their corresponding operationIds
 - [ ] Map custom seeds to their corresponding schema names
 - [ ] Include endpoint count summary in startup logs
+- [ ] Registry available to handlers via HandlerContext
+- [ ] Registry available to mock server for inspection endpoints
 
 ---
 
-#### P2-07: Implement Registry Endpoint
+#### P2-07: Implement Registry Inspection Endpoint (FR-006)
 
-**Description:** Implement the /_openapiserver/registry runtime inspection endpoint.
+**Description:** Implement a special runtime inspection endpoint `/_openapiserver/registry` that returns the complete endpoint registry as JSON. This endpoint allows developers to inspect which endpoints are mocked, which have custom handlers, schema definitions, and statistics. Useful for debugging, documentation, and integration testing. The endpoint is served by the mock server alongside OpenAPI endpoints.
+
+**Context:**
+- **Endpoint path**: `/_openapiserver/registry` (reserved path, not from OpenAPI spec)
+- **HTTP method**: GET only
+- **Response format**: JSON with registry structure (endpoints array, schemas, statistics)
+- **Use cases**: Debugging (which endpoints exist?), integration tests (verify handler registration), documentation generation
+- **Security**: No authentication required (dev-only feature)
+- **Implementation location**: Mock server runner (Hono route)
+- **Registry serialization**: Convert Maps to arrays/objects for JSON compatibility
+
+**Implementation Approach:**
+1. Add special Hono route in `openapi-server-runner.mts` before Scalar routes
+2. Register route: `app.get('/_openapiserver/registry', (c) => { ... })`
+3. Access registry from closure or global state (passed to runner)
+4. Serialize registry: convert Maps to arrays/objects
+5. Compute statistics: total endpoints, handler count, seed count
+6. Return JSON response with `Content-Type: application/json`
+7. Include helpful metadata: OpenAPI spec version, server info, timestamps
+8. Test endpoint manually with curl and automated with supertest
 
 **Estimate:** S (1 day)
 
@@ -3532,20 +5588,155 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P2-07.1 | Add registry endpoint to runner | /_openapiserver/registry |
-| P2-07.2 | Return JSON response | Registry data |
-| P2-07.3 | Include statistics | Endpoint counts |
-| P2-07.4 | Test endpoint | Manual and automated |
+| P2-07.1 | Add registry route to Hono app | In `openapi-server-runner.mts`, add `app.get('/_openapiserver/registry', handler)` before Scalar routes. Route must run before wildcard Scalar handler to avoid conflicts. |
+| P2-07.2 | Serialize registry to JSON | Convert `registry.endpoints` Map to array of endpoint objects. Convert `registry.schemas` Map to object/array. Convert `registry.securitySchemes` Map to array. Handle non-JSON-serializable values (functions, etc.). |
+| P2-07.3 | Compute statistics | Count: total endpoints, endpoints with handlers, total schemas, schemas with seeds. Calculate percentages (e.g., "50% of endpoints have handlers"). Include in response metadata. |
+| P2-07.4 | Format response structure | Structure response as: `{ meta: { ... }, endpoints: [...], schemas: [...], securitySchemes: [...], statistics: { ... } }`. Include OpenAPI spec version, server port, timestamp in meta. |
+| P2-07.5 | Add endpoint documentation | Include `_openapiserver/registry` in startup logs: "Special endpoints: /_openapiserver/registry (inspection)". Add JSDoc comment explaining endpoint purpose and response format. |
+| P2-07.6 | Test endpoint manually | Start mock server, curl `http://localhost:3001/_openapiserver/registry`. Verify JSON response structure. Check all endpoints listed. Verify handler flags correct. |
+| P2-07.7 | Add automated tests | Create `runner/__tests__/registry-endpoint.test.ts`. Use supertest to test endpoint. Verify response status 200, Content-Type header, JSON structure, statistics accuracy. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Provide `/_openapiserver/registry` endpoint for runtime inspection
-- [ ] Return JSON with endpoints and stats
+**Technical Considerations:**
+- **Route priority**: Registry endpoint must be registered before Scalar routes (Scalar catches all paths)
+- **Map serialization**: Use `Array.from(map.entries())` or `Object.fromEntries(map)` to convert Maps
+- **Function references**: Registry contains handler/seed functions (from x-handler/x-seed); exclude from JSON (serialize presence flag only)
+- **Response size**: Large specs (100+ endpoints) may produce 100KB+ JSON; acceptable for dev tool
+- **Caching**: Registry is static after startup; consider caching serialized response
+- **CORS**: No CORS needed (same-origin, dev-only)
+- **Formatting**: Pretty-print JSON for readability: `JSON.stringify(data, null, 2)`
+- **Performance**: Serialization is O(n) where n = endpoint count; <10ms for 100 endpoints
+
+**Expected Outputs:**
+
+1. **Route registration** in `openapi-server-runner.mts`:
+```typescript
+// Add registry inspection endpoint BEFORE Scalar routes
+app.get('/_openapiserver/registry', (c) => {
+  const response = {
+    meta: {
+      version: '1.0.0',
+      openApiVersion: spec.openapi,
+      port: PORT,
+      timestamp: new Date().toISOString(),
+    },
+    endpoints: Array.from(registry.endpoints.entries()).map(([key, entry]) => ({
+      key,
+      method: entry.method,
+      path: entry.path,
+      operationId: entry.operationId,
+      summary: entry.summary,
+      hasHandler: 'x-handler' in entry,
+      tags: entry.tags,
+    })),
+    schemas: Array.from(registry.schemas.keys()),
+    securitySchemes: Array.from(registry.securitySchemes.keys()),
+    statistics: {
+      totalEndpoints: registry.endpoints.size,
+      endpointsWithHandlers: Array.from(registry.endpoints.values()).filter(
+        (e) => 'x-handler' in e
+      ).length,
+      totalSchemas: registry.schemas.size,
+      schemasWithSeeds: Array.from(registry.schemas.values()).filter(
+        (s) => 'x-seed' in s.schema
+      ).length,
+    },
+  };
+
+  return c.json(response, 200);
+});
+```
+
+2. **Example response**:
+```json
+{
+  "meta": {
+    "version": "1.0.0",
+    "openApiVersion": "3.1.0",
+    "port": 3001,
+    "timestamp": "2024-01-08T12:00:00.000Z"
+  },
+  "endpoints": [
+    {
+      "key": "GET /pets",
+      "method": "GET",
+      "path": "/pets",
+      "operationId": "listPets",
+      "summary": "List all pets",
+      "hasHandler": false,
+      "tags": ["pets"]
+    },
+    {
+      "key": "POST /pet",
+      "method": "POST",
+      "path": "/pet",
+      "operationId": "addPet",
+      "summary": "Add a new pet",
+      "hasHandler": true,
+      "tags": ["pets"]
+    }
+  ],
+  "schemas": ["Pet", "Category", "Tag", "Order", "User"],
+  "securitySchemes": ["api_key", "petstore_auth"],
+  "statistics": {
+    "totalEndpoints": 19,
+    "endpointsWithHandlers": 4,
+    "totalSchemas": 5,
+    "schemasWithSeeds": 3
+  }
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Registry inspection endpoint registered at `/_openapiserver/registry`
+- [ ] Endpoint accessible via GET request
+- [ ] Route registered before Scalar routes (to prevent path conflicts)
+- [ ] Response Content-Type header is `application/json`
+- [ ] Response status code is 200 for successful requests
+- [ ] Response includes `meta` object with version, openApiVersion, port, timestamp
+- [ ] Response includes `endpoints` array with all mocked endpoints
+- [ ] Each endpoint object includes: key, method, path, operationId, summary, hasHandler, tags
+- [ ] `hasHandler` flag correctly indicates presence of custom handler
+- [ ] Response includes `schemas` array with all schema names
+- [ ] Response includes `securitySchemes` array with all security scheme names
+- [ ] Response includes `statistics` object with counts and percentages
+- [ ] Statistics include: totalEndpoints, endpointsWithHandlers, totalSchemas, schemasWithSeeds
+- [ ] Registry Maps correctly serialized to JSON-compatible arrays/objects
+- [ ] Function references excluded from JSON response (only flags serialized)
+- [ ] JSON response is pretty-printed for readability (if verbose mode)
+- [ ] Endpoint listed in startup logs: "Special endpoints: /_openapiserver/registry"
+- [ ] Manual test: curl endpoint returns valid JSON
+- [ ] Automated tests created in `runner/__tests__/registry-endpoint.test.ts`
+- [ ] Tests verify response structure, status code, Content-Type header
+- [ ] Tests verify endpoint count matches expected value
+- [ ] Tests verify handler flags match actual handler presence
+- [ ] Committed with message: `feat(runner): add /_openapiserver/registry inspection endpoint`
 
 ---
 
-#### P2-08: Implement Registry Display
+#### P2-08: Implement Registry Console Display (FR-006)
 
-**Description:** Implement the startup console table showing all endpoints.
+**Description:** Implement a formatted console table that displays all mocked endpoints on mock server startup. The table shows method, path, operationId, and handler status (✓ for custom, - for default mock) in a clean, aligned format. This provides immediate visual feedback about what the mock server is serving and which endpoints have custom logic. The display appears after the success banner and before the "listening" message.
+
+**Context:**
+- **Display timing**: After registry built, before server starts listening (after success banner)
+- **Table format**: ASCII table with columns: METHOD | PATH | OPERATION ID | HANDLER
+- **Handler indicator**: ✓ (green checkmark) for custom handlers, - (dash) for default mocks
+- **Column alignment**: Left-aligned text, columns padded to fit longest value
+- **Color coding**: Green for custom handlers, default color for mocks, cyan for headers
+- **Summary line**: After table, show totals: "19 endpoints (4 with custom handlers, 15 with default mocks)"
+- **PRS reference**: Section 4.1 shows expected format with box-drawing characters
+- **Implementation location**: `src/logging/registry-display.ts` utility module
+
+**Implementation Approach:**
+1. Create `src/logging/registry-display.ts` module
+2. Implement `printRegistryTable(registry, logger)` function
+3. Calculate column widths based on longest values in each column
+4. Format table header with column names and separator line
+5. Format each endpoint row with aligned columns and handler indicator
+6. Add color coding: green for ✓, cyan for headers, default for paths
+7. Add summary line with counts and percentages
+8. Call from mock server runner after registry built, before server starts
+9. Test with Petstore spec (19 endpoints, verify alignment and indicators)
 
 **Estimate:** S (1 day)
 
@@ -3553,15 +5744,175 @@ interface ErrorMessage { ... }
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P2-08.1 | Create formatRegistryTable() | Table formatting |
-| P2-08.2 | Implement column alignment | METHOD, PATH, OPERATION ID, HANDLER |
-| P2-08.3 | Show handler indicators | ✓ or - |
-| P2-08.4 | Show summary line | Counts |
+| P2-08.1 | Create logging/registry-display.ts | Create utility module at `src/logging/registry-display.ts`. Export `printRegistryTable()` function. Import types: `OpenApiEndpointRegistry`, `Logger`. Import color constants from startup-banner.ts. |
+| P2-08.2 | Calculate column widths | Iterate registry entries to find longest value in each column (method, path, operationId). Add padding (2 spaces) for readability. Use for alignment in table rows. |
+| P2-08.3 | Format table header | Create header row with column names: "METHOD", "PATH", "OPERATION ID", "HANDLER". Add separator line below header using box-drawing characters (─) or dashes. Use cyan color for header text. |
+| P2-08.4 | Format endpoint rows | For each endpoint in registry, create row with: method (uppercase, padded), path (padded), operationId (padded), handler indicator (✓ or -). Align columns using calculated widths. Use green color for ✓. |
+| P2-08.5 | Add handler indicator | Check if endpoint has `x-handler` property. If yes, show `✓` in green. If no, show `-` in default color. Indicator column is 7 characters wide ("HANDLER"). |
+| P2-08.6 | Compute summary statistics | Count total endpoints, endpoints with handlers (✓), endpoints with default mocks (-). Calculate percentage: `(handlersCount / total * 100).toFixed(0)%`. |
+| P2-08.7 | Format summary line | After table, show summary: "19 endpoints (4 custom, 15 default)" or similar. Use dim color for summary. Include percentage if handlers > 0. |
+| P2-08.8 | Integrate with runner | Call `printRegistryTable(registry, logger)` in `openapi-server-runner.mts` after registry built, before server starts. Place after success banner, before "Server listening" message. |
+| P2-08.9 | Test display output | Run `pnpm playground` with Petstore spec. Verify table displays correctly. Check column alignment (no jagged edges). Verify ✓ appears for custom handlers. Verify colors display. Verify summary counts are accurate. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Display endpoint registry table on server startup
-- [ ] Indicate which endpoints have handlers: ✓ or -
-- [ ] Match PRS example output format
+**Technical Considerations:**
+- **Column width calculation**: Use `Math.max(...values.map(v => v.length))` to find longest value per column
+- **Padding strategy**: Use `String.prototype.padEnd()` for left-aligned text
+- **Box-drawing characters**: Use Unicode (─│┌┐└┘) for professional look, or ASCII (+-|) for compatibility
+- **Color support**: Check `process.stdout.isTTY` before applying colors (same as startup banner)
+- **Large specs**: For 100+ endpoints, consider pagination or truncation (future enhancement)
+- **Sorting**: Sort endpoints alphabetically by path, then by method for consistency
+- **Table libraries**: Consider using `cli-table3` or `table` npm package for advanced formatting (optional)
+- **Performance**: Formatting 100 endpoints takes <5ms; acceptable for startup
+
+**Expected Outputs:**
+
+1. **src/logging/registry-display.ts**:
+```typescript
+import type { Logger } from 'vite';
+import type { OpenApiEndpointRegistry } from '../types/registry';
+import { GREEN, CYAN, DIM, RESET, color } from './startup-banner';
+
+/**
+ * Print formatted registry table to console.
+ * 
+ * @param registry - OpenAPI endpoint registry
+ * @param logger - Vite logger
+ */
+export function printRegistryTable(
+  registry: OpenApiEndpointRegistry,
+  logger: Logger
+): void {
+  const endpoints = Array.from(registry.endpoints.values());
+
+  if (endpoints.length === 0) {
+    logger.warn('[registry] No endpoints to display');
+    return;
+  }
+
+  // Calculate column widths
+  const methodWidth = Math.max(6, ...endpoints.map((e) => e.method.length)) + 2;
+  const pathWidth = Math.max(4, ...endpoints.map((e) => e.path.length)) + 2;
+  const operationWidth = Math.max(12, ...endpoints.map((e) => e.operationId.length)) + 2;
+  const handlerWidth = 9; // "HANDLER" + padding
+
+  // Format header
+  const header = [
+    color('METHOD'.padEnd(methodWidth), CYAN),
+    color('PATH'.padEnd(pathWidth), CYAN),
+    color('OPERATION ID'.padEnd(operationWidth), CYAN),
+    color('HANDLER'.padEnd(handlerWidth), CYAN),
+  ].join('');
+
+  const separator = '─'.repeat(methodWidth + pathWidth + operationWidth + handlerWidth);
+
+  // Format rows
+  const rows = endpoints
+    .sort((a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method))
+    .map((endpoint) => {
+      const hasHandler = 'x-handler' in endpoint;
+      const handlerIndicator = hasHandler ? color('✓', GREEN) : '-';
+
+      return [
+        endpoint.method.padEnd(methodWidth),
+        endpoint.path.padEnd(pathWidth),
+        endpoint.operationId.padEnd(operationWidth),
+        handlerIndicator.padEnd(handlerWidth),
+      ].join('');
+    });
+
+  // Compute statistics
+  const total = endpoints.length;
+  const withHandlers = endpoints.filter((e) => 'x-handler' in e).length;
+  const withDefault = total - withHandlers;
+  const percentage = total > 0 ? ((withHandlers / total) * 100).toFixed(0) : '0';
+
+  // Format summary
+  const summary = color(
+    `${total} endpoints (${withHandlers} custom, ${withDefault} default) - ${percentage}% customized`,
+    DIM
+  );
+
+  // Output table
+  const table = [
+    '',
+    header,
+    color(separator, CYAN),
+    ...rows,
+    '',
+    summary,
+    '',
+  ].join('\n');
+
+  logger.info(table);
+}
+```
+
+2. **Usage in runner**:
+```typescript
+// In openapi-server-runner.mts, after buildRegistry():
+import { printRegistryTable } from '../logging/registry-display';
+
+const registry = buildRegistry(enhancedSpec, logger);
+printRegistryTable(registry, logger);
+```
+
+3. **Console output example**:
+```
+METHOD  PATH                    OPERATION ID           HANDLER  
+────────────────────────────────────────────────────────────────
+POST    /pet                    addPet                 ✓
+PUT     /pet                    updatePet              ✓
+GET     /pet/findByStatus       findPetsByStatus       -
+GET     /pet/findByTags         findPetsByTags         -
+GET     /pet/{petId}            getPetById             ✓
+POST    /pet/{petId}            updatePetWithForm      -
+DELETE  /pet/{petId}            deletePet              ✓
+POST    /pet/{petId}/uploadImg  uploadFile             -
+GET     /store/inventory        getInventory           -
+POST    /store/order            placeOrder             -
+GET     /store/order/{orderId}  getOrderById           -
+DELETE  /store/order/{orderId}  deleteOrder            -
+POST    /user                   createUser             -
+POST    /user/createWithList    createUsersWithList    -
+GET     /user/login             loginUser              -
+GET     /user/logout            logoutUser             -
+GET     /user/{username}        getUserByName          -
+PUT     /user/{username}        updateUser             -
+DELETE  /user/{username}        deleteUser             -
+
+19 endpoints (4 custom, 15 default) - 21% customized
+```
+
+**Acceptance Criteria:**
+- [ ] `src/logging/registry-display.ts` created with `printRegistryTable()` function
+- [ ] Function accepts `registry` (OpenApiEndpointRegistry), `logger` (Logger)
+- [ ] Function returns void (outputs to logger)
+- [ ] Empty registry handled gracefully (warning logged, no table)
+- [ ] Column widths calculated based on longest values in registry
+- [ ] Table header formatted with column names: METHOD, PATH, OPERATION ID, HANDLER
+- [ ] Header uses cyan color
+- [ ] Separator line added below header (box-drawing or dashes)
+- [ ] Each endpoint row formatted with aligned columns
+- [ ] Method column shows uppercase HTTP method (GET, POST, etc.)
+- [ ] Path column shows full endpoint path (e.g., /pet/{petId})
+- [ ] OperationId column shows OpenAPI operationId
+- [ ] Handler column shows ✓ (green) for custom handlers, - for default mocks
+- [ ] Endpoints sorted alphabetically by path, then by method
+- [ ] Handler indicator check: presence of `x-handler` property determines ✓ or -
+- [ ] Green color applied to ✓ checkmarks
+- [ ] Summary line formatted below table
+- [ ] Summary shows: total count, custom count, default count, percentage
+- [ ] Summary uses dim color for less emphasis
+- [ ] Percentage calculated as: (customCount / totalCount * 100)
+- [ ] Table output uses logger.info() for consistency
+- [ ] Function called in runner after registry built, before server starts
+- [ ] Display appears in console between success banner and "listening" message
+- [ ] Tested with Petstore spec (19 endpoints, 4 custom handlers)
+- [ ] Column alignment verified (no jagged edges)
+- [ ] Colors display correctly in terminal
+- [ ] Summary counts verified accurate
+- [ ] Table readable and professionally formatted
+- [ ] Committed with message: `feat(logging): add formatted registry table display for startup`
 
 ---
 
