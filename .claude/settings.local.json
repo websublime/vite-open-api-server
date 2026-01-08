@@ -1,5 +1,8 @@
 {
   "model": "opus",
+  "enabledPlugins": {
+    "beads@beads-marketplace": true
+  },
   "includeCoAuthoredBy": false,
   "hooks": {
     "PreCompact": [
