@@ -1587,8 +1587,290 @@ watcher.on('change', async (path) => {
 
 **Description:** Integration with Vue DevTools browser extension to provide a custom tab for inspecting registered endpoints and simulating edge cases, errors, and network conditions through query parameters. This provides comprehensive testing capabilities within the existing Vue DevTools workflow, enabling developers to test error handling, timeouts, slow responses, and various HTTP status codes without modifying backend code.
 
+**DevTools Detection Strategy:**
+
+The plugin follows the same pattern as Pinia and Vue Router for DevTools integration:
+
+1. **Conditional Registration:** Only register in development mode and browser environment
+2. **Buffer Pattern:** Plugins are buffered and activated when DevTools connects
+3. **Silent Fallback:** If DevTools is not installed, the plugin simply doesn't activate (no errors)
+4. **Version Validation:** Check API compatibility on connection
+5. **Global State Exposure:** Expose mock server state to `globalThis` for debugging
+
+**Detection Implementation:**
+
+```typescript
+import { setupDevtoolsPlugin } from '@vue/devtools-api'
+import type { App } from 'vue'
+import type { MockEndpointRegistry, MockServerState } from './types'
+
+// Build-time constants (replaced by bundler)
+declare const __DEV__: boolean
+
+// Runtime environment detection
+const IS_CLIENT = typeof window !== 'undefined'
+const HAS_PROXY = typeof Proxy !== 'undefined'
+
+/**
+ * Registers Mock Server integration with Vue DevTools.
+ * 
+ * This function follows the same pattern as Pinia and Vue Router:
+ * - Only activates in development mode (controlled by __DEV__ flag)
+ * - Only runs in browser environment (not SSR)
+ * - Silently skips if DevTools is not installed
+ * - Buffers registration until DevTools connects
+ * - Validates API version compatibility
+ * - Exposes global state for console debugging
+ * 
+ * @param app - Vue application instance
+ * @param options - Mock server configuration and state
+ */
+export function registerMockServerDevTools(
+  app: App,
+  options: {
+    mockServerUrl: string
+    registry: MockEndpointRegistry
+    state: MockServerState
+  }
+): void {
+  // Guard: Only register in development mode
+  // __DEV__ is replaced at build time by Vite/Rollup
+  if (!__DEV__) {
+    return
+  }
+
+  // Guard: Only register in browser environment (not SSR)
+  if (!IS_CLIENT) {
+    return
+  }
+
+  // Guard: Require Proxy support (excludes old browsers like IE11)
+  if (!HAS_PROXY) {
+    console.warn(
+      '[Mock Server] DevTools integration requires Proxy support. ' +
+      'Please use a modern browser.'
+    )
+    return
+  }
+
+  const { mockServerUrl, registry, state } = options
+
+  // Register with Vue DevTools using the standard plugin API
+  // This is buffered internally - if DevTools isn't installed,
+  // the setup function simply won't be called (no error)
+  setupDevtoolsPlugin(
+    {
+      id: 'dev.websublime.mock-server',
+      label: 'Mock Server 🔌',
+      packageName: '@websublime/vite-plugin-open-api-server',
+      homepage: 'https://github.com/websublime/vite-open-api-server',
+      logo: 'https://raw.githubusercontent.com/websublime/vite-open-api-server/main/logo.svg',
+      componentStateTypes: ['Mock Server'],
+      app,
+      settings: {
+        autoRefresh: {
+          label: 'Auto-refresh registry',
+          type: 'boolean',
+          defaultValue: true,
+        },
+        refreshInterval: {
+          label: 'Refresh interval (ms)',
+          type: 'text',
+          defaultValue: '5000',
+        },
+      },
+    },
+    (api) => {
+      // Validate DevTools API version compatibility
+      // This check is used by Pinia and Vue Router to detect outdated versions
+      if (typeof api.now !== 'function') {
+        console.warn(
+          '[Mock Server] You seem to be using an outdated version of Vue DevTools. ' +
+          'Please update to the latest stable version for full Mock Server support. ' +
+          'Installation: https://devtools.vuejs.org/guide/installation.html'
+        )
+      }
+
+      // Expose mock server state globally for console debugging
+      // Following Pinia's pattern: globalThis.$pinia = pinia
+      exposeGlobalState(registry, state, mockServerUrl)
+
+      // Register custom inspector for endpoint browsing
+      setupMockServerInspector(api, registry, state, mockServerUrl)
+
+      // Register timeline layer for request logging
+      setupMockServerTimeline(api)
+
+      // Log successful registration
+      if (__DEV__) {
+        console.log(
+          '[Mock Server] Vue DevTools integration registered. ' +
+          'Open DevTools to access the Mock Server tab.'
+        )
+      }
+    }
+  )
+}
+
+/**
+ * Exposes mock server state to globalThis for console debugging.
+ * 
+ * This allows developers to inspect and manipulate mock server state
+ * directly from the browser console, similar to Pinia's $pinia and $store.
+ * 
+ * Available globals:
+ * - globalThis.$mockServer - Main mock server instance
+ * - globalThis.$mockRegistry - Current endpoint registry
+ * 
+ * @example
+ * // In browser console:
+ * $mockServer.url          // 'http://localhost:3456'
+ * $mockServer.connected    // true
+ * $mockRegistry.endpoints  // [...array of endpoints]
+ * $mockRegistry.stats      // { total: 12, customHandlers: 5, ... }
+ */
+function exposeGlobalState(
+  registry: MockEndpointRegistry,
+  state: MockServerState,
+  mockServerUrl: string
+): void {
+  // Define $mockServer global
+  Object.defineProperty(globalThis, '$mockServer', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return {
+        url: mockServerUrl,
+        connected: state.connected,
+        port: state.port,
+        startedAt: state.startedAt,
+        lastError: state.lastError,
+        
+        // Methods for console interaction
+        async refresh() {
+          console.log('[Mock Server] Refreshing registry...')
+          try {
+            const response = await fetch(`${mockServerUrl}/__registry`)
+            const data = await response.json()
+            console.log('[Mock Server] Registry refreshed:', data)
+            return data
+          } catch (error) {
+            console.error('[Mock Server] Failed to refresh:', error)
+            throw error
+          }
+        },
+        
+        getEndpoint(operationId: string) {
+          return registry.getByOperationId(operationId)
+        },
+        
+        listEndpoints() {
+          console.table(registry.getAll().map(e => ({
+            method: e.method,
+            path: e.path,
+            operationId: e.operationId,
+            hasCustomHandler: e.hasCustomHandler,
+          })))
+        },
+      }
+    },
+  })
+
+  // Define $mockRegistry global (shortcut to registry data)
+  Object.defineProperty(globalThis, '$mockRegistry', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return {
+        endpoints: registry.getAll(),
+        stats: {
+          total: registry.count(),
+          customHandlers: registry.countCustomHandlers(),
+          autoGenerated: registry.countAutoGenerated(),
+          withCustomSeed: registry.countCustomSeeds(),
+        },
+        byMethod: registry.groupByMethod(),
+        byOperationId: registry.toMap(),
+      }
+    },
+  })
+
+  if (__DEV__) {
+    console.log(
+      '[Mock Server] Global state exposed. Access via:\n' +
+      '  - $mockServer (server instance)\n' +
+      '  - $mockRegistry (endpoint registry)\n' +
+      'Try: $mockServer.listEndpoints()'
+    )
+  }
+}
+
+// TypeScript declarations for global state
+declare global {
+  /**
+   * Mock Server instance exposed when DevTools are opened.
+   * Provides access to server state and utility methods.
+   */
+  var $mockServer: {
+    url: string
+    connected: boolean
+    port: number
+    startedAt: Date | null
+    lastError: Error | null
+    refresh(): Promise<unknown>
+    getEndpoint(operationId: string): unknown
+    listEndpoints(): void
+  } | undefined
+
+  /**
+   * Mock Registry shortcut exposed when DevTools are opened.
+   * Provides direct access to endpoint data.
+   */
+  var $mockRegistry: {
+    endpoints: unknown[]
+    stats: {
+      total: number
+      customHandlers: number
+      autoGenerated: number
+      withCustomSeed: number
+    }
+    byMethod: Record<string, unknown[]>
+    byOperationId: Map<string, unknown>
+  } | undefined
+}
+```
+
+**Build Configuration:**
+
+The `__DEV__` constant must be defined at build time:
+
+```typescript
+// vite.config.ts
+export default defineConfig({
+  define: {
+    __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+  },
+})
+
+// rollup.config.js
+export default {
+  plugins: [
+    replace({
+      preventAssignment: true,
+      __DEV__: JSON.stringify(process.env.NODE_ENV !== 'production'),
+    }),
+  ],
+}
+```
+
 **Acceptance Criteria:**
 - [ ] Custom "Mock Server" tab appears in Vue DevTools
+- [ ] Plugin only registers in development mode (`__DEV__` guard)
+- [ ] Plugin only registers in browser environment (`IS_CLIENT` guard)
+- [ ] Plugin silently skips if DevTools is not installed (no errors)
+- [ ] API version validation with warning for outdated DevTools
+- [ ] Global `$mockServer` exposed to `globalThis` for console debugging
+- [ ] Global `$mockRegistry` exposed to `globalThis` for registry access
 - [ ] Display complete endpoint registry (operations, methods, paths, operationIds)
 - [ ] Show which endpoints have custom handlers vs auto-generated
 - [ ] Interactive UI to configure simulation parameters for edge cases and errors
@@ -2297,51 +2579,411 @@ npm install --save-dev @vue/devtools-api
 
 **Integration Point:** Vite plugin (`configureServer` hook)
 
+**Detection Pattern:**
+
+The integration follows the established pattern used by Pinia and Vue Router:
+
+```typescript
+// How Pinia detects and registers with DevTools (for reference):
+// 1. Build-time guard: __USE_DEVTOOLS__ (replaced by bundler)
+// 2. Runtime guard: IS_CLIENT (typeof window !== 'undefined')
+// 3. Feature guard: typeof Proxy !== 'undefined' (modern browsers)
+// 4. Silent buffering: setupDevtoolsPlugin buffers until DevTools connects
+// 5. Version check: typeof api.now === 'function' (API compatibility)
+
+// Our implementation mirrors this pattern exactly
+```
+
+**Key Concepts:**
+
+1. **Build-time Guards (`__DEV__`):**
+   - Defined by bundler (Vite/Rollup/Webpack)
+   - Tree-shaken in production builds
+   - Zero runtime cost in production
+
+2. **Runtime Guards (`IS_CLIENT`, `HAS_PROXY`):**
+   - Prevent SSR/Node.js execution
+   - Exclude legacy browsers
+
+3. **Buffer Pattern:**
+   - `setupDevtoolsPlugin` internally buffers plugins
+   - When DevTools connects, buffered plugins are activated
+   - If DevTools never connects, plugins simply don't run
+   - **No errors thrown** if DevTools is missing
+
+4. **Global State Exposure:**
+   - Following Pinia: `globalThis.$pinia`, `globalThis.$store`
+   - We expose: `globalThis.$mockServer`, `globalThis.$mockRegistry`
+   - Enables console debugging without DevTools
+
 **Implementation:**
 
 ```typescript
-// vite-plugin-open-api-server.ts
-import { addCustomTab, onDevToolsClientConnected } from '@vue/devtools-api'
-import type { MockEndpointRegistry } from './types'
+// devtools/index.ts
+import { setupDevtoolsPlugin } from '@vue/devtools-api'
+import type { App } from 'vue'
+import type { MockEndpointRegistry, MockServerState } from '../types'
 
-interface DevToolsIntegration {
-  mockServerUrl: string
-  registry: MockEndpointRegistry
+// Build-time constant (replaced by bundler)
+declare const __DEV__: boolean
+
+// Runtime environment detection
+const IS_CLIENT = typeof window !== 'undefined'
+const HAS_PROXY = typeof Proxy !== 'undefined'
+
+/**
+ * Mock Server DevTools Plugin
+ * 
+ * What: Integrates mock server with Vue DevTools browser extension
+ * How: Uses @vue/devtools-api with conditional registration pattern
+ * Why: Provides visual endpoint inspection and simulation controls
+ * 
+ * @example
+ * // In Vue app main.ts:
+ * import { createApp } from 'vue'
+ * import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server'
+ * 
+ * const app = createApp(App)
+ * 
+ * // Only registers in dev mode, silently skips in production
+ * registerMockServerDevTools(app, {
+ *   mockServerUrl: 'http://localhost:3456',
+ *   registry: mockRegistry,
+ *   state: mockState,
+ * })
+ */
+export function registerMockServerDevTools(
+  app: App,
+  options: {
+    mockServerUrl: string
+    registry: MockEndpointRegistry
+    state: MockServerState
+  }
+): void {
+  // === GUARD CLAUSES ===
+  // These ensure DevTools only activates in appropriate environments
+  
+  // 1. Build-time guard: Skip in production
+  if (!__DEV__) {
+    return
+  }
+
+  // 2. Runtime guard: Skip in SSR/Node.js
+  if (!IS_CLIENT) {
+    return
+  }
+
+  // 3. Feature guard: Skip in legacy browsers
+  if (!HAS_PROXY) {
+    console.warn(
+      '[Mock Server] DevTools requires Proxy support (modern browsers only).'
+    )
+    return
+  }
+
+  const { mockServerUrl, registry, state } = options
+
+  // === PLUGIN REGISTRATION ===
+  // setupDevtoolsPlugin uses internal buffering:
+  // - If DevTools is installed → setup function is called
+  // - If DevTools is NOT installed → setup function is never called (no error)
+  setupDevtoolsPlugin(
+    {
+      id: 'dev.websublime.mock-server',
+      label: 'Mock Server 🔌',
+      packageName: '@websublime/vite-plugin-open-api-server',
+      homepage: 'https://github.com/websublime/vite-open-api-server',
+      logo: 'https://raw.githubusercontent.com/websublime/vite-open-api-server/main/logo.svg',
+      componentStateTypes: ['Mock Server'],
+      app,
+      settings: {
+        autoRefresh: {
+          label: 'Auto-refresh registry',
+          type: 'boolean',
+          defaultValue: true,
+        },
+        refreshInterval: {
+          label: 'Refresh interval (ms)',
+          type: 'text',
+          defaultValue: '5000',
+        },
+      },
+    },
+    (api) => {
+      // === VERSION COMPATIBILITY CHECK ===
+      // Pinia and Vue Router use this pattern to detect outdated DevTools
+      if (typeof api.now !== 'function') {
+        console.warn(
+          '[Mock Server] Outdated Vue DevTools version detected. ' +
+          'Please update: https://devtools.vuejs.org/guide/installation.html'
+        )
+      }
+
+      // === GLOBAL STATE EXPOSURE ===
+      // Expose state to globalThis for console debugging
+      exposeGlobalMockServerState(registry, state, mockServerUrl)
+
+      // === INSPECTOR REGISTRATION ===
+      const INSPECTOR_ID = 'mock-server'
+
+      api.addInspector({
+        id: INSPECTOR_ID,
+        label: 'Mock Server 🔌',
+        icon: 'http',
+        treeFilterPlaceholder: 'Search endpoints...',
+        actions: [
+          {
+            icon: 'refresh',
+            tooltip: 'Refresh registry from server',
+            action: async () => {
+              try {
+                const response = await fetch(`${mockServerUrl}/__registry`)
+                const data = await response.json()
+                registry.updateFromServer(data)
+                api.sendInspectorTree(INSPECTOR_ID)
+                api.sendInspectorState(INSPECTOR_ID)
+              } catch (error) {
+                console.error('[Mock Server] Failed to refresh:', error)
+              }
+            },
+          },
+          {
+            icon: 'content_copy',
+            tooltip: 'Copy registry as JSON',
+            action: () => {
+              const data = JSON.stringify(registry.getAll(), null, 2)
+              navigator.clipboard.writeText(data)
+              console.log('[Mock Server] Registry copied to clipboard')
+            },
+          },
+        ],
+      })
+
+      // Handle inspector tree requests
+      api.on.getInspectorTree((payload) => {
+        if (payload.app === app && payload.inspectorId === INSPECTOR_ID) {
+          const endpoints = registry.getAll()
+          const filtered = payload.filter
+            ? endpoints.filter(e => 
+                e.path.toLowerCase().includes(payload.filter.toLowerCase()) ||
+                e.operationId.toLowerCase().includes(payload.filter.toLowerCase())
+              )
+            : endpoints
+
+          // Group by HTTP method
+          const byMethod = filtered.reduce((acc, e) => {
+            (acc[e.method] ??= []).push(e)
+            return acc
+          }, {} as Record<string, typeof endpoints>)
+
+          payload.rootNodes = Object.entries(byMethod).map(([method, eps]) => ({
+            id: `method-${method}`,
+            label: method,
+            tags: [
+              {
+                label: String(eps.length),
+                textColor: 0xffffff,
+                backgroundColor: getMethodColor(method),
+              },
+            ],
+            children: eps.map(e => ({
+              id: e.operationId,
+              label: e.path,
+              tags: [
+                {
+                  label: e.hasCustomHandler ? 'Custom' : 'Generated',
+                  textColor: 0x000000,
+                  backgroundColor: e.hasCustomHandler ? 0x42b883 : 0xfca130,
+                },
+              ],
+            })),
+          }))
+        }
+      })
+
+      // Handle inspector state requests
+      api.on.getInspectorState((payload) => {
+        if (payload.app === app && payload.inspectorId === INSPECTOR_ID) {
+          const endpoint = registry.getByOperationId(payload.nodeId)
+          if (endpoint) {
+            payload.state = {
+              'Endpoint Details': [
+                { key: 'method', value: endpoint.method },
+                { key: 'path', value: endpoint.path },
+                { key: 'operationId', value: endpoint.operationId },
+                { key: 'hasCustomHandler', value: endpoint.hasCustomHandler },
+                { key: 'hasCustomSeed', value: endpoint.hasCustomSeed },
+              ],
+              'Available Status Codes': endpoint.availableStatusCodes.map(code => ({
+                key: String(code),
+                value: getStatusCodeDescription(code),
+              })),
+              'Simulation URLs': [
+                {
+                  key: 'Normal',
+                  value: `${mockServerUrl}${endpoint.path}`,
+                },
+                {
+                  key: 'Slow (2s delay)',
+                  value: `${mockServerUrl}${endpoint.path}?simulateDelay=2000`,
+                },
+                {
+                  key: 'Error (500)',
+                  value: `${mockServerUrl}${endpoint.path}?simulateStatus=500`,
+                },
+                {
+                  key: 'Timeout',
+                  value: `${mockServerUrl}${endpoint.path}?simulateError=timeout`,
+                },
+              ],
+            }
+          }
+        }
+      })
+
+      // === TIMELINE LAYER ===
+      const TIMELINE_LAYER_ID = 'mock-server:requests'
+
+      api.addTimelineLayer({
+        id: TIMELINE_LAYER_ID,
+        label: 'Mock Server Requests',
+        color: 0x42b883,
+      })
+
+      // Log successful registration
+      console.log(
+        '[Mock Server] Vue DevTools integration registered. ' +
+        'Open DevTools to access the Mock Server inspector.'
+      )
+    }
+  )
 }
 
 /**
- * Registers the Mock Server custom tab in Vue DevTools
+ * Exposes mock server state to globalThis for console debugging.
  * 
- * This function sets up the integration between the mock server and Vue DevTools,
- * creating a custom tab that displays registered endpoints and provides tools
- * for simulating different response scenarios using query parameters.
+ * Following Pinia's pattern of exposing $pinia and $store globals,
+ * we expose $mockServer and $mockRegistry for developer convenience.
  * 
- * @param options - Integration configuration
- * @param options.mockServerUrl - Base URL of the mock server (e.g., 'http://localhost:3456')
- * @param options.registry - Reference to the mock endpoint registry
+ * @param registry - Mock endpoint registry
+ * @param state - Mock server state
+ * @param mockServerUrl - Base URL of the mock server
  */
-function registerMockServerDevTools(options: DevToolsIntegration): void {
-  const { mockServerUrl, registry } = options
-  
-  // Wait for Vue DevTools to be ready
-  onDevToolsClientConnected(() => {
-    console.log('[Mock Server] Registering Vue DevTools tab...')
-    
-    addCustomTab({
-      name: 'vite-mock-server',
-      title: 'Mock Server',
-      icon: 'api',
-      view: {
-        type: 'sfc',
-        sfc: generateMockServerSFC(mockServerUrl)
-      },
-      category: 'advanced'
-    })
-    
-    console.log('[Mock Server] Vue DevTools tab registered successfully')
+function exposeGlobalMockServerState(
+  registry: MockEndpointRegistry,
+  state: MockServerState,
+  mockServerUrl: string
+): void {
+  // Expose $mockServer global
+  Object.defineProperty(globalThis, '$mockServer', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return {
+        url: mockServerUrl,
+        connected: state.connected,
+        port: state.port,
+        startedAt: state.startedAt,
+        lastError: state.lastError,
+        
+        async refresh() {
+          const response = await fetch(`${mockServerUrl}/__registry`)
+          return response.json()
+        },
+        
+        getEndpoint(operationId: string) {
+          return registry.getByOperationId(operationId)
+        },
+        
+        listEndpoints() {
+          console.table(registry.getAll().map(e => ({
+            method: e.method,
+            path: e.path,
+            operationId: e.operationId,
+            handler: e.hasCustomHandler ? 'Custom' : 'Generated',
+          })))
+        },
+      }
+    },
+  })
+
+  // Expose $mockRegistry global
+  Object.defineProperty(globalThis, '$mockRegistry', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return {
+        endpoints: registry.getAll(),
+        stats: registry.getStats(),
+        byMethod: registry.groupByMethod(),
+      }
+    },
   })
 }
 
+/**
+ * Returns color code for HTTP method badge
+ */
+function getMethodColor(method: string): number {
+  const colors: Record<string, number> = {
+    GET: 0x61affe,
+    POST: 0x49cc90,
+    PUT: 0xfca130,
+    DELETE: 0xf93e3e,
+    PATCH: 0x50e3c2,
+    OPTIONS: 0x9012fe,
+    HEAD: 0x9012fe,
+  }
+  return colors[method.toUpperCase()] ?? 0x999999
+}
+
+/**
+ * Returns human-readable description for HTTP status code
+ */
+function getStatusCodeDescription(code: number): string {
+  const descriptions: Record<number, string> = {
+    200: 'OK',
+    201: 'Created',
+    204: 'No Content',
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    409: 'Conflict',
+    422: 'Unprocessable Entity',
+    429: 'Too Many Requests',
+    500: 'Internal Server Error',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+  }
+  return descriptions[code] ?? `HTTP ${code}`
+}
+
+// TypeScript declarations for global state
+declare global {
+  var $mockServer: {
+    url: string
+    connected: boolean
+    port: number
+    startedAt: Date | null
+    lastError: Error | null
+    refresh(): Promise<unknown>
+    getEndpoint(operationId: string): unknown
+    listEndpoints(): void
+  } | undefined
+
+  var $mockRegistry: {
+    endpoints: unknown[]
+    stats: { total: number; customHandlers: number; autoGenerated: number }
+    byMethod: Record<string, unknown[]>
+  } | undefined
+}
+```
+
+**Custom Tab SFC Generator:**
+
+```typescript
 /**
  * Generates the Single File Component (SFC) for the Mock Server DevTools tab
  * 
@@ -3001,20 +3643,103 @@ export { registerMockServerDevTools }
 **Usage in Vite Plugin:**
 
 ```typescript
-// In configureServer hook
+// In Vue app main.ts (client-side registration)
+import { createApp } from 'vue'
+import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+import App from './App.vue'
+
+const app = createApp(App)
+
+// Register Mock Server DevTools integration
+// This only activates in development mode and when DevTools is installed
+// In production or without DevTools, this is a no-op (safe to call unconditionally)
+registerMockServerDevTools(app, {
+  mockServerUrl: import.meta.env.VITE_MOCK_SERVER_URL || 'http://localhost:3456',
+  registry: window.__MOCK_REGISTRY__, // Injected by Vite plugin
+  state: window.__MOCK_STATE__,       // Injected by Vite plugin
+})
+
+app.mount('#app')
+```
+
+```typescript
+// In Vite plugin (server-side injection)
+// vite-plugin-open-api-server.ts
 configureServer(server) {
   // ... existing mock server startup code ...
   
-  // Register Vue DevTools integration after mock server is ready
+  // Inject mock server state into client for DevTools integration
   server.middlewares.use((req, res, next) => {
-    if (mockServerProcess && mockServerReady) {
-      registerMockServerDevTools({
-        mockServerUrl: `http://localhost:${options.port}`,
-        registry: mockEndpointRegistry
-      })
+    if (req.url === '/__mock-inject.js') {
+      res.setHeader('Content-Type', 'application/javascript')
+      res.end(`
+        window.__MOCK_REGISTRY__ = ${JSON.stringify(mockEndpointRegistry.getAll())};
+        window.__MOCK_STATE__ = {
+          connected: true,
+          port: ${options.port},
+          startedAt: new Date('${new Date().toISOString()}'),
+          lastError: null,
+        };
+      `)
+      return
     }
     next()
   })
+}
+
+// In transformIndexHtml hook (inject script into HTML)
+transformIndexHtml(html) {
+  if (options.enabled) {
+    return html.replace(
+      '</head>',
+      '<script src="/__mock-inject.js"></script></head>'
+    )
+  }
+  return html
+}
+```
+
+**Alternative: Auto-registration via Vite Plugin (Recommended):**
+
+```typescript
+// The plugin can auto-register DevTools by injecting a module
+// vite-plugin-open-api-server.ts
+export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
+  return {
+    name: 'vite-plugin-open-api-server',
+    
+    // Inject virtual module for DevTools registration
+    resolveId(id) {
+      if (id === 'virtual:mock-server-devtools') {
+        return '\0virtual:mock-server-devtools'
+      }
+    },
+    
+    load(id) {
+      if (id === '\0virtual:mock-server-devtools') {
+        return `
+          import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+          
+          // Auto-register when Vue app is available
+          if (typeof window !== 'undefined') {
+            const originalMount = window.__VUE_APP__?.mount
+            if (originalMount) {
+              window.__VUE_APP__.mount = function(...args) {
+                registerMockServerDevTools(window.__VUE_APP__, {
+                  mockServerUrl: '${`http://localhost:${options.port}`}',
+                  registry: window.__MOCK_REGISTRY__,
+                  state: window.__MOCK_STATE__,
+                })
+                return originalMount.apply(this, args)
+              }
+            }
+          }
+          
+          export {}
+        `
+      }
+    },
+  }
 }
 ```
 
@@ -4848,6 +5573,7 @@ packages/foc-gpme/
 | 1.0.6-draft | 2026-01-07 | **Critical Gaps Resolved**: (1) **FR-010 Security Scheme Normalization** - Completely expanded with technical documentation, supported security schemes table, before/after examples for Bearer/API Key/OAuth2, mock server behavior specifications, edge cases, limitations, and implementation code. Added 4 detailed examples showing authentication flows. (2) **Section 8.7 IPC Message API** - Expanded from 3 message types to complete protocol specification with 8 message types (INITIALIZING, READY, SHUTDOWN, ERROR, WARNING, LOG, REQUEST, HEARTBEAT), detailed interfaces, message flow examples for successful startup and error scenarios, parent process handler implementation, error codes reference table, and environment variables documentation (~400 lines). (3) **Section 11.4 Error Handling Strategy** - New comprehensive section covering error taxonomy (4 severity levels), error codes with recovery strategies, error message format specification, logging patterns, user-facing message guidelines, error recovery strategies (graceful degradation, auto-retry, circuit breaker, fail-fast), code examples for child/parent error handling, and testing checklist (~300 lines). |
 | 1.0.7-draft | 2026-01-07 | **FR-013/014/015 Reclassified as Core Features**: Moved FR-013 (Preserve Existing x-handler/x-seed), FR-014 (Hot Reload), and FR-015 (Web UI for Mock Management) from section 5.2 "Optional Features" to section 5.1 "Core Features" as they are mandatory requirements, not optional. Updated priorities: FR-013 from P2→P0 (Critical), FR-014 from P3→P1 (High), FR-015 from P3→P1 (High). Expanded FR-014 with complete implementation notes including chokidar file watching, graceful restart logic, and reload timing requirements (<2s). Expanded FR-015 with comprehensive UI specification including dashboard, endpoints view, store data view, request logs, actions (reset/clear/export/import), technical implementation details, and benefits. Added new section 5.2 "Future Enhancements" for actual optional features (FE-001: TypeScript support, FE-002: GraphQL, FE-003: SQLite persistence). |
 | 1.0.8-draft | 2026-01-07 | **FR-015 Replaced with Vue DevTools Integration for Comprehensive Edge Case Testing**: Replaced FR-015 standalone Web UI (`/__mock-ui`) with Vue DevTools Plugin API integration (`@vue/devtools-api` ^7.3.0). Added custom "Mock Server" tab in Vue DevTools browser extension aligned with Value Proposition (section 1.2): "Simulate edge cases, errors, and network conditions". **Comprehensive Simulation Capabilities:** (1) HTTP status codes (2xx, 4xx, 5xx ranges), (2) Network conditions (latency presets: Fast/Slow/3G/4G, custom delays 0-10000ms), (3) Error scenarios (timeout, network failure, server error, rate limiting, maintenance), (4) Edge cases (empty responses, malformed JSON, partial content, large payloads), (5) Connection quality (stable, intermittent, drop), (6) Advanced options (custom headers, failure probability 0-100%, timeout duration, simulation presets). **Query Parameters:** `simulateStatus`, `simulateDelay`, `simulateError`, `simulateConnection`, `simulateResponse`, `simulateTimeout`, `simulateProbability`, `simulateHeaders`. **Features:** Endpoint registry with filters, simulation panel with visual controls, preset management (save/load scenarios like "Slow 3G", "Rate Limited", "Server Overload"), real-time sync via `GET /__registry` (5s polling), copy-to-clipboard and test-in-browser actions. Updated section 7.4.2 with @vue/devtools-api integration including simulation capabilities reference and query parameters table. Updated section 13.3 Supporting Dependencies with @vue/devtools-api details. Benefits: comprehensive error handling validation, realistic network simulation, zero UI infrastructure, seamless workflow integration. |
+| 1.0.9-draft | 2026-01-08 | **FR-015 DevTools Detection Strategy**: Added comprehensive DevTools detection pattern following Pinia and Vue Router implementation. **Detection Strategy:** (1) Build-time guard (`__DEV__` constant, tree-shaken in production), (2) Runtime guard (`IS_CLIENT` for browser environment, excludes SSR), (3) Feature guard (`HAS_PROXY` for modern browsers), (4) Silent buffer pattern (plugins buffered until DevTools connects, no errors if DevTools missing), (5) API version validation (`typeof api.now === 'function'` check). **Global State Exposure:** Following Pinia's pattern, exposed `globalThis.$mockServer` and `globalThis.$mockRegistry` for console debugging. `$mockServer` provides: url, connected, port, startedAt, lastError, refresh(), getEndpoint(), listEndpoints(). `$mockRegistry` provides: endpoints, stats, byMethod, byOperationId. **Updated Sections:** FR-015 acceptance criteria (added 7 new criteria for detection/exposure), section 7.4.2 with complete implementation code including `registerMockServerDevTools()`, `exposeGlobalMockServerState()`, helper functions, TypeScript declarations, and Vite plugin integration examples. Added build configuration for `__DEV__` constant. Research based on Pinia (`@vue/devtools-api` integration in `packages/pinia/src/devtools/plugin.ts`) and Vue DevTools Kit (`@vue/devtools-kit` source code). |
 
 ---
 
