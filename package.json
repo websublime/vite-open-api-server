@@ -1,0 +1,24 @@
+{
+  "name": "@websublime/vite-open-api-server-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo for vite-open-api-server plugin and playground",
+  "scripts": {
+    "preinstall": "npx only-allow pnpm"
+  },
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "keywords": [
+    "vite",
+    "plugin",
+    "openapi",
+    "mock-server",
+    "monorepo"
+  ],
+  "author": "Websublime",
+  "license": "MIT"
+}
