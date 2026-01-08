@@ -80,7 +80,7 @@ Unlike generic mock servers (json-server, MSW) that require manual mock definiti
 
 This specification covers:
 - Vite plugin implementation
-- Mock server runner process
+- OpenAPI server runner process
 - Seed data system
 - Custom handler system
 - Proxy configuration
@@ -131,12 +131,12 @@ This specification covers:
 |------|-------------|----------------|
 | **G-005** | Developer experience | <5 second startup time |
 | **G-006** | Debugging support | Full request/response logging |
-| **G-007** | Process isolation | Mock server crash doesn't affect Vite |
+| **G-007** | Process isolation | OpenAPI server crash doesn't affect Vite |
 | **G-008** | Graceful degradation | Fallback to real backend if mock fails |
 
 ### 3.3 Non-Goals (Out of Scope)
 
-- Production deployment of mock server
+- Production deployment of openapi server
 - Persistent data storage across restarts
 - Authentication/authorization enforcement
 - Performance/load testing capabilities
@@ -197,8 +197,8 @@ This specification covers:
 
 **Acceptance Criteria:**
 - [ ] Register as a standard Vite plugin
-- [ ] Start mock server when Vite dev server starts
-- [ ] Stop mock server when Vite dev server stops
+- [ ] Start openapi server when Vite dev server starts
+- [ ] Stop openapi server when Vite dev server stops
 - [ ] Configure proxy rules automatically
 - [ ] Only activate during `serve` mode (not `build`)
 - [ ] Respect `enabled` configuration option
@@ -213,7 +213,7 @@ This specification covers:
 
 **Priority:** P0 (Critical)
 
-**Description:** Use `@scalar/openapi-parser` for robust OpenAPI document parsing, validation, and manipulation as the foundation for all mock server operations.
+**Description:** Use `@scalar/openapi-parser` for robust OpenAPI document parsing, validation, and manipulation as the foundation for all openapi server operations.
 
 **Rationale:**
 The Scalar ecosystem provides a dedicated OpenAPI parser that handles:
@@ -223,7 +223,7 @@ The Scalar ecosystem provides a dedicated OpenAPI parser that handles:
 - Document validation
 - Safe document manipulation
 
-This MUST be the first step before any document enhancement or mock server creation.
+This MUST be the first step before any document enhancement or openapi server creation.
 
 **Acceptance Criteria:**
 - [ ] Use `@scalar/openapi-parser` as the primary parsing library
@@ -296,8 +296,8 @@ function countOperations(document) {
                     MOCK SERVER - LOADING OPENAPI SPECIFICATION
 ═══════════════════════════════════════════════════════════════════════════════
 
-  ✓ Loaded: gpme-bff-service.openapi.bundle.yaml
-  ✓ API: GPme BFF Service v1.0.0
+  ✓ Loaded: pet-api-service.openapi.bundle.yaml
+  ✓ API: Pet API Service v1.0.0
   ✓ Endpoints: 47 operations
   ✓ Schemas: 25 definitions
   ✓ Validation: Passed (0 errors, 2 warnings)
@@ -311,14 +311,14 @@ function countOperations(document) {
                     MOCK SERVER - OPENAPI SPECIFICATION ERROR
 ═══════════════════════════════════════════════════════════════════════════════
 
-  ✖ Failed to load: gpme-bff-service.openapi.bundle.yaml
+  ✖ Failed to load: pet-api-service.openapi.bundle.yaml
   
   Validation Errors:
     ✖ Line 45: Invalid $ref '#/components/schemas/UnknownType'
     ✖ Line 123: Missing required field 'responses' in operation
     ✖ Line 200: Duplicate operationId 'getVehicles'
   
-  Mock server cannot start with invalid OpenAPI specification.
+  OpenAPI server cannot start with invalid OpenAPI specification.
 ```
 
 ---
@@ -837,7 +837,7 @@ The Scalar Mock Server natively supports two extensions:
 - **`x-handler`**: JavaScript code in operations (paths) for custom request handling
 - **`x-seed`**: JavaScript code in schemas (components/schemas) for initial data seeding
 
-These extensions must be present in the OpenAPI document when `createMockServer()` is called. Our approach is to load handler/seed logic from external `.mjs` files and inject them as strings into the appropriate locations in the OpenAPI document.
+These extensions must be present in the OpenAPI document when `createOpenApiServer()` is called. Our approach is to load handler/seed logic from external `.mjs` files and inject them as strings into the appropriate locations in the OpenAPI document.
 
 **Acceptance Criteria:**
 - [ ] Clone OpenAPI document in memory (preserve original)
@@ -910,7 +910,7 @@ function enhanceOpenApiDocument(document, handlers, seeds) {
 
 ---
 
-#### FR-006: Mock Endpoint Registry
+#### FR-006: OpenAPI Endpoint Registry
 
 **Priority:** P0 (Critical)
 
@@ -939,9 +939,9 @@ Without a registry, there's no visibility into:
 
 **Registry Data Structure:**
 ```typescript
-interface MockEndpointRegistry {
+interface OpenApiEndpointRegistry {
   /** All endpoints extracted from OpenAPI spec */
-  endpoints: MockEndpointEntry[];
+  endpoints: OpenApiEndpointEntry[];
   
   /** All schemas with seed data */
   seededSchemas: MockSchemaEntry[];
@@ -956,7 +956,7 @@ interface MockEndpointRegistry {
   };
 }
 
-interface MockEndpointEntry {
+interface OpenApiEndpointEntry {
   /** HTTP method (GET, POST, etc.) */
   method: string;
   
@@ -1061,10 +1061,10 @@ curl http://localhost:3456/_mock/registry
 
 **Priority:** P0 (Critical)
 
-**Description:** The plugin MUST proxy specified API requests from Vite dev server to the mock server.
+**Description:** The plugin MUST proxy specified API requests from Vite dev server to the openapi server.
 
 **Acceptance Criteria:**
-- [ ] Configurable proxy path (e.g., `/gpme/bff`)
+- [ ] Configurable proxy path (e.g., `/pet/api`)
 - [ ] Path rewriting from proxy path to root
 - [ ] Preserve request headers
 - [ ] Preserve request body
@@ -1074,7 +1074,7 @@ curl http://localhost:3456/_mock/registry
 **Configuration:**
 ```typescript
 {
-  proxyPath: '/gpme/bff',  // Requests to /gpme/bff/* forwarded to mock server
+  proxyPath: '/pet/api',  // Requests to /pet/api/* forwarded to openapi server
 }
 ```
 
@@ -1084,7 +1084,7 @@ curl http://localhost:3456/_mock/registry
 
 **Priority:** P1 (High)
 
-**Description:** The plugin MUST log all mock server activity through Vite's logging system.
+**Description:** The plugin MUST log all openapi server activity through Vite's logging system.
 
 **Acceptance Criteria:**
 - [ ] Log each incoming request with method, path, and operationId
@@ -1096,9 +1096,9 @@ curl http://localhost:3456/_mock/registry
 
 **Example Output:**
 ```
-[Mock] → GET     /api/v1/vehicles [fetch_vehicles]
-[Mock] ✔ 200 GET /api/v1/vehicles
-[Mock] ✖ 401 POST /api/v1/orders
+[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]
+[OpenAPI] ✔ 200 GET /api/v1/vehicles
+[OpenAPI] ✖ 401 POST /api/v1/orders
 ```
 
 ---
@@ -1151,7 +1151,7 @@ OpenAPI specifications often define security schemes that require authentication
 2. Test 401/403 error handling flows
 3. Avoid complex authentication setup (real JWTs, OAuth flows, etc.)
 
-The mock server achieves this by:
+The openapi server achieves this by:
 - **Validating presence** of credentials (header, query param, cookie)
 - **Accepting any value** as valid (no signature verification, no token expiry)
 - **Returning 401 Unauthorized** only when credentials are completely missing
@@ -1241,7 +1241,7 @@ components:
       bearerFormat: JWT
 ```
 
-**Mock Server Behavior:**
+**OpenAPI Server Behavior:**
 
 ```bash
 # ✅ Request WITH Authorization header (any token accepted)
@@ -1280,7 +1280,7 @@ components:
       name: X-API-Key
 ```
 
-**Mock Server Behavior:**
+**OpenAPI Server Behavior:**
 
 ```bash
 # ✅ Request WITH X-API-Key header
@@ -1307,7 +1307,7 @@ paths:
           description: Success
 ```
 
-**Mock Server Behavior:**
+**OpenAPI Server Behavior:**
 
 ```bash
 # ✅ With Bearer token
@@ -1343,9 +1343,9 @@ components:
             write: Write access
 ```
 
-**Mock Server Behavior:**
+**OpenAPI Server Behavior:**
 
-- **No actual OAuth flow** - mock server doesn't redirect to authorization URL
+- **No actual OAuth flow** - openapi server doesn't redirect to authorization URL
 - **No token validation** - doesn't verify token signature or expiry
 - **No scope validation** - doesn't check if token has required scopes
 - **Presence check only** - validates that `Authorization: Bearer <token>` header exists
@@ -1360,7 +1360,7 @@ curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/re
 
 - [ ] Use `@scalar/openapi-parser`'s `sanitize()` to normalize security schemes
 - [ ] Auto-generate missing `components.securitySchemes` definitions
-- [ ] Mock server validates **presence** of credentials (not validity)
+- [ ] OpenAPI server validates **presence** of credentials (not validity)
 - [ ] Return 401 Unauthorized when required credentials are missing
 - [ ] Accept any non-empty credential value as valid
 - [ ] Support all OpenAPI security scheme types (http, apiKey, oauth2, openIdConnect)
@@ -1368,7 +1368,7 @@ curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/re
 - [ ] Log normalized security schemes on startup:
 
 ```
-[Mock] Security Schemes Detected:
+[OpenAPI] Security Schemes Detected:
   ✓ bearerAuth (HTTP Bearer) - Used by 12 endpoints
   ✓ apiKeyAuth (API Key in header: X-API-Key) - Used by 5 endpoints
   ✓ oauth2 (OAuth2) - Used by 8 endpoints
@@ -1391,7 +1391,7 @@ curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/re
 
 4. **Security AND Logic Not Supported:**
    - OpenAPI supports AND logic: `security: [{ scheme1: [], scheme2: [] }]`
-   - Mock server may treat this as OR logic (implementation-dependent)
+   - OpenAPI server may treat this as OR logic (implementation-dependent)
 
 5. **Custom Security Schemes:**
    - Custom `x-` extensions in security schemes may be ignored
@@ -1421,7 +1421,7 @@ curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/re
 
 3. **Mock Different Token Values:**
    ```typescript
-   // Mock server accepts any token, so you can use semantic values for debugging
+   // OpenAPI server accepts any token, so you can use semantic values for debugging
    headers: {
      'Authorization': 'Bearer user-john-doe-session-123'
    }
@@ -1430,7 +1430,7 @@ curl -H "Authorization: Bearer fake-oauth-token" http://localhost:3456/api/v1/re
 **Technical Implementation:**
 
 ```typescript
-// In mock-server-runner.mjs
+// In openapi-server-runner.mjs
 import { sanitize } from '@scalar/openapi-parser';
 
 async function loadAndNormalizeOpenApi(filePath: string) {
@@ -1456,11 +1456,11 @@ function logSecuritySchemes(document: OpenAPIDocument) {
   const schemes = document.components?.securitySchemes || {};
   
   if (Object.keys(schemes).length === 0) {
-    console.log('[Mock] ℹ No security schemes defined');
+    console.log('[OpenAPI] ℹ No security schemes defined');
     return;
   }
   
-  console.log('[Mock] Security Schemes Detected:');
+  console.log('[OpenAPI] Security Schemes Detected:');
   
   for (const [name, scheme] of Object.entries(schemes)) {
     const usageCount = countSecurityUsage(document, name);
@@ -1476,12 +1476,12 @@ function logSecuritySchemes(document: OpenAPIDocument) {
 
 **Priority:** P1 (High)
 
-**Description:** The mock server MUST run as an isolated child process.
+**Description:** The openapi server MUST run as an isolated child process.
 
 **Acceptance Criteria:**
-- [ ] Spawn mock server using Node.js `fork()`
-- [ ] IPC communication between plugin and mock server
-- [ ] Mock server crash doesn't crash Vite
+- [ ] Spawn openapi server using Node.js `fork()`
+- [ ] IPC communication between plugin and openapi server
+- [ ] OpenAPI server crash doesn't crash Vite
 - [ ] Graceful shutdown on SIGTERM/SIGINT
 - [ ] Force kill after timeout if graceful shutdown fails
 - [ ] Proper cleanup on Vite server close
@@ -1492,13 +1492,13 @@ function logSecuritySchemes(document: OpenAPIDocument) {
 
 **Priority:** P1 (High)
 
-**Description:** The plugin MUST wait for mock server readiness before Vite serves requests.
+**Description:** The plugin MUST wait for openapi server readiness before Vite serves requests.
 
 **Acceptance Criteria:**
-- [ ] Mock server sends `ready` message via IPC
+- [ ] OpenAPI server sends `ready` message via IPC
 - [ ] Configurable startup timeout (default: 15000ms)
 - [ ] Clear error message if startup times out
-- [ ] Display mock server URL on successful startup
+- [ ] Display openapi server URL on successful startup
 
 ---
 
@@ -1527,7 +1527,7 @@ if (operation['x-handler'] && handlers[operationId]) {
 
 **Priority:** P1 (High)
 
-**Description:** Automatically reload seed and handler files when they change, re-inject into OpenAPI document, and restart mock server without requiring full Vite dev server restart.
+**Description:** Automatically reload seed and handler files when they change, re-inject into OpenAPI document, and restart openapi server without requiring full Vite dev server restart.
 
 **Prerequisites:**
 - FR-003, FR-004, FR-005 implemented
@@ -1537,7 +1537,7 @@ if (operation['x-handler'] && handlers[operationId]) {
 - [ ] Detect file add/modify/delete events
 - [ ] Reload modified handler/seed files
 - [ ] Re-enhance OpenAPI document with updated x-handler/x-seed
-- [ ] Gracefully restart mock server child process
+- [ ] Gracefully restart openapi server child process
 - [ ] Preserve in-memory store data across restarts (optional but recommended)
 - [ ] Display clear reload notification in Vite console
 - [ ] Reload completes in < 2 seconds
@@ -1553,22 +1553,22 @@ const watcher = watch([handlersDir, seedsDir], {
 });
 
 watcher.on('change', async (path) => {
-  server.config.logger.info(`[Mock] File changed: ${path}`);
-  server.config.logger.info(`[Mock] Reloading mock server...`);
+  server.config.logger.info(`[OpenAPI] File changed: ${path}`);
+  server.config.logger.info(`[OpenAPI] Reloading openapi server...`);
   
   // 1. Kill existing child process
-  if (mockServerProcess) {
-    mockServerProcess.kill('SIGTERM');
-    await waitForExit(mockServerProcess, 5000);
+  if (openApiServerProcess) {
+    openApiServerProcess.kill('SIGTERM');
+    await waitForExit(openApiServerProcess, 5000);
   }
   
   // 2. Respawn with same environment
-  mockServerProcess = fork('mock-server-runner.mjs', [], { env: {...} });
+  openApiServerProcess = fork('openapi-server-runner.mjs', [], { env: {...} });
   
   // 3. Wait for READY message
-  await waitForReady(mockServerProcess, 10000);
+  await waitForReady(openApiServerProcess, 10000);
   
-  server.config.logger.info(`[Mock] ✓ Mock server reloaded`);
+  server.config.logger.info(`[OpenAPI] ✓ OpenAPI server reloaded`);
 });
 ```
 
@@ -1595,14 +1595,14 @@ The plugin follows the same pattern as Pinia and Vue Router for DevTools integra
 2. **Buffer Pattern:** Plugins are buffered and activated when DevTools connects
 3. **Silent Fallback:** If DevTools is not installed, the plugin simply doesn't activate (no errors)
 4. **Version Validation:** Check API compatibility on connection
-5. **Global State Exposure:** Expose mock server state to `globalThis` for debugging
+5. **Global State Exposure:** Expose openapi server state to `globalThis` for debugging
 
 **Detection Implementation:**
 
 ```typescript
 import { setupDevtoolsPlugin } from '@vue/devtools-api'
 import type { App } from 'vue'
-import type { MockEndpointRegistry, MockServerState } from './types'
+import type { OpenApiEndpointRegistry, OpenApiServerState } from './types'
 
 // Build-time constants (replaced by bundler)
 declare const __DEV__: boolean
@@ -1612,7 +1612,7 @@ const IS_CLIENT = typeof window !== 'undefined'
 const HAS_PROXY = typeof Proxy !== 'undefined'
 
 /**
- * Registers Mock Server integration with Vue DevTools.
+ * Registers OpenAPI Server integration with Vue DevTools.
  * 
  * This function follows the same pattern as Pinia and Vue Router:
  * - Only activates in development mode (controlled by __DEV__ flag)
@@ -1623,14 +1623,14 @@ const HAS_PROXY = typeof Proxy !== 'undefined'
  * - Exposes global state for console debugging
  * 
  * @param app - Vue application instance
- * @param options - Mock server configuration and state
+ * @param options - OpenAPI server configuration and state
  */
-export function registerMockServerDevTools(
+export function registerOpenApiServerDevTools(
   app: App,
   options: {
-    mockServerUrl: string
-    registry: MockEndpointRegistry
-    state: MockServerState
+    openApiServerUrl: string
+    registry: OpenApiEndpointRegistry
+    state: OpenApiServerState
   }
 ): void {
   // Guard: Only register in development mode
@@ -1647,13 +1647,13 @@ export function registerMockServerDevTools(
   // Guard: Require Proxy support (excludes old browsers like IE11)
   if (!HAS_PROXY) {
     console.warn(
-      '[Mock Server] DevTools integration requires Proxy support. ' +
+      '[OpenAPI Server] DevTools integration requires Proxy support. ' +
       'Please use a modern browser.'
     )
     return
   }
 
-  const { mockServerUrl, registry, state } = options
+  const { openApiServerUrl, registry, state } = options
 
   // Register with Vue DevTools using the standard plugin API
   // This is buffered internally - if DevTools isn't installed,
@@ -1661,11 +1661,11 @@ export function registerMockServerDevTools(
   setupDevtoolsPlugin(
     {
       id: 'dev.websublime.mock-server',
-      label: 'Mock Server 🔌',
+      label: 'OpenAPI Server 🔌',
       packageName: '@websublime/vite-plugin-open-api-server',
       homepage: 'https://github.com/websublime/vite-open-api-server',
       logo: 'https://raw.githubusercontent.com/websublime/vite-open-api-server/main/logo.svg',
-      componentStateTypes: ['Mock Server'],
+      componentStateTypes: ['OpenAPI Server'],
       app,
       settings: {
         autoRefresh: {
@@ -1685,27 +1685,27 @@ export function registerMockServerDevTools(
       // This check is used by Pinia and Vue Router to detect outdated versions
       if (typeof api.now !== 'function') {
         console.warn(
-          '[Mock Server] You seem to be using an outdated version of Vue DevTools. ' +
-          'Please update to the latest stable version for full Mock Server support. ' +
+          '[OpenAPI Server] You seem to be using an outdated version of Vue DevTools. ' +
+          'Please update to the latest stable version for full OpenAPI Server support. ' +
           'Installation: https://devtools.vuejs.org/guide/installation.html'
         )
       }
 
-      // Expose mock server state globally for console debugging
+      // Expose openapi server state globally for console debugging
       // Following Pinia's pattern: globalThis.$pinia = pinia
-      exposeGlobalState(registry, state, mockServerUrl)
+      exposeGlobalState(registry, state, openApiServerUrl)
 
       // Register custom inspector for endpoint browsing
-      setupMockServerInspector(api, registry, state, mockServerUrl)
+      setupOpenApiServerInspector(api, registry, state, openApiServerUrl)
 
       // Register timeline layer for request logging
-      setupMockServerTimeline(api)
+      setupOpenApiServerTimeline(api)
 
       // Log successful registration
       if (__DEV__) {
         console.log(
-          '[Mock Server] Vue DevTools integration registered. ' +
-          'Open DevTools to access the Mock Server tab.'
+          '[OpenAPI Server] Vue DevTools integration registered. ' +
+          'Open DevTools to access the OpenAPI Server tab.'
         )
       }
     }
@@ -1713,34 +1713,34 @@ export function registerMockServerDevTools(
 }
 
 /**
- * Exposes mock server state to globalThis for console debugging.
+ * Exposes openapi server state to globalThis for console debugging.
  * 
- * This allows developers to inspect and manipulate mock server state
+ * This allows developers to inspect and manipulate openapi server state
  * directly from the browser console, similar to Pinia's $pinia and $store.
  * 
  * Available globals:
- * - globalThis.$mockServer - Main mock server instance
- * - globalThis.$mockRegistry - Current endpoint registry
+ * - globalThis.$openApiServer - Main openapi server instance
+ * - globalThis.$openApiRegistry - Current endpoint registry
  * 
  * @example
  * // In browser console:
- * $mockServer.url          // 'http://localhost:3456'
- * $mockServer.connected    // true
- * $mockRegistry.endpoints  // [...array of endpoints]
- * $mockRegistry.stats      // { total: 12, customHandlers: 5, ... }
+ * $openApiServer.url          // 'http://localhost:3456'
+ * $openApiServer.connected    // true
+ * $openApiRegistry.endpoints  // [...array of endpoints]
+ * $openApiRegistry.stats      // { total: 12, customHandlers: 5, ... }
  */
 function exposeGlobalState(
-  registry: MockEndpointRegistry,
-  state: MockServerState,
-  mockServerUrl: string
+  registry: OpenApiEndpointRegistry,
+  state: OpenApiServerState,
+  openApiServerUrl: string
 ): void {
-  // Define $mockServer global
-  Object.defineProperty(globalThis, '$mockServer', {
+  // Define $openApiServer global
+  Object.defineProperty(globalThis, '$openApiServer', {
     configurable: true,
     enumerable: true,
     get() {
       return {
-        url: mockServerUrl,
+        url: openApiServerUrl,
         connected: state.connected,
         port: state.port,
         startedAt: state.startedAt,
@@ -1748,14 +1748,14 @@ function exposeGlobalState(
         
         // Methods for console interaction
         async refresh() {
-          console.log('[Mock Server] Refreshing registry...')
+          console.log('[OpenAPI Server] Refreshing registry...')
           try {
-            const response = await fetch(`${mockServerUrl}/__registry`)
+            const response = await fetch(`${openApiServerUrl}/__openapi/registry`)
             const data = await response.json()
-            console.log('[Mock Server] Registry refreshed:', data)
+            console.log('[OpenAPI Server] Registry refreshed:', data)
             return data
           } catch (error) {
-            console.error('[Mock Server] Failed to refresh:', error)
+            console.error('[OpenAPI Server] Failed to refresh:', error)
             throw error
           }
         },
@@ -1776,8 +1776,8 @@ function exposeGlobalState(
     },
   })
 
-  // Define $mockRegistry global (shortcut to registry data)
-  Object.defineProperty(globalThis, '$mockRegistry', {
+  // Define $openApiRegistry global (shortcut to registry data)
+  Object.defineProperty(globalThis, '$openApiRegistry', {
     configurable: true,
     enumerable: true,
     get() {
@@ -1797,10 +1797,10 @@ function exposeGlobalState(
 
   if (__DEV__) {
     console.log(
-      '[Mock Server] Global state exposed. Access via:\n' +
-      '  - $mockServer (server instance)\n' +
-      '  - $mockRegistry (endpoint registry)\n' +
-      'Try: $mockServer.listEndpoints()'
+      '[OpenAPI Server] Global state exposed. Access via:\n' +
+      '  - $openApiServer (server instance)\n' +
+      '  - $openApiRegistry (endpoint registry)\n' +
+      'Try: $openApiServer.listEndpoints()'
     )
   }
 }
@@ -1808,10 +1808,10 @@ function exposeGlobalState(
 // TypeScript declarations for global state
 declare global {
   /**
-   * Mock Server instance exposed when DevTools are opened.
+   * OpenAPI Server instance exposed when DevTools are opened.
    * Provides access to server state and utility methods.
    */
-  var $mockServer: {
+  var $openApiServer: {
     url: string
     connected: boolean
     port: number
@@ -1826,7 +1826,7 @@ declare global {
    * Mock Registry shortcut exposed when DevTools are opened.
    * Provides direct access to endpoint data.
    */
-  var $mockRegistry: {
+  var $openApiRegistry: {
     endpoints: unknown[]
     stats: {
       total: number
@@ -1864,13 +1864,13 @@ export default {
 ```
 
 **Acceptance Criteria:**
-- [ ] Custom "Mock Server" tab appears in Vue DevTools
+- [ ] Custom "OpenAPI Server" tab appears in Vue DevTools
 - [ ] Plugin only registers in development mode (`__DEV__` guard)
 - [ ] Plugin only registers in browser environment (`IS_CLIENT` guard)
 - [ ] Plugin silently skips if DevTools is not installed (no errors)
 - [ ] API version validation with warning for outdated DevTools
-- [ ] Global `$mockServer` exposed to `globalThis` for console debugging
-- [ ] Global `$mockRegistry` exposed to `globalThis` for registry access
+- [ ] Global `$openApiServer` exposed to `globalThis` for console debugging
+- [ ] Global `$openApiRegistry` exposed to `globalThis` for registry access
 - [ ] Display complete endpoint registry (operations, methods, paths, operationIds)
 - [ ] Show which endpoints have custom handlers vs auto-generated
 - [ ] Interactive UI to configure simulation parameters for edge cases and errors
@@ -1880,8 +1880,8 @@ export default {
 - [ ] Simulate edge cases (malformed responses, partial content, empty responses)
 - [ ] Configure response delays (latency simulation from 0ms to 10s+)
 - [ ] Copy endpoint URLs with simulation parameters to clipboard
-- [ ] Real-time sync with mock server registry
-- [ ] Show connection status to mock server
+- [ ] Real-time sync with openapi server registry
+- [ ] Show connection status to openapi server
 - [ ] Filter endpoints by method, path, or handler type
 - [ ] Save and load simulation presets
 
@@ -1889,7 +1889,7 @@ export default {
 
 1. **Connection Status:**
    ```
-   🟢 Mock Server Connected (http://localhost:3456)
+   🟢 OpenAPI Server Connected (http://localhost:3456)
    Endpoints: 12 | Custom Handlers: 5 | Auto-generated: 7
    ```
 
@@ -2012,15 +2012,15 @@ export default {
    import { addCustomTab, onDevToolsClientConnected } from '@vue/devtools-api'
    
    // During Vite plugin initialization
-   function registerDevToolsTab(mockServerUrl: string, registry: MockEndpointRegistry) {
+   function registerDevToolsTab(openApiServerUrl: string, registry: OpenApiEndpointRegistry) {
      onDevToolsClientConnected(() => {
        addCustomTab({
          name: 'mock-server',
-         title: 'Mock Server',
+         title: 'OpenAPI Server',
          icon: 'api',
          view: {
            type: 'sfc',
-           sfc: generateDevToolsSFC(mockServerUrl, registry)
+           sfc: generateDevToolsSFC(openApiServerUrl, registry)
          },
          category: 'advanced'
        })
@@ -2029,7 +2029,7 @@ export default {
    ```
 
 2. **Real-time Registry Sync:**
-   - Mock server exposes `GET /__registry` endpoint returning JSON
+   - OpenAPI server exposes `GET /__openapi/registry` endpoint returning JSON
    - DevTools tab polls this endpoint every 5 seconds
    - Updates UI when registry changes (hot reload scenarios)
 
@@ -2082,10 +2082,10 @@ export default {
    }
    ```
 
-4. **Mock Server Registry Endpoint:**
+4. **OpenAPI Server Registry Endpoint:**
    ```typescript
-   // In mock-server-runner.mjs
-   app.get('/__registry', (req, res) => {
+   // In openapi-server-runner.mjs
+   app.get('/__openapi/registry', (req, res) => {
      res.json({
        endpoints: registry.getAll(),
        stats: {
@@ -2169,7 +2169,7 @@ The following features are planned for future releases but not required for v1.0
 
 **Priority:** P3 (Low - Future)
 
-**Description:** Extend mock server to support GraphQL schemas in addition to OpenAPI/REST.
+**Description:** Extend openapi server to support GraphQL schemas in addition to OpenAPI/REST.
 
 ---
 
@@ -2187,7 +2187,7 @@ The following features are planned for future releases but not required for v1.0
 
 | Requirement | Target | Measurement |
 |-------------|--------|-------------|
-| **NFR-001** | Mock server startup time | < 5 seconds (including registry build) |
+| **NFR-001** | OpenAPI server startup time | < 5 seconds (including registry build) |
 | **NFR-002** | Request latency overhead | < 50ms |
 | **NFR-003** | Memory usage | < 150MB (including registry) |
 | **NFR-004** | Concurrent request handling | 100+ requests/second |
@@ -2237,7 +2237,7 @@ The following features are planned for future releases but not required for v1.0
 │  │   │  Vue Application  │───▶│  vite-plugin-open-api-server    │   │   │
 │  │   │                   │    │                                  │   │   │
 │  │   │  - Components     │    │  - Plugin lifecycle hooks        │   │   │
-│  │   │  - BffApi calls   │    │  - Proxy configuration           │   │   │
+│  │   │  - PetApi calls   │    │  - Proxy configuration           │   │   │
 │  │   │  - EnvStore       │    │  - Process management            │   │   │
 │  │   │                   │    │  - Log forwarding                │   │   │
 │  │   └───────────────────┘    └────────────┬─────────────────────┘   │   │
@@ -2245,7 +2245,7 @@ The following features are planned for future releases but not required for v1.0
 │  │                                         │ fork() + IPC             │   │
 │  │                                         ▼                          │   │
 │  │   ┌─────────────────────────────────────────────────────────────┐ │   │
-│  │   │                  Mock Server Runner                         │ │   │
+│  │   │                  OpenAPI Server Runner                         │ │   │
 │  │   │                  (Child Process)                            │ │   │
 │  │   │                                                             │ │   │
 │  │   │   ┌─────────────────┐    ┌─────────────────────────────┐  │ │   │
@@ -2270,7 +2270,7 @@ The following features are planned for future releases but not required for v1.0
 │  └─────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │  Port 5173: Vite Dev Server (Vue App)                                      │
-│  Port 3456: Mock Server (API)                                              │
+│  Port 3456: OpenAPI Server (API)                                              │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -2288,10 +2288,10 @@ The following features are planned for future releases but not required for v1.0
 
 **Key Interfaces:**
 ```typescript
-interface MockServerPluginOptions {
+interface OpenApiServerPluginOptions {
   openApiPath: string;      // Path to OpenAPI spec
-  port?: number;            // Mock server port (default: 3456)
-  proxyPath?: string;       // Proxy path (default: '/gpme/bff')
+  port?: number;            // OpenAPI server port (default: 3456)
+  proxyPath?: string;       // Proxy path (default: '/pet/api')
   seedsDir?: string;        // Seeds directory path
   handlersDir?: string;     // Handlers directory path
   enabled?: boolean;        // Enable/disable plugin
@@ -2300,7 +2300,7 @@ interface MockServerPluginOptions {
 }
 ```
 
-#### 7.2.2 Mock Server Runner (`mock-server-runner.mjs`)
+#### 7.2.2 OpenAPI Server Runner (`openapi-server-runner.mjs`)
 
 **Responsibilities:**
 - Load and parse OpenAPI specification
@@ -2318,11 +2318,11 @@ interface MockServerPluginOptions {
 **Environment Variables:**
 | Variable | Description |
 |----------|-------------|
-| `MOCK_SERVER_PORT` | Port number |
-| `MOCK_SERVER_OPENAPI_PATH` | Absolute path to OpenAPI spec |
-| `MOCK_SERVER_SEEDS_DIR` | Absolute path to seeds directory |
-| `MOCK_SERVER_HANDLERS_DIR` | Absolute path to handlers directory |
-| `MOCK_SERVER_VERBOSE` | Enable verbose logging |
+| `OPENAPI_SERVER_PORT` | Port number |
+| `OPENAPI_SERVER_OPENAPI_PATH` | Absolute path to OpenAPI spec |
+| `OPENAPI_SERVER_SEEDS_DIR` | Absolute path to seeds directory |
+| `OPENAPI_SERVER_HANDLERS_DIR` | Absolute path to handlers directory |
+| `OPENAPI_SERVER_VERBOSE` | Enable verbose logging |
 
 #### 7.2.3 Document Enhancer (`openapi-enhancer.mjs`)
 
@@ -2363,7 +2363,7 @@ function findOperationById(document, operationId): { method, path, operation } |
 /**
  * Builds the endpoint registry from enhanced document.
  */
-function buildRegistry(document, handlers, seeds): MockEndpointRegistry;
+function buildRegistry(document, handlers, seeds): OpenApiEndpointRegistry;
 
 /**
  * Formats the registry as a console table for startup display.
@@ -2371,7 +2371,7 @@ function buildRegistry(document, handlers, seeds): MockEndpointRegistry;
 function formatRegistryTable(registry): string;
 ```
 
-#### 7.2.3 Type Definitions (`mock-server.types.ts`)
+#### 7.2.3 Type Definitions (`openapi-server.types.ts`)
 
 Provides TypeScript types for:
 - Plugin options
@@ -2389,10 +2389,10 @@ Provides TypeScript types for:
 2. Plugin 'config' hook adds proxy configuration
 3. Plugin 'configureServer' hook executes:
    a. Validate OpenAPI spec exists
-   b. Fork mock-server-runner.mjs as child process
+   b. Fork openapi-server-runner.mjs as child process
    c. Pass configuration via environment variables
    d. Wait for 'ready' IPC message
-   e. Log mock server URL and registry summary
+   e. Log openapi server URL and registry summary
 4. Child process startup:
    a. Load and parse OpenAPI spec (YAML/JSON)
    b. Normalize missing security schemes (auto-inject)
@@ -2421,11 +2421,11 @@ Provides TypeScript types for:
 #### 7.3.2 Request Flow
 
 ```
-1. Browser makes API request to /gpme/bff/api/v1/vehicles
-2. Vite proxy intercepts request matching /gpme/bff/*
-3. Proxy rewrites path: /gpme/bff/api/v1/vehicles → /api/v1/vehicles
+1. Browser makes API request to /pet/api/api/v1/vehicles
+2. Vite proxy intercepts request matching /pet/api/*
+3. Proxy rewrites path: /pet/api/api/v1/vehicles → /api/v1/vehicles
 4. Proxy forwards request to http://localhost:3456
-5. Mock server receives request
+5. OpenAPI server receives request
 6. Scalar Mock Server handles request:
    a. Match route to OpenAPI operation
    b. If operation has x-handler:
@@ -2443,17 +2443,17 @@ Provides TypeScript types for:
 
 **Request Logging:**
 ```
-[Mock] → GET     /api/v1/health [health]
-[Mock] ✔ 200 GET /api/v1/health
+[OpenAPI] → GET     /api/v1/health [health]
+[OpenAPI] ✔ 200 GET /api/v1/health
 
-[Mock] → GET     /api/v1/vehicles [fetch_vehicles]  
-[Mock] ✔ 200 GET /api/v1/vehicles
+[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]  
+[OpenAPI] ✔ 200 GET /api/v1/vehicles
 
-[Mock] → POST    /api/v1/orders [create_order]
-[Mock] ✔ 201 POST /api/v1/orders
+[OpenAPI] → POST    /api/v1/orders [create_order]
+[OpenAPI] ✔ 201 POST /api/v1/orders
 
-[Mock] → GET     /api/v1/orders/invalid-id [get_order]
-[Mock] ✖ 404 GET /api/v1/orders/invalid-id
+[OpenAPI] → GET     /api/v1/orders/invalid-id [get_order]
+[OpenAPI] ✖ 404 GET /api/v1/orders/invalid-id
 ```
 
 **Note:** The Scalar Mock Server handles x-handler execution internally. We don't need to manually register Hono routes - we just inject the code strings into the document.
@@ -2481,10 +2481,10 @@ This section provides a deep analysis of how the plugin integrates with the thre
 ```typescript
 import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 
-export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
+export function openApiServerPlugin(options: OpenApiServerPluginOptions): Plugin {
   let config: ResolvedConfig;
   let server: ViteDevServer;
-  let mockServerProcess: ChildProcess | null = null;
+  let openApiServerProcess: ChildProcess | null = null;
 
   return {
     name: 'vite-plugin-open-api-server',
@@ -2499,7 +2499,7 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
       return {
         server: {
           proxy: {
-            [options.proxyPath || '/gpme/bff']: {
+            [options.proxyPath || '/pet/api']: {
               target: `http://localhost:${options.port || 3456}`,
               changeOrigin: true,
               rewrite: (path) => path.replace(options.proxyPath, ''),
@@ -2514,27 +2514,27 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
       config = resolvedConfig;
     },
     
-    // Main hook: spawn mock server process
+    // Main hook: spawn openapi server process
     configureServer(devServer) {
       server = devServer;
       
-      // Spawn child process with mock server
-      mockServerProcess = fork('mock-server-runner.mjs', [], {
+      // Spawn child process with openapi server
+      openApiServerProcess = fork('openapi-server-runner.mjs', [], {
         env: {
-          MOCK_SERVER_PORT: String(options.port || 3456),
-          MOCK_SERVER_OPENAPI_PATH: path.resolve(config.root, options.openApiPath),
-          MOCK_SERVER_SEEDS_DIR: options.seedsDir ? path.resolve(config.root, options.seedsDir) : '',
-          MOCK_SERVER_HANDLERS_DIR: options.handlersDir ? path.resolve(config.root, options.handlersDir) : '',
-          MOCK_SERVER_VERBOSE: String(options.verbose || false),
+          OPENAPI_SERVER_PORT: String(options.port || 3456),
+          OPENAPI_SERVER_OPENAPI_PATH: path.resolve(config.root, options.openApiPath),
+          OPENAPI_SERVER_SEEDS_DIR: options.seedsDir ? path.resolve(config.root, options.seedsDir) : '',
+          OPENAPI_SERVER_HANDLERS_DIR: options.handlersDir ? path.resolve(config.root, options.handlersDir) : '',
+          OPENAPI_SERVER_VERBOSE: String(options.verbose || false),
         },
       });
       
       // Handle IPC messages from child process
-      mockServerProcess.on('message', (msg: MockServerMessage) => {
+      openApiServerProcess.on('message', (msg: OpenApiServerMessage) => {
         if (msg.type === 'READY') {
-          server.config.logger.info(`Mock server ready on port ${msg.port}`);
+          server.config.logger.info(`OpenAPI server ready on port ${msg.port}`);
         } else if (msg.type === 'ERROR') {
-          server.config.logger.error(`Mock server error: ${msg.error}`);
+          server.config.logger.error(`OpenAPI server error: ${msg.error}`);
         } else if (msg.type === 'LOG') {
           server.config.logger[msg.level](msg.message);
         }
@@ -2543,9 +2543,9 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
     
     // Cleanup on shutdown
     buildEnd() {
-      if (mockServerProcess) {
-        mockServerProcess.kill('SIGTERM');
-        mockServerProcess = null;
+      if (openApiServerProcess) {
+        openApiServerProcess.kill('SIGTERM');
+        openApiServerProcess = null;
       }
     },
   };
@@ -2566,7 +2566,7 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
 
 #### 7.4.2 @vue/devtools-api Integration
 
-**Purpose:** Provides a custom tab in Vue DevTools browser extension for inspecting and managing mock server endpoints with response simulation capabilities.
+**Purpose:** Provides a custom tab in Vue DevTools browser extension for inspecting and managing openapi server endpoints with response simulation capabilities.
 
 **Package:** `@vue/devtools-api` (^7.3.0)
 
@@ -2613,7 +2613,7 @@ The integration follows the established pattern used by Pinia and Vue Router:
 
 4. **Global State Exposure:**
    - Following Pinia: `globalThis.$pinia`, `globalThis.$store`
-   - We expose: `globalThis.$mockServer`, `globalThis.$mockRegistry`
+   - We expose: `globalThis.$openApiServer`, `globalThis.$openApiRegistry`
    - Enables console debugging without DevTools
 
 **Implementation:**
@@ -2622,7 +2622,7 @@ The integration follows the established pattern used by Pinia and Vue Router:
 // devtools/index.ts
 import { setupDevtoolsPlugin } from '@vue/devtools-api'
 import type { App } from 'vue'
-import type { MockEndpointRegistry, MockServerState } from '../types'
+import type { OpenApiEndpointRegistry, OpenApiServerState } from '../types'
 
 // Build-time constant (replaced by bundler)
 declare const __DEV__: boolean
@@ -2632,32 +2632,32 @@ const IS_CLIENT = typeof window !== 'undefined'
 const HAS_PROXY = typeof Proxy !== 'undefined'
 
 /**
- * Mock Server DevTools Plugin
+ * OpenAPI Server DevTools Plugin
  * 
- * What: Integrates mock server with Vue DevTools browser extension
+ * What: Integrates openapi server with Vue DevTools browser extension
  * How: Uses @vue/devtools-api with conditional registration pattern
  * Why: Provides visual endpoint inspection and simulation controls
  * 
  * @example
  * // In Vue app main.ts:
  * import { createApp } from 'vue'
- * import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server'
+ * import { registerOpenApiServerDevTools } from '@websublime/vite-plugin-open-api-server'
  * 
  * const app = createApp(App)
  * 
  * // Only registers in dev mode, silently skips in production
- * registerMockServerDevTools(app, {
- *   mockServerUrl: 'http://localhost:3456',
+ * registerOpenApiServerDevTools(app, {
+ *   openApiServerUrl: 'http://localhost:3456',
  *   registry: mockRegistry,
  *   state: mockState,
  * })
  */
-export function registerMockServerDevTools(
+export function registerOpenApiServerDevTools(
   app: App,
   options: {
-    mockServerUrl: string
-    registry: MockEndpointRegistry
-    state: MockServerState
+    openApiServerUrl: string
+    registry: OpenApiEndpointRegistry
+    state: OpenApiServerState
   }
 ): void {
   // === GUARD CLAUSES ===
@@ -2676,12 +2676,12 @@ export function registerMockServerDevTools(
   // 3. Feature guard: Skip in legacy browsers
   if (!HAS_PROXY) {
     console.warn(
-      '[Mock Server] DevTools requires Proxy support (modern browsers only).'
+      '[OpenAPI Server] DevTools requires Proxy support (modern browsers only).'
     )
     return
   }
 
-  const { mockServerUrl, registry, state } = options
+  const { openApiServerUrl, registry, state } = options
 
   // === PLUGIN REGISTRATION ===
   // setupDevtoolsPlugin uses internal buffering:
@@ -2690,11 +2690,11 @@ export function registerMockServerDevTools(
   setupDevtoolsPlugin(
     {
       id: 'dev.websublime.mock-server',
-      label: 'Mock Server 🔌',
+      label: 'OpenAPI Server 🔌',
       packageName: '@websublime/vite-plugin-open-api-server',
       homepage: 'https://github.com/websublime/vite-open-api-server',
       logo: 'https://raw.githubusercontent.com/websublime/vite-open-api-server/main/logo.svg',
-      componentStateTypes: ['Mock Server'],
+      componentStateTypes: ['OpenAPI Server'],
       app,
       settings: {
         autoRefresh: {
@@ -2714,21 +2714,21 @@ export function registerMockServerDevTools(
       // Pinia and Vue Router use this pattern to detect outdated DevTools
       if (typeof api.now !== 'function') {
         console.warn(
-          '[Mock Server] Outdated Vue DevTools version detected. ' +
+          '[OpenAPI Server] Outdated Vue DevTools version detected. ' +
           'Please update: https://devtools.vuejs.org/guide/installation.html'
         )
       }
 
       // === GLOBAL STATE EXPOSURE ===
       // Expose state to globalThis for console debugging
-      exposeGlobalMockServerState(registry, state, mockServerUrl)
+      exposeGlobalOpenApiServerState(registry, state, openApiServerUrl)
 
       // === INSPECTOR REGISTRATION ===
       const INSPECTOR_ID = 'mock-server'
 
       api.addInspector({
         id: INSPECTOR_ID,
-        label: 'Mock Server 🔌',
+        label: 'OpenAPI Server 🔌',
         icon: 'http',
         treeFilterPlaceholder: 'Search endpoints...',
         actions: [
@@ -2737,13 +2737,13 @@ export function registerMockServerDevTools(
             tooltip: 'Refresh registry from server',
             action: async () => {
               try {
-                const response = await fetch(`${mockServerUrl}/__registry`)
+                const response = await fetch(`${openApiServerUrl}/__openapi/registry`)
                 const data = await response.json()
                 registry.updateFromServer(data)
                 api.sendInspectorTree(INSPECTOR_ID)
                 api.sendInspectorState(INSPECTOR_ID)
               } catch (error) {
-                console.error('[Mock Server] Failed to refresh:', error)
+                console.error('[OpenAPI Server] Failed to refresh:', error)
               }
             },
           },
@@ -2753,7 +2753,7 @@ export function registerMockServerDevTools(
             action: () => {
               const data = JSON.stringify(registry.getAll(), null, 2)
               navigator.clipboard.writeText(data)
-              console.log('[Mock Server] Registry copied to clipboard')
+              console.log('[OpenAPI Server] Registry copied to clipboard')
             },
           },
         ],
@@ -2821,19 +2821,19 @@ export function registerMockServerDevTools(
               'Simulation URLs': [
                 {
                   key: 'Normal',
-                  value: `${mockServerUrl}${endpoint.path}`,
+                  value: `${openApiServerUrl}${endpoint.path}`,
                 },
                 {
                   key: 'Slow (2s delay)',
-                  value: `${mockServerUrl}${endpoint.path}?simulateDelay=2000`,
+                  value: `${openApiServerUrl}${endpoint.path}?simulateDelay=2000`,
                 },
                 {
                   key: 'Error (500)',
-                  value: `${mockServerUrl}${endpoint.path}?simulateStatus=500`,
+                  value: `${openApiServerUrl}${endpoint.path}?simulateStatus=500`,
                 },
                 {
                   key: 'Timeout',
-                  value: `${mockServerUrl}${endpoint.path}?simulateError=timeout`,
+                  value: `${openApiServerUrl}${endpoint.path}?simulateError=timeout`,
                 },
               ],
             }
@@ -2846,48 +2846,48 @@ export function registerMockServerDevTools(
 
       api.addTimelineLayer({
         id: TIMELINE_LAYER_ID,
-        label: 'Mock Server Requests',
+        label: 'OpenAPI Server Requests',
         color: 0x42b883,
       })
 
       // Log successful registration
       console.log(
-        '[Mock Server] Vue DevTools integration registered. ' +
-        'Open DevTools to access the Mock Server inspector.'
+        '[OpenAPI Server] Vue DevTools integration registered. ' +
+        'Open DevTools to access the OpenAPI Server inspector.'
       )
     }
   )
 }
 
 /**
- * Exposes mock server state to globalThis for console debugging.
+ * Exposes openapi server state to globalThis for console debugging.
  * 
  * Following Pinia's pattern of exposing $pinia and $store globals,
- * we expose $mockServer and $mockRegistry for developer convenience.
+ * we expose $openApiServer and $openApiRegistry for developer convenience.
  * 
  * @param registry - Mock endpoint registry
- * @param state - Mock server state
- * @param mockServerUrl - Base URL of the mock server
+ * @param state - OpenAPI server state
+ * @param openApiServerUrl - Base URL of the openapi server
  */
-function exposeGlobalMockServerState(
-  registry: MockEndpointRegistry,
-  state: MockServerState,
-  mockServerUrl: string
+function exposeGlobalOpenApiServerState(
+  registry: OpenApiEndpointRegistry,
+  state: OpenApiServerState,
+  openApiServerUrl: string
 ): void {
-  // Expose $mockServer global
-  Object.defineProperty(globalThis, '$mockServer', {
+  // Expose $openApiServer global
+  Object.defineProperty(globalThis, '$openApiServer', {
     configurable: true,
     enumerable: true,
     get() {
       return {
-        url: mockServerUrl,
+        url: openApiServerUrl,
         connected: state.connected,
         port: state.port,
         startedAt: state.startedAt,
         lastError: state.lastError,
         
         async refresh() {
-          const response = await fetch(`${mockServerUrl}/__registry`)
+          const response = await fetch(`${openApiServerUrl}/__openapi/registry`)
           return response.json()
         },
         
@@ -2907,8 +2907,8 @@ function exposeGlobalMockServerState(
     },
   })
 
-  // Expose $mockRegistry global
-  Object.defineProperty(globalThis, '$mockRegistry', {
+  // Expose $openApiRegistry global
+  Object.defineProperty(globalThis, '$openApiRegistry', {
     configurable: true,
     enumerable: true,
     get() {
@@ -2962,7 +2962,7 @@ function getStatusCodeDescription(code: number): string {
 
 // TypeScript declarations for global state
 declare global {
-  var $mockServer: {
+  var $openApiServer: {
     url: string
     connected: boolean
     port: number
@@ -2973,7 +2973,7 @@ declare global {
     listEndpoints(): void
   } | undefined
 
-  var $mockRegistry: {
+  var $openApiRegistry: {
     endpoints: unknown[]
     stats: { total: number; customHandlers: number; autoGenerated: number }
     byMethod: Record<string, unknown[]>
@@ -2985,18 +2985,18 @@ declare global {
 
 ```typescript
 /**
- * Generates the Single File Component (SFC) for the Mock Server DevTools tab
+ * Generates the Single File Component (SFC) for the OpenAPI Server DevTools tab
  * 
  * The SFC is a self-contained Vue component that:
- * - Fetches endpoint registry from mock server
+ * - Fetches endpoint registry from openapi server
  * - Displays endpoints in a searchable/filterable table
  * - Provides UI for configuring simulation parameters
  * - Generates URLs with query parameters for testing
  * 
- * @param mockServerUrl - Base URL of the mock server
+ * @param openApiServerUrl - Base URL of the openapi server
  * @returns Vue SFC as a string
  */
-function generateMockServerSFC(mockServerUrl: string): string {
+function generateOpenApiServerSFC(openApiServerUrl: string): string {
   return /* vue */ `
     <script setup lang="ts">
     import { ref, computed, onMounted } from 'vue'
@@ -3025,7 +3025,7 @@ function generateMockServerSFC(mockServerUrl: string): string {
       simulateError: string | null
     }
     
-    const mockServerUrl = '${mockServerUrl}'
+    const openApiServerUrl = '${openApiServerUrl}'
     const endpoints = ref<EndpointEntry[]>([])
     const stats = ref({ total: 0, customHandlers: 0, autoGenerated: 0 })
     const loading = ref(true)
@@ -3045,13 +3045,13 @@ function generateMockServerSFC(mockServerUrl: string): string {
       simulateError: null
     })
     
-    // Fetch registry from mock server
+    // Fetch registry from openapi server
     async function fetchRegistry() {
       try {
         loading.value = true
         error.value = null
         
-        const response = await fetch(\`\${mockServerUrl}/__registry\`)
+        const response = await fetch(\`\${openApiServerUrl}/__openapi/registry\`)
         if (!response.ok) {
           throw new Error(\`Failed to fetch registry: \${response.statusText}\`)
         }
@@ -3107,7 +3107,7 @@ function generateMockServerSFC(mockServerUrl: string): string {
     const simulatedUrl = computed(() => {
       if (!selectedEndpoint.value) return ''
       
-      const baseUrl = mockServerUrl.replace(/\/$/, '')
+      const baseUrl = openApiServerUrl.replace(/\/$/, '')
       const url = new URL(\`\${baseUrl}\${selectedEndpoint.value.path}\`)
       
       if (simulationParams.value.simulateStatus) {
@@ -3169,9 +3169,9 @@ function generateMockServerSFC(mockServerUrl: string): string {
         <div class="header">
           <div class="connection-status" :class="{ connected, disconnected: !connected }">
             <span class="status-dot"></span>
-            <span v-if="connected">Mock Server Connected</span>
-            <span v-else>Mock Server Disconnected</span>
-            <span class="url">{{ mockServerUrl }}</span>
+            <span v-if="connected">OpenAPI Server Connected</span>
+            <span v-else>OpenAPI Server Disconnected</span>
+            <span class="url">{{ openApiServerUrl }}</span>
           </div>
           <div class="stats" v-if="connected">
             <div class="stat">
@@ -3637,7 +3637,7 @@ function generateMockServerSFC(mockServerUrl: string): string {
 }
 
 // Export for use in Vite plugin
-export { registerMockServerDevTools }
+export { registerOpenApiServerDevTools }
 ```
 
 **Usage in Vite Plugin:**
@@ -3645,18 +3645,18 @@ export { registerMockServerDevTools }
 ```typescript
 // In Vue app main.ts (client-side registration)
 import { createApp } from 'vue'
-import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+import { registerOpenApiServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
 import App from './App.vue'
 
 const app = createApp(App)
 
-// Register Mock Server DevTools integration
+// Register OpenAPI Server DevTools integration
 // This only activates in development mode and when DevTools is installed
 // In production or without DevTools, this is a no-op (safe to call unconditionally)
-registerMockServerDevTools(app, {
-  mockServerUrl: import.meta.env.VITE_MOCK_SERVER_URL || 'http://localhost:3456',
-  registry: window.__MOCK_REGISTRY__, // Injected by Vite plugin
-  state: window.__MOCK_STATE__,       // Injected by Vite plugin
+registerOpenApiServerDevTools(app, {
+  openApiServerUrl: import.meta.env.VITE_OPENAPI_SERVER_URL || 'http://localhost:3456',
+  registry: window.__OPENAPI_REGISTRY__, // Injected by Vite plugin
+  state: window.__OPENAPI_STATE__,       // Injected by Vite plugin
 })
 
 app.mount('#app')
@@ -3666,15 +3666,15 @@ app.mount('#app')
 // In Vite plugin (server-side injection)
 // vite-plugin-open-api-server.ts
 configureServer(server) {
-  // ... existing mock server startup code ...
+  // ... existing openapi server startup code ...
   
-  // Inject mock server state into client for DevTools integration
+  // Inject openapi server state into client for DevTools integration
   server.middlewares.use((req, res, next) => {
-    if (req.url === '/__mock-inject.js') {
+    if (req.url === '//__openapi-inject.js') {
       res.setHeader('Content-Type', 'application/javascript')
       res.end(`
-        window.__MOCK_REGISTRY__ = ${JSON.stringify(mockEndpointRegistry.getAll())};
-        window.__MOCK_STATE__ = {
+        window.__OPENAPI_REGISTRY__ = ${JSON.stringify(openApiEndpointRegistry.getAll())};
+        window.__OPENAPI_STATE__ = {
           connected: true,
           port: ${options.port},
           startedAt: new Date('${new Date().toISOString()}'),
@@ -3692,7 +3692,7 @@ transformIndexHtml(html) {
   if (options.enabled) {
     return html.replace(
       '</head>',
-      '<script src="/__mock-inject.js"></script></head>'
+      '<script src="//__openapi-inject.js"></script></head>'
     )
   }
   return html
@@ -3704,7 +3704,7 @@ transformIndexHtml(html) {
 ```typescript
 // The plugin can auto-register DevTools by injecting a module
 // vite-plugin-open-api-server.ts
-export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
+export function openApiServerPlugin(options: OpenApiServerPluginOptions): Plugin {
   return {
     name: 'vite-plugin-open-api-server',
     
@@ -3718,17 +3718,17 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
     load(id) {
       if (id === '\0virtual:mock-server-devtools') {
         return `
-          import { registerMockServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+          import { registerOpenApiServerDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
           
           // Auto-register when Vue app is available
           if (typeof window !== 'undefined') {
             const originalMount = window.__VUE_APP__?.mount
             if (originalMount) {
               window.__VUE_APP__.mount = function(...args) {
-                registerMockServerDevTools(window.__VUE_APP__, {
-                  mockServerUrl: '${`http://localhost:${options.port}`}',
-                  registry: window.__MOCK_REGISTRY__,
-                  state: window.__MOCK_STATE__,
+                registerOpenApiServerDevTools(window.__VUE_APP__, {
+                  openApiServerUrl: '${`http://localhost:${options.port}`}',
+                  registry: window.__OPENAPI_REGISTRY__,
+                  state: window.__OPENAPI_STATE__,
                 })
                 return originalMount.apply(this, args)
               }
@@ -3743,9 +3743,9 @@ export function mockServerPlugin(options: MockServerPluginOptions): Plugin {
 }
 ```
 
-**Mock Server Registry Endpoint:**
+**OpenAPI Server Registry Endpoint:**
 
-The mock server must expose a `/__registry` endpoint that returns:
+The openapi server must expose a `/__openapi/registry` endpoint that returns:
 
 ```json
 {
@@ -3811,7 +3811,7 @@ The DevTools tab provides comprehensive controls for testing edge cases, errors,
 
 #### 7.4.3 @scalar/openapi-parser Integration
 
-**Purpose:** Parse, validate, and manipulate OpenAPI documents before passing to mock server.
+**Purpose:** Parse, validate, and manipulate OpenAPI documents before passing to openapi server.
 
 **Core API Usage:**
 
@@ -3874,7 +3874,7 @@ async function loadOpenApiDocument(filePath: string) {
 ```typescript
 // Validation errors → CRITICAL (block startup)
 if (!validationResult.valid) {
-  throw new Error('OpenAPI validation failed - cannot start mock server');
+  throw new Error('OpenAPI validation failed - cannot start openapi server');
 }
 
 // Dereference errors → WARNING (may work with partial resolution)
@@ -3905,14 +3905,14 @@ const sanitized = sanitize(schema); // Always succeeds
 
 ```typescript
 import { serve } from '@hono/node-server';
-import { createMockServer } from '@scalar/mock-server';
+import { createOpenApiServer } from '@scalar/mock-server';
 
 /**
- * Create and start mock server with enhanced OpenAPI document
+ * Create and start openapi server with enhanced OpenAPI document
  */
-async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) {
+async function startOpenApiServer(enhancedDocument: OpenAPIDocument, port: number) {
   // Create Hono app with mock routes
-  const app = await createMockServer({
+  const app = await createOpenApiServer({
     // Enhanced document with x-handler and x-seed injected
     document: enhancedDocument,
     
@@ -3920,7 +3920,7 @@ async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) 
     onRequest({ context, operation }) {
       const { req } = context;
       const operationId = operation?.operationId || 'unknown';
-      console.log(`[Mock] → ${req.method.padEnd(6)} ${req.path} [${operationId}]`);
+      console.log(`[OpenAPI] → ${req.method.padEnd(6)} ${req.path} [${operationId}]`);
     },
   });
   
@@ -3931,7 +3931,7 @@ async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) 
       port,
     },
     (info) => {
-      console.log(`Mock server listening on http://localhost:${info.port}`);
+      console.log(`OpenAPI server listening on http://localhost:${info.port}`);
       
       // Send IPC message to parent process
       if (process.send) {
@@ -3942,7 +3942,7 @@ async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) 
 }
 ```
 
-**createMockServer Options:**
+**createOpenApiServer Options:**
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
@@ -3982,7 +3982,7 @@ async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) 
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `store` | `MockStore` | In-memory data store with CRUD operations |
+| `store` | `OpenApiStore` | In-memory data store with CRUD operations |
 | `faker` | `Faker` | Faker.js instance for data generation |
 | `req.body` | `any` | Parsed request body (JSON) |
 | `req.params` | `Record<string, string>` | Path parameters |
@@ -3993,7 +3993,7 @@ async function startMockServer(enhancedDocument: OpenAPIDocument, port: number) 
 **Store API (Available in x-handler):**
 
 ```typescript
-interface MockStore {
+interface OpenApiStore {
   // List all items of a schema
   list<T>(schema: string): T[];
   
@@ -4063,12 +4063,12 @@ interface MockStore {
 | `seed(array)` | `Function` | Seed from static array |
 | `seed(fn)` | `Function` | Seed from factory function (single item) |
 | `faker` | `Faker` | Faker.js instance |
-| `store` | `MockStore` | Direct store access (advanced) |
+| `store` | `OpenApiStore` | Direct store access (advanced) |
 | `schema` | `string` | Schema name being seeded |
 
 **Security Scheme Handling:**
 
-The mock server validates security schemes defined in OpenAPI:
+The openapi server validates security schemes defined in OpenAPI:
 
 ```typescript
 // OpenAPI document with security
@@ -4092,7 +4092,7 @@ The mock server validates security schemes defined in OpenAPI:
   }
 }
 
-// Mock server behavior:
+// OpenAPI server behavior:
 // - Without Authorization header → 401 Unauthorized
 // - With any Authorization: Bearer <token> → 200 OK (mock accepts any token)
 ```
@@ -4108,7 +4108,7 @@ The mock server validates security schemes defined in OpenAPI:
 
 **Limitations & Considerations:**
 
-1. **No Real Authentication:** Mock server validates presence of credentials but doesn't verify validity
+1. **No Real Authentication:** OpenAPI server validates presence of credentials but doesn't verify validity
 2. **No Token Expiry:** JWT tokens are not decoded or validated
 3. **No Role-Based Access:** All valid credentials have full access
 4. **Development Only:** Security validation is intentionally loose for dev convenience
@@ -4120,34 +4120,34 @@ The mock server validates security schemes defined in OpenAPI:
 ### 8.1 Plugin API
 
 ```typescript
-import { mockServerPlugin } from './vite-plugins';
+import { openApiServerPlugin } from './vite-plugins';
 
 export default defineConfig({
   plugins: [
-    mockServerPlugin({
+    openApiServerPlugin({
       // Required: Path to OpenAPI specification
-      openApiPath: 'src/apis/bff/gpme-bff-service.openapi.bundle.yaml',
+      openApiPath: 'src/apis/api/pet-api-service.openapi.bundle.yaml',
       
-      // Optional: Mock server port (default: 3456)
+      // Optional: OpenAPI server port (default: 3456)
       port: 3456,
       
-      // Optional: Proxy path prefix (default: '/gpme/bff')
-      proxyPath: '/gpme/bff',
+      // Optional: Proxy path prefix (default: '/pet/api')
+      proxyPath: '/pet/api',
       
       // Optional: Seeds directory
-      seedsDir: 'src/apis/bff/mock/seeds',
+      seedsDir: 'src/apis/api/openapi/seeds',
       
       // Optional: Handlers directory
-      handlersDir: 'src/apis/bff/mock/handlers',
+      handlersDir: 'src/apis/api/openapi/handlers',
       
       // Optional: Enable/disable (default: true)
-      enabled: process.env.USE_MOCK_SERVER === 'true',
+      enabled: process.env.USE_OPENAPI_SERVER === 'true',
       
       // Optional: Startup timeout in ms (default: 15000)
       startupTimeout: 15000,
       
       // Optional: Verbose logging (default: false)
-      verbose: process.env.MOCK_SERVER_VERBOSE === 'true',
+      verbose: process.env.OPENAPI_SERVER_VERBOSE === 'true',
     }),
   ],
 });
@@ -4329,7 +4329,7 @@ interface SeedHelpers {
   faker: Faker;
   
   // Data store (for advanced usage)
-  store: MockServerStore;
+  store: OpenApiServerStore;
 }
 
 // Seed function signature
@@ -4359,7 +4359,7 @@ interface HandlerRuntimeContext {
   };
   
   // Data store for CRUD operations
-  store: MockServerStore;
+  store: OpenApiServerStore;
   
   // Faker.js instance for data generation
   faker: Faker;
@@ -4393,7 +4393,7 @@ const handlerCode = `
 ### 8.6 Store API
 
 ```typescript
-interface MockServerStore {
+interface OpenApiServerStore {
   // List all items in collection
   list<T>(collection: string): T[];
   
@@ -4416,7 +4416,7 @@ interface MockServerStore {
 
 ### 8.7 IPC Message API
 
-The plugin uses Node.js IPC (Inter-Process Communication) for bidirectional communication between the Vite plugin (parent process) and the mock server runner (child process).
+The plugin uses Node.js IPC (Inter-Process Communication) for bidirectional communication between the Vite plugin (parent process) and the openapi server runner (child process).
 
 **Communication Pattern:**
 - **Parent → Child:** Environment variables at spawn time (no runtime IPC messages)
@@ -4426,9 +4426,9 @@ The plugin uses Node.js IPC (Inter-Process Communication) for bidirectional comm
 
 ```typescript
 /**
- * Union type of all IPC messages sent from mock server child process to Vite plugin parent process
+ * Union type of all IPC messages sent from openapi server child process to Vite plugin parent process
  */
-type MockServerMessage = 
+type OpenApiServerMessage = 
   // Lifecycle Messages
   | InitializingMessage
   | ReadyMessage
@@ -4446,8 +4446,8 @@ type MockServerMessage =
   | HeartbeatMessage;
 
 /**
- * Sent when mock server starts initialization phase
- * Allows parent to show "Starting mock server..." status
+ * Sent when openapi server starts initialization phase
+ * Allows parent to show "Starting openapi server..." status
  */
 interface InitializingMessage {
   type: 'INITIALIZING';
@@ -4456,7 +4456,7 @@ interface InitializingMessage {
 }
 
 /**
- * Sent when mock server is fully ready and listening
+ * Sent when openapi server is fully ready and listening
  * Signals to parent that proxy can start forwarding requests
  */
 interface ReadyMessage {
@@ -4468,7 +4468,7 @@ interface ReadyMessage {
 }
 
 /**
- * Sent when mock server is shutting down
+ * Sent when openapi server is shutting down
  */
 interface ShutdownMessage {
   type: 'SHUTDOWN';
@@ -4513,7 +4513,7 @@ interface LogMessage {
 }
 
 /**
- * Sent for each HTTP request handled by mock server
+ * Sent for each HTTP request handled by openapi server
  * Used for request/response logging in Vite console
  */
 interface RequestLogMessage {
@@ -4604,7 +4604,7 @@ interface RegistryStats {
   timestamp: '2026-01-07T19:30:00.375Z'
 }
 
-// 5. Creating mock server
+// 5. Creating openapi server
 { 
   type: 'INITIALIZING', 
   phase: 'creating_server',
@@ -4698,20 +4698,20 @@ interface RegistryStats {
 import type { ChildProcess } from 'node:child_process';
 
 function setupIpcHandler(childProcess: ChildProcess, server: ViteDevServer) {
-  childProcess.on('message', (msg: MockServerMessage) => {
+  childProcess.on('message', (msg: OpenApiServerMessage) => {
     switch (msg.type) {
       case 'INITIALIZING':
         server.config.logger.info(
-          `[Mock] Initializing: ${msg.phase.replace('_', ' ')}...`
+          `[OpenAPI] Initializing: ${msg.phase.replace('_', ' ')}...`
         );
         break;
         
       case 'READY':
         server.config.logger.info(
-          `[Mock] ✓ Server ready on port ${msg.port} (${msg.uptime}ms)`
+          `[OpenAPI] ✓ Server ready on port ${msg.port} (${msg.uptime}ms)`
         );
         server.config.logger.info(
-          `[Mock]   ${msg.registry.totalEndpoints} endpoints ` +
+          `[OpenAPI]   ${msg.registry.totalEndpoints} endpoints ` +
           `(${msg.registry.withCustomHandler} custom handlers, ` +
           `${msg.registry.autoGenerated} auto-generated)`
         );
@@ -4719,64 +4719,64 @@ function setupIpcHandler(childProcess: ChildProcess, server: ViteDevServer) {
         
       case 'ERROR':
         server.config.logger.error(
-          `[Mock] ✖ Error: ${msg.error.message}`
+          `[OpenAPI] ✖ Error: ${msg.error.message}`
         );
         if (msg.error.context?.file) {
           server.config.logger.error(
-            `[Mock]   File: ${msg.error.context.file}` +
+            `[OpenAPI]   File: ${msg.error.context.file}` +
             (msg.error.context.line ? `:${msg.error.context.line}` : '')
           );
         }
         if (msg.error.stack) {
-          server.config.logger.error(`[Mock]   ${msg.error.stack}`);
+          server.config.logger.error(`[OpenAPI]   ${msg.error.stack}`);
         }
         break;
         
       case 'WARNING':
-        server.config.logger.warn(`[Mock] ⚠ ${msg.warning}`);
+        server.config.logger.warn(`[OpenAPI] ⚠ ${msg.warning}`);
         if (msg.context?.suggestion) {
-          server.config.logger.warn(`[Mock]   Suggestion: ${msg.context.suggestion}`);
+          server.config.logger.warn(`[OpenAPI]   Suggestion: ${msg.context.suggestion}`);
         }
         break;
         
       case 'LOG':
-        server.config.logger[msg.level](`[Mock] ${msg.message}`);
+        server.config.logger[msg.level](`[OpenAPI] ${msg.message}`);
         break;
         
       case 'REQUEST':
         if (msg.phase === 'END') {
           const statusIcon = msg.status! < 400 ? '✔' : '✖';
           server.config.logger.info(
-            `[Mock] ${statusIcon} ${msg.status} ${msg.method.padEnd(6)} ${msg.path} ` +
+            `[OpenAPI] ${statusIcon} ${msg.status} ${msg.method.padEnd(6)} ${msg.path} ` +
             `${msg.operationId ? `[${msg.operationId}] ` : ''}(${msg.duration}ms)`
           );
         }
         break;
         
       case 'SHUTDOWN':
-        server.config.logger.info(`[Mock] Shutting down (${msg.reason})...`);
+        server.config.logger.info(`[OpenAPI] Shutting down (${msg.reason})...`);
         break;
         
       case 'HEARTBEAT':
         // Optional: log memory usage periodically
         if (msg.memoryUsage.heapUsed > 100 * 1024 * 1024) { // > 100MB
           server.config.logger.warn(
-            `[Mock] High memory usage: ${(msg.memoryUsage.heapUsed / 1024 / 1024).toFixed(1)}MB`
+            `[OpenAPI] High memory usage: ${(msg.memoryUsage.heapUsed / 1024 / 1024).toFixed(1)}MB`
           );
         }
         break;
         
       default:
-        server.config.logger.warn(`[Mock] Unknown message type: ${(msg as any).type}`);
+        server.config.logger.warn(`[OpenAPI] Unknown message type: ${(msg as any).type}`);
     }
   });
   
   // Handle child process exit
   childProcess.on('exit', (code, signal) => {
     if (code !== 0 && code !== null) {
-      server.config.logger.error(`[Mock] Process exited with code ${code}`);
+      server.config.logger.error(`[OpenAPI] Process exited with code ${code}`);
     } else if (signal) {
-      server.config.logger.info(`[Mock] Process killed with signal ${signal}`);
+      server.config.logger.info(`[OpenAPI] Process killed with signal ${signal}`);
     }
   });
 }
@@ -4791,7 +4791,7 @@ function setupIpcHandler(childProcess: ChildProcess, server: ViteDevServer) {
 | `ERROR_HANDLER_LOAD` | Handler file loading failed | Check file path and syntax |
 | `ERROR_SEED_LOAD` | Seed file loading failed | Check file path and syntax |
 | `ERROR_ENHANCEMENT` | Document enhancement failed | Check handler/seed code |
-| `ERROR_SERVER_CREATE` | Mock server creation failed | Check @scalar/mock-server compatibility |
+| `ERROR_SERVER_CREATE` | OpenAPI server creation failed | Check @scalar/mock-server compatibility |
 | `ERROR_PORT_IN_USE` | Port already in use | Change port or kill existing process |
 | `ERROR_UNKNOWN` | Unexpected error | Check stack trace |
 
@@ -4801,11 +4801,11 @@ While not IPC messages, these are passed at spawn time:
 
 ```typescript
 {
-  MOCK_SERVER_PORT: '3456',
-  MOCK_SERVER_OPENAPI_PATH: '/absolute/path/to/openapi.yaml',
-  MOCK_SERVER_SEEDS_DIR: '/absolute/path/to/seeds',
-  MOCK_SERVER_HANDLERS_DIR: '/absolute/path/to/handlers',
-  MOCK_SERVER_VERBOSE: 'true',
+  OPENAPI_SERVER_PORT: '3456',
+  OPENAPI_SERVER_OPENAPI_PATH: '/absolute/path/to/openapi.yaml',
+  OPENAPI_SERVER_SEEDS_DIR: '/absolute/path/to/seeds',
+  OPENAPI_SERVER_HANDLERS_DIR: '/absolute/path/to/handlers',
+  OPENAPI_SERVER_VERBOSE: 'true',
   NODE_ENV: 'development'
 }
 ```
@@ -4813,13 +4813,13 @@ While not IPC messages, these are passed at spawn time:
 ### 8.8 Registry API
 
 ```typescript
-interface MockEndpointRegistry {
-  endpoints: MockEndpointEntry[];
+interface OpenApiEndpointRegistry {
+  endpoints: OpenApiEndpointEntry[];
   stats: RegistryStats;
   generatedAt: string;
 }
 
-interface MockEndpointEntry {
+interface OpenApiEndpointEntry {
   method: string;
   path: string;
   operationId: string;
@@ -4832,7 +4832,7 @@ interface MockEndpointEntry {
 }
 
 // Runtime inspection endpoint
-// GET /_mock/registry -> MockEndpointRegistry (JSON)
+// GET /_mock/registry -> OpenApiEndpointRegistry (JSON)
 // GET /_mock/registry?format=table -> Plain text table
 ```
 
@@ -4845,8 +4845,8 @@ interface MockEndpointEntry {
 | Option | Type | Default | Required | Description |
 |--------|------|---------|----------|-------------|
 | `openApiPath` | `string` | - | Yes | Relative path to OpenAPI spec file |
-| `port` | `number` | `3456` | No | Port for mock server |
-| `proxyPath` | `string` | `'/gpme/bff'` | No | URL path prefix to proxy |
+| `port` | `number` | `3456` | No | Port for openapi server |
+| `proxyPath` | `string` | `'/pet/api'` | No | URL path prefix to proxy |
 | `seedsDir` | `string` | - | No | Relative path to seeds directory |
 | `handlersDir` | `string` | - | No | Relative path to handlers directory |
 | `enabled` | `boolean` | `true` | No | Enable/disable the plugin |
@@ -4857,8 +4857,8 @@ interface MockEndpointEntry {
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `USE_MOCK_SERVER` | Enable mock server when `'true'` | `USE_MOCK_SERVER=true` |
-| `MOCK_SERVER_VERBOSE` | Enable verbose logging when `'true'` | `MOCK_SERVER_VERBOSE=true` |
+| `USE_OPENAPI_SERVER` | Enable openapi server when `'true'` | `USE_OPENAPI_SERVER=true` |
+| `OPENAPI_SERVER_VERBOSE` | Enable verbose logging when `'true'` | `OPENAPI_SERVER_VERBOSE=true` |
 
 ### 9.3 npm Scripts
 
@@ -4866,8 +4866,8 @@ interface MockEndpointEntry {
 {
   "scripts": {
     "start": "vite",
-    "start:mock": "USE_MOCK_SERVER=true vite",
-    "start:mock:verbose": "USE_MOCK_SERVER=true MOCK_SERVER_VERBOSE=true vite"
+    "start:mock": "USE_OPENAPI_SERVER=true vite",
+    "start:mock:verbose": "USE_OPENAPI_SERVER=true OPENAPI_SERVER_VERBOSE=true vite"
   }
 }
 ```
@@ -4877,8 +4877,8 @@ interface MockEndpointEntry {
 **env.mock.json:**
 ```json
 {
-  "bff": {
-    "url": "/gpme/bff"
+  "api": {
+    "url": "/pet/api"
   }
 }
 ```
@@ -4889,24 +4889,24 @@ interface MockEndpointEntry {
 
 ### 10.1 Vue Application Integration
 
-The Vue application requires no changes to work with the mock server. The `EnvStore` reads the BFF URL from environment configuration, and the proxy transparently forwards requests.
+The Vue application requires no changes to work with the openapi server. The `EnvStore` reads the API URL from environment configuration, and the proxy transparently forwards requests.
 
 ```typescript
 // env.store.ts
-// When USE_MOCK_SERVER=true, bff.url resolves to '/gpme/bff'
+// When USE_OPENAPI_SERVER=true, api.url resolves to '/pet/api'
 // Vite proxy forwards to http://localhost:3456
 
-const bffApi = new BffApi({ 
-  baseUrl: envStore.envVariables.bff.url 
+const apiApi = new PetApi({ 
+  baseUrl: envStore.envVariables.api.url 
 });
 ```
 
 ### 10.2 OpenAPI Specification
 
-The mock server reads the existing OpenAPI specification used for API client generation:
+The openapi server reads the existing OpenAPI specification used for API client generation:
 
 ```
-src/apis/bff/gpme-bff-service.openapi.bundle.yaml
+src/apis/api/pet-api-service.openapi.bundle.yaml
 ```
 
 No modifications to the spec are required, though optional extensions can enhance mock behavior.
@@ -4917,9 +4917,9 @@ The plugin only activates during `vite serve` (development mode). Production bui
 
 ### 10.4 CI/CD
 
-For CI/CD testing with mock server:
+For CI/CD testing with openapi server:
 ```bash
-USE_MOCK_SERVER=true npm run test:e2e
+USE_OPENAPI_SERVER=true npm run test:e2e
 ```
 
 ---
@@ -4928,20 +4928,20 @@ USE_MOCK_SERVER=true npm run test:e2e
 
 ### 11.1 Development Only
 
-- **CRITICAL:** The mock server is for local development only
-- Mock server accepts any Bearer token as valid
+- **CRITICAL:** The openapi server is for local development only
+- OpenAPI server accepts any Bearer token as valid
 - No actual authentication or authorization is enforced
-- Never expose mock server port to network
+- Never expose openapi server port to network
 
 ### 11.2 Credential Handling
 
-- Mock server should not require real API credentials
+- OpenAPI server should not require real API credentials
 - Any tokens in seed/handler files are mock data only
 - `.mjs` files may contain mock secrets - ensure `.gitignore` if needed
 
 ### 11.3 Process Isolation
 
-- Mock server runs in isolated child process
+- OpenAPI server runs in isolated child process
 - Crashes don't affect Vite dev server
 - Memory isolation prevents cross-contamination
 
@@ -4970,16 +4970,16 @@ Errors are classified into four categories based on severity and impact:
 | `ERROR_OPENAPI_PARSE` | Invalid YAML/JSON syntax | "Failed to parse OpenAPI file: {error} at line {line}" | Fix YAML/JSON syntax |
 | `ERROR_OPENAPI_VALIDATION` | Invalid OpenAPI structure | "OpenAPI validation failed: {errors}" | Fix spec according to OpenAPI 3.x |
 | `ERROR_PORT_IN_USE` | Port already occupied | "Port {port} is already in use. Try a different port." | Change port or kill existing process |
-| `ERROR_SERVER_CREATE` | Scalar mock server creation failed | "Failed to create mock server: {error}" | Check @scalar/mock-server compatibility |
+| `ERROR_SERVER_CREATE` | Scalar openapi server creation failed | "Failed to create openapi server: {error}" | Check @scalar/mock-server compatibility |
 
 **Example - Fatal Error Display:**
 ```
-✖ [Mock] ERROR_OPENAPI_PARSE: Failed to parse OpenAPI file
-  File: src/apis/bff/openapi.yaml:42
+✖ [OpenAPI] ERROR_OPENAPI_PARSE: Failed to parse OpenAPI file
+  File: src/apis/api/openapi.yaml:42
   Error: unexpected end of file
   
   → Fix: Check YAML syntax at line 42
-  → Vite dev server will continue, but mock endpoints will not be available
+  → Vite dev server will continue, but openapi endpoints will not be available
 ```
 
 **Recoverable Errors (Degraded Functionality):**
@@ -4994,8 +4994,8 @@ Errors are classified into four categories based on severity and impact:
 
 **Example - Recoverable Error Display:**
 ```
-⚠ [Mock] ERROR_HANDLER_LOAD: Failed to load handler file
-  File: src/apis/bff/mock/handlers/vehicles.handler.mjs
+⚠ [OpenAPI] ERROR_HANDLER_LOAD: Failed to load handler file
+  File: src/apis/api/openapi/handlers/vehicles.handler.mjs
   Error: SyntaxError: Unexpected token '}'
   
   → Impact: fetch_vehicles endpoint will use auto-generated response
@@ -5014,8 +5014,8 @@ Errors are classified into four categories based on severity and impact:
 
 **Example - Warning Display:**
 ```
-⚠ [Mock] WARN_HANDLER_NOT_MATCHED: Handler 'old_endpoint' not matched to any endpoint
-  File: src/apis/bff/mock/handlers/old.handler.mjs
+⚠ [OpenAPI] WARN_HANDLER_NOT_MATCHED: Handler 'old_endpoint' not matched to any endpoint
+  File: src/apis/api/openapi/handlers/old.handler.mjs
   
   → Suggestion: Remove unused handler or check operationId spelling
   → This will not affect server functionality
@@ -5029,7 +5029,7 @@ All error messages follow a consistent structure for clarity:
 interface ErrorDisplay {
   // Error header with severity icon
   severity: '✖' | '⚠' | 'ℹ';
-  prefix: '[Mock]';
+  prefix: '[OpenAPI]';
   errorCode: string;
   message: string;
   
@@ -5047,7 +5047,7 @@ interface ErrorDisplay {
 
 **Template:**
 ```
-{severity} [Mock] {errorCode}: {message}
+{severity} [OpenAPI] {errorCode}: {message}
   File: {file}:{line}
   Error: {detailedError}
   
@@ -5060,30 +5060,30 @@ interface ErrorDisplay {
 
 **Startup Logging:**
 ```
-[Mock] Starting mock server...
-[Mock] ✓ OpenAPI parsed (42 endpoints, 15 schemas)
-[Mock] ✓ Loaded 8 custom handlers
-[Mock] ✓ Loaded 5 custom seeds
-[Mock] ✓ Document enhanced with x-handler/x-seed
-[Mock] ✓ Mock server ready on port 3456 (1.2s)
-[Mock]   45 endpoints (8 custom handlers, 37 auto-generated)
+[OpenAPI] Starting openapi server...
+[OpenAPI] ✓ OpenAPI parsed (42 endpoints, 15 schemas)
+[OpenAPI] ✓ Loaded 8 custom handlers
+[OpenAPI] ✓ Loaded 5 custom seeds
+[OpenAPI] ✓ Document enhanced with x-handler/x-seed
+[OpenAPI] ✓ OpenAPI server ready on port 3456 (1.2s)
+[OpenAPI]   45 endpoints (8 custom handlers, 37 auto-generated)
 ```
 
 **Request Logging (Verbose Mode):**
 ```
-[Mock] → GET     /api/v1/vehicles [fetch_vehicles]
-[Mock] ✔ 200 GET /api/v1/vehicles [fetch_vehicles] (45ms)
+[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]
+[OpenAPI] ✔ 200 GET /api/v1/vehicles [fetch_vehicles] (45ms)
 
-[Mock] → POST    /api/v1/orders [create_order]
-[Mock] ✔ 201 POST /api/v1/orders [create_order] (12ms)
+[OpenAPI] → POST    /api/v1/orders [create_order]
+[OpenAPI] ✔ 201 POST /api/v1/orders [create_order] (12ms)
 
-[Mock] → GET     /api/v1/orders/invalid-id [get_order]
-[Mock] ✖ 404 GET /api/v1/orders/invalid-id [get_order] (5ms)
+[OpenAPI] → GET     /api/v1/orders/invalid-id [get_order]
+[OpenAPI] ✖ 404 GET /api/v1/orders/invalid-id [get_order] (5ms)
 ```
 
 **Error Logging:**
 ```
-[Mock] ✖ ERROR_OPENAPI_VALIDATION: OpenAPI validation failed
+[OpenAPI] ✖ ERROR_OPENAPI_VALIDATION: OpenAPI validation failed
   - paths./api/v1/users.get: responses is required
   - paths./api/v1/orders.post: requestBody.content is required
   
@@ -5106,8 +5106,8 @@ Error: undefined is not a function
 
 **Good Example:**
 ```
-✖ [Mock] ERROR_HANDLER_LOAD: Failed to load handler file
-  File: src/apis/bff/mock/handlers/vehicles.handler.mjs:15
+✖ [OpenAPI] ERROR_HANDLER_LOAD: Failed to load handler file
+  File: src/apis/api/openapi/handlers/vehicles.handler.mjs:15
   Error: ReferenceError: faker is not defined
   
   → Impact: fetch_vehicles endpoint will use auto-generated response
@@ -5136,7 +5136,7 @@ Error: undefined is not a function
 
 #### 11.4.7 Error Handling in Code
 
-**Child Process (mock-server-runner.mjs):**
+**Child Process (openapi-server-runner.mjs):**
 ```typescript
 try {
   // Parse OpenAPI
@@ -5173,13 +5173,13 @@ try {
 
 **Parent Process (vite-plugin-open-api-server.ts):**
 ```typescript
-childProcess.on('message', (msg: MockServerMessage) => {
+childProcess.on('message', (msg: OpenApiServerMessage) => {
   if (msg.type === 'ERROR') {
     const { error } = msg;
     
     // Display formatted error
     server.config.logger.error(
-      `\n✖ [Mock] ${error.code}: ${error.message}`
+      `\n✖ [OpenAPI] ${error.code}: ${error.message}`
     );
     
     if (error.context?.file) {
@@ -5238,7 +5238,7 @@ function getRecoveryGuidance(errorCode: string) {
 ```typescript
 describe('Error Handling', () => {
   it('should handle missing OpenAPI file', async () => {
-    const plugin = mockServerPlugin({ openApiPath: 'nonexistent.yaml' });
+    const plugin = openApiServerPlugin({ openApiPath: 'nonexistent.yaml' });
     await expect(startPlugin(plugin)).rejects.toThrow('ERROR_OPENAPI_NOT_FOUND');
   });
   
@@ -5268,7 +5268,7 @@ describe('Error Handling', () => {
 
 | Scenario | Status |
 |----------|--------|
-| Plugin starts mock server | To implement |
+| Plugin starts openapi server | To implement |
 | Proxy forwards requests correctly | To implement |
 | Seeds load and apply | To implement |
 | Handlers override responses | To implement |
@@ -5300,11 +5300,11 @@ describe('Error Handling', () => {
 
 The plugin is currently implemented as internal project files:
 ```
-packages/foc-gpme/vite-plugins/
+packages/foc-pet/vite-plugins/
 ├── index.ts
-├── mock-server.types.ts
-├── mock-server-runner.mjs
-├── mock-server-runner.ts
+├── openapi-server.types.ts
+├── openapi-server-runner.mjs
+├── openapi-server-runner.ts
 └── vite-plugin-open-api-server.ts
 ```
 
@@ -5355,9 +5355,9 @@ This plugin relies on three core external dependencies that provide the foundati
 **3. @scalar/mock-server (`@scalar/mock-server`)**
 - **Purpose:** Generate mock API responses from OpenAPI specifications
 - **Version:** `^0.x` (direct dependency)
-- **Usage:** Create HTTP mock server with automatic response generation
+- **Usage:** Create HTTP openapi server with automatic response generation
 - **Key APIs Used:**
-  - `createMockServer(options)` - Create mock server instance
+  - `createOpenApiServer(options)` - Create openapi server instance
   - `onRequest` callback - Hook for logging and monitoring
   - `x-handler` extension - Custom request handling with JavaScript
   - `x-seed` extension - Initial data seeding for schemas
@@ -5373,14 +5373,14 @@ This plugin relies on three core external dependencies that provide the foundati
 **4. @hono/node-server (`@hono/node-server`)**
 - **Purpose:** Node.js server adapter for Hono framework
 - **Version:** `^1.x` (direct dependency)
-- **Usage:** Run the mock server in Node.js environment
+- **Usage:** Run the openapi server in Node.js environment
 - **Key APIs Used:**
   - `serve(options)` - Start HTTP server with Hono app
 
 **5. @vue/devtools-api (`@vue/devtools-api`)**
 - **Purpose:** Vue DevTools plugin integration for custom tabs
 - **Version:** `^7.3.0` (dev dependency)
-- **Usage:** Register custom "Mock Server" tab in Vue DevTools for endpoint inspection and response simulation
+- **Usage:** Register custom "OpenAPI Server" tab in Vue DevTools for endpoint inspection and response simulation
 - **Documentation:** https://devtools.vuejs.org/plugins/api
 - **Key APIs Used:**
   - `addCustomTab(options)` - Register custom tab with SFC view
@@ -5461,7 +5461,7 @@ This plugin relies on three core external dependencies that provide the foundati
 
 **Core Functionality:**
 - [x] Plugin integrates with Vite dev server
-- [x] Mock server starts automatically
+- [x] OpenAPI server starts automatically
 - [x] Proxy configuration works transparently
 - [x] OpenAPI spec generates mock responses
 - [x] Security schemes are normalized
@@ -5483,7 +5483,7 @@ This plugin relies on three core external dependencies that provide the foundati
 - [ ] **FR-010:** Security scheme normalization with @scalar/openapi-parser sanitize()
 - [ ] **FR-013:** Preserve existing x-handler/x-seed in OpenAPI (with override warnings)
 - [ ] **FR-014:** Hot reload for seeds/handlers with file watching
-- [ ] **FR-015:** Vue DevTools integration with custom "Mock Server" tab for endpoint inspection and response simulation
+- [ ] **FR-015:** Vue DevTools integration with custom "OpenAPI Server" tab for endpoint inspection and response simulation
 
 ### 15.2 Quality Criteria
 
@@ -5501,13 +5501,13 @@ This plugin relies on three core external dependencies that provide the foundati
 
 | Term | Definition |
 |------|------------|
-| **BFF** | Backend For Frontend - API layer specific to frontend needs |
+| **API** | Application Programming Interface - API layer specific to frontend needs |
 | **OpenAPI** | Specification for describing REST APIs |
-| **Scalar** | Company providing OpenAPI tooling including mock server |
+| **Scalar** | Company providing OpenAPI tooling including openapi server |
 | **Hono** | Lightweight, fast web framework for Node.js |
 | **Faker.js** | Library for generating realistic fake data |
 | **IPC** | Inter-Process Communication |
-| **Seed** | Initial data loaded when mock server starts |
+| **Seed** | Initial data loaded when openapi server starts |
 | **Handler** | Custom function that generates API responses |
 
 ### 16.2 References
@@ -5531,17 +5531,17 @@ This plugin relies on three core external dependencies that provide the foundati
 ### 16.3 File Structure
 
 ```
-packages/foc-gpme/
+packages/foc-pet/
 ├── vite-plugins/
 │   ├── index.ts                           # Plugin exports
 │   ├── vite-plugin-open-api-server.ts     # Main Vite plugin
-│   ├── mock-server-runner.mjs             # ESM runner (child process)
-│   ├── mock-server-runner.ts              # TS version (reference)
-│   ├── mock-server.types.ts               # TypeScript type definitions
+│   ├── openapi-server-runner.mjs             # ESM runner (child process)
+│   ├── openapi-server-runner.ts              # TS version (reference)
+│   ├── openapi-server.types.ts               # TypeScript type definitions
 │   └── openapi-enhancer.mjs               # Document enhancer & registry (NEW)
 │
-├── src/apis/bff/
-│   ├── gpme-bff-service.openapi.bundle.yaml  # OpenAPI spec
+├── src/apis/api/
+│   ├── pet-api-service.openapi.bundle.yaml  # OpenAPI spec
 │   └── mock/
 │       ├── README.md                 # Mock system documentation
 │       ├── index.ts                  # Mock exports
@@ -5572,8 +5572,9 @@ packages/foc-gpme/
 | 1.0.5-draft | 2026-01-07 | **External API Integration**: Added `@scalar/openapi-parser` as core dependency. Expanded section 13.3 with detailed documentation of all three core dependencies (Vite, @scalar/openapi-parser, @scalar/mock-server) including purpose, version requirements, and key APIs used. Added comprehensive section 7.4 "External API Integration" with deep analysis of: (1) Vite Plugin API integration with code examples and lifecycle hooks, (2) @scalar/openapi-parser usage for validation, dereferencing, and sanitization with error handling strategies, (3) @scalar/mock-server integration including x-handler/x-seed runtime context, Store API specification, automatic status codes, and security scheme handling. Updated References section (16.2) with all official documentation links. |
 | 1.0.6-draft | 2026-01-07 | **Critical Gaps Resolved**: (1) **FR-010 Security Scheme Normalization** - Completely expanded with technical documentation, supported security schemes table, before/after examples for Bearer/API Key/OAuth2, mock server behavior specifications, edge cases, limitations, and implementation code. Added 4 detailed examples showing authentication flows. (2) **Section 8.7 IPC Message API** - Expanded from 3 message types to complete protocol specification with 8 message types (INITIALIZING, READY, SHUTDOWN, ERROR, WARNING, LOG, REQUEST, HEARTBEAT), detailed interfaces, message flow examples for successful startup and error scenarios, parent process handler implementation, error codes reference table, and environment variables documentation (~400 lines). (3) **Section 11.4 Error Handling Strategy** - New comprehensive section covering error taxonomy (4 severity levels), error codes with recovery strategies, error message format specification, logging patterns, user-facing message guidelines, error recovery strategies (graceful degradation, auto-retry, circuit breaker, fail-fast), code examples for child/parent error handling, and testing checklist (~300 lines). |
 | 1.0.7-draft | 2026-01-07 | **FR-013/014/015 Reclassified as Core Features**: Moved FR-013 (Preserve Existing x-handler/x-seed), FR-014 (Hot Reload), and FR-015 (Web UI for Mock Management) from section 5.2 "Optional Features" to section 5.1 "Core Features" as they are mandatory requirements, not optional. Updated priorities: FR-013 from P2→P0 (Critical), FR-014 from P3→P1 (High), FR-015 from P3→P1 (High). Expanded FR-014 with complete implementation notes including chokidar file watching, graceful restart logic, and reload timing requirements (<2s). Expanded FR-015 with comprehensive UI specification including dashboard, endpoints view, store data view, request logs, actions (reset/clear/export/import), technical implementation details, and benefits. Added new section 5.2 "Future Enhancements" for actual optional features (FE-001: TypeScript support, FE-002: GraphQL, FE-003: SQLite persistence). |
-| 1.0.8-draft | 2026-01-07 | **FR-015 Replaced with Vue DevTools Integration for Comprehensive Edge Case Testing**: Replaced FR-015 standalone Web UI (`/__mock-ui`) with Vue DevTools Plugin API integration (`@vue/devtools-api` ^7.3.0). Added custom "Mock Server" tab in Vue DevTools browser extension aligned with Value Proposition (section 1.2): "Simulate edge cases, errors, and network conditions". **Comprehensive Simulation Capabilities:** (1) HTTP status codes (2xx, 4xx, 5xx ranges), (2) Network conditions (latency presets: Fast/Slow/3G/4G, custom delays 0-10000ms), (3) Error scenarios (timeout, network failure, server error, rate limiting, maintenance), (4) Edge cases (empty responses, malformed JSON, partial content, large payloads), (5) Connection quality (stable, intermittent, drop), (6) Advanced options (custom headers, failure probability 0-100%, timeout duration, simulation presets). **Query Parameters:** `simulateStatus`, `simulateDelay`, `simulateError`, `simulateConnection`, `simulateResponse`, `simulateTimeout`, `simulateProbability`, `simulateHeaders`. **Features:** Endpoint registry with filters, simulation panel with visual controls, preset management (save/load scenarios like "Slow 3G", "Rate Limited", "Server Overload"), real-time sync via `GET /__registry` (5s polling), copy-to-clipboard and test-in-browser actions. Updated section 7.4.2 with @vue/devtools-api integration including simulation capabilities reference and query parameters table. Updated section 13.3 Supporting Dependencies with @vue/devtools-api details. Benefits: comprehensive error handling validation, realistic network simulation, zero UI infrastructure, seamless workflow integration. |
-| 1.0.9-draft | 2026-01-08 | **FR-015 DevTools Detection Strategy**: Added comprehensive DevTools detection pattern following Pinia and Vue Router implementation. **Detection Strategy:** (1) Build-time guard (`__DEV__` constant, tree-shaken in production), (2) Runtime guard (`IS_CLIENT` for browser environment, excludes SSR), (3) Feature guard (`HAS_PROXY` for modern browsers), (4) Silent buffer pattern (plugins buffered until DevTools connects, no errors if DevTools missing), (5) API version validation (`typeof api.now === 'function'` check). **Global State Exposure:** Following Pinia's pattern, exposed `globalThis.$mockServer` and `globalThis.$mockRegistry` for console debugging. `$mockServer` provides: url, connected, port, startedAt, lastError, refresh(), getEndpoint(), listEndpoints(). `$mockRegistry` provides: endpoints, stats, byMethod, byOperationId. **Updated Sections:** FR-015 acceptance criteria (added 7 new criteria for detection/exposure), section 7.4.2 with complete implementation code including `registerMockServerDevTools()`, `exposeGlobalMockServerState()`, helper functions, TypeScript declarations, and Vite plugin integration examples. Added build configuration for `__DEV__` constant. Research based on Pinia (`@vue/devtools-api` integration in `packages/pinia/src/devtools/plugin.ts`) and Vue DevTools Kit (`@vue/devtools-kit` source code). |
+| 1.0.8-draft | 2026-01-07 | **FR-015 Replaced with Vue DevTools Integration for Comprehensive Edge Case Testing**: Replaced FR-015 standalone Web UI (`//__openapi-ui`) with Vue DevTools Plugin API integration (`@vue/devtools-api` ^7.3.0). Added custom "OpenAPI Server" tab in Vue DevTools browser extension aligned with Value Proposition (section 1.2): "Simulate edge cases, errors, and network conditions". **Comprehensive Simulation Capabilities:** (1) HTTP status codes (2xx, 4xx, 5xx ranges), (2) Network conditions (latency presets: Fast/Slow/3G/4G, custom delays 0-10000ms), (3) Error scenarios (timeout, network failure, server error, rate limiting, maintenance), (4) Edge cases (empty responses, malformed JSON, partial content, large payloads), (5) Connection quality (stable, intermittent, drop), (6) Advanced options (custom headers, failure probability 0-100%, timeout duration, simulation presets). **Query Parameters:** `simulateStatus`, `simulateDelay`, `simulateError`, `simulateConnection`, `simulateResponse`, `simulateTimeout`, `simulateProbability`, `simulateHeaders`. **Features:** Endpoint registry with filters, simulation panel with visual controls, preset management (save/load scenarios like "Slow 3G", "Rate Limited", "Server Overload"), real-time sync via `GET /__openapi/registry` (5s polling), copy-to-clipboard and test-in-browser actions. Updated section 7.4.2 with @vue/devtools-api integration including simulation capabilities reference and query parameters table. Updated section 13.3 Supporting Dependencies with @vue/devtools-api details. Benefits: comprehensive error handling validation, realistic network simulation, zero UI infrastructure, seamless workflow integration. |
+| 1.0.9-draft | 2026-01-08 | **FR-015 DevTools Detection Strategy**: Added comprehensive DevTools detection pattern following Pinia and Vue Router implementation. **Detection Strategy:** (1) Build-time guard (`__DEV__` constant, tree-shaken in production), (2) Runtime guard (`IS_CLIENT` for browser environment, excludes SSR), (3) Feature guard (`HAS_PROXY` for modern browsers), (4) Silent buffer pattern (plugins buffered until DevTools connects, no errors if DevTools missing), (5) API version validation (`typeof api.now === 'function'` check). **Global State Exposure:** Following Pinia's pattern, exposed `globalThis.$openApiServer` and `globalThis.$openApiRegistry` for console debugging. `$openApiServer` provides: url, connected, port, startedAt, lastError, refresh(), getEndpoint(), listEndpoints(). `$openApiRegistry` provides: endpoints, stats, byMethod, byOperationId. **Updated Sections:** FR-015 acceptance criteria (added 7 new criteria for detection/exposure), section 7.4.2 with complete implementation code including `registerOpenApiServerDevTools()`, `exposeGlobalOpenApiServerState()`, helper functions, TypeScript declarations, and Vite plugin integration examples. Added build configuration for `__DEV__` constant. Research based on Pinia (`@vue/devtools-api` integration in `packages/pinia/src/devtools/plugin.ts`) and Vue DevTools Kit (`@vue/devtools-kit` source code). |
+| 1.0.10-draft | 2026-01-08 | **Terminology Standardization**: Comprehensive rename throughout document. **Domain Terms:** gpme/GPME/GPme → pet/PET/Pet (example domain), bff/BFF → api/API (paths, variables, descriptions), BffApi → PetApi (class names). **Product Naming:** "Mock Server" → "OpenAPI Server" for all references to our product (preserved "Scalar Mock Server" as external package name and "generic mock servers" for comparison context). **Code Identifiers:** mockServer → openApiServer, $mockServer → $openApiServer, $mockRegistry → $openApiRegistry, __MOCK_*__ → __OPENAPI_*__, MOCK_SERVER_* → OPENAPI_SERVER_*, MockEndpoint* → OpenApiEndpoint*, MockStore → OpenApiStore. **Paths:** /mock/seeds → /openapi/seeds, /mock/handlers → /openapi/handlers, /__registry → /__openapi/registry, /__mock-* → /__openapi-*. **Files:** mock-server-runner → openapi-server-runner, mock-server.types → openapi-server.types. Updated glossary entry: BFF → API. Preserved historical accuracy in changelog entries. |
 
 ---
 
