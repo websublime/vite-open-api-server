@@ -2837,7 +2837,38 @@ After completing this task:
 
 #### P1-01: Implement OpenAPI Parser (FR-003)
 
-**Description:** Implement OpenAPI document loading, parsing, and validation using @scalar/openapi-parser.
+**Description:** Implement a robust OpenAPI document loader and parser using @scalar/openapi-parser that reads OpenAPI specifications from the file system (YAML or JSON format), validates them against the OpenAPI schema, resolves all $ref references, and returns a normalized, fully dereferenced specification object. This parser serves as the foundation for the entire plugin, converting the OpenAPI specification into a usable data structure for mock server generation, endpoint registration, and handler routing.
+
+**Context:**
+- **@scalar/openapi-parser**: Scalar's official OpenAPI parser supporting OpenAPI 3.0.x and 3.1.x specifications
+- **Parser capabilities**: Reads files, validates schema compliance, resolves $ref references (internal and external), dereferences schemas
+- **Why @scalar/openapi-parser**: Same parser used by Scalar's mock server and API reference tools, ensuring consistency and compatibility
+- **File format support**: Must handle both YAML (.yaml, .yml) and JSON (.json) formats automatically
+- **$ref resolution**: OpenAPI specs use JSON Schema $ref for reusability (e.g., `$ref: '#/components/schemas/Pet'`), parser must resolve these
+- **Dereferencing**: Converting $ref references into inline objects for easier access (mock server needs dereferenced schemas)
+- **Validation errors**: Parser should provide detailed error messages with line numbers and context for developer debugging
+- **File watching**: Parser will be called on initial load and on file changes (for hot reload in Phase 5)
+
+**Why This Implementation:**
+- **fs/promises**: Use async file reading for non-blocking I/O in Node.js
+- **path.resolve**: Convert relative paths from vite.config.ts to absolute paths for reliable file access
+- **YAML detection**: Check file extension (.yaml, .yml) to determine format, fall back to JSON
+- **Error handling**: Wrap parser in try-catch to provide actionable error messages if spec is invalid
+- **Type safety**: Use TypeScript types from @scalar/openapi-parser for parsed spec structure
+- **Caching**: Cache parsed spec in memory to avoid re-parsing on every endpoint request
+
+**Implementation Approach:**
+1. Create `src/core/parser/` directory for parser modules
+2. Create `openapi-loader.ts` with `loadOpenApiSpec(path: string)` async function
+3. Implement file reading using `fs.promises.readFile` with UTF-8 encoding
+4. Detect file format by checking extension (.yaml/.yml vs .json)
+5. Import `yaml` package for YAML parsing, use `JSON.parse` for JSON
+6. Use @scalar/openapi-parser's `parse()` method with dereferencing enabled
+7. Validate parsed spec using parser's built-in validation
+8. Handle errors with detailed context (file not found, parse errors, validation errors)
+9. Return normalized OpenAPI specification object (dereferenced)
+10. Create types for parsed spec structure (OpenApiDocument interface)
+11. Add unit tests for valid specs, invalid specs, missing files, YAML/JSON formats
 
 **Estimate:** M (3 days)
 
@@ -2845,47 +2876,310 @@ After completing this task:
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P1-01.1 | Create parser/openapi-loader.ts | Load and parse OpenAPI specs |
-| P1-01.2 | Implement YAML/JSON detection | Support both formats |
-| P1-01.3 | Implement validation | Use @scalar/openapi-parser validate() |
-| P1-01.4 | Implement $ref resolution | Use dereference() |
-| P1-01.5 | Implement statistics extraction | Count endpoints, schemas |
-| P1-01.6 | Create parser/schema-extractor.ts | Extract operations and schemas |
-| P1-01.7 | Implement error formatting | User-friendly error messages |
-| P1-01.8 | Add unit tests | Test all parser functions |
+| P1-01.1 | Create parser directory structure | Create `packages/vite-plugin-open-api-server/src/core/parser/` directory with `openapi-loader.ts` and `index.ts` files. The `openapi-loader.ts` will contain the main parsing logic, while `index.ts` exports the public API. This establishes the modular structure for parser functionality. |
+| P1-01.2 | Implement file reading with path resolution | Create `loadOpenApiSpec(openApiPath: string)` async function that resolves relative paths to absolute using `path.resolve(process.cwd(), openApiPath)`. Read file contents using `fs.promises.readFile(absolutePath, 'utf-8')`. Handle file not found errors with helpful message including attempted path. Return file contents as string for parsing. |
+| P1-01.3 | Implement format detection and parsing | Detect file format by checking extension: `path.extname(openApiPath)` returns `.yaml`, `.yml`, or `.json`. For YAML, use `yaml.parse(contents)` from `yaml` package. For JSON, use `JSON.parse(contents)`. Handle parse errors with line number context. Return parsed JavaScript object representing the OpenAPI spec. |
+| P1-01.4 | Integrate @scalar/openapi-parser | Import `parse` function from `@scalar/openapi-parser`. Call `await parse(parsedObject, { dereference: true })` to validate and dereference the spec. The `dereference: true` option resolves all $ref references, converting them to inline objects. Handle validation errors returned by parser, extracting error messages and locations. Return the dereferenced OpenAPI specification object. |
+| P1-01.5 | Create OpenAPI type definitions | Create `src/core/parser/types.ts` with TypeScript interfaces for parsed OpenAPI structure. Define `OpenApiDocument` interface with fields: `openapi` (version string), `info` (metadata), `servers` (array), `paths` (endpoint definitions), `components` (schemas, responses, parameters), `security` (authentication schemes). Use types from @scalar/openapi-parser where available, supplement with custom types for plugin-specific needs. Export all types from parser/index.ts. |
+| P1-01.6 | Implement error handling and logging | Wrap all file operations and parsing in try-catch blocks. Create custom error classes: `OpenApiFileNotFoundError`, `OpenApiParseError`, `OpenApiValidationError`. Each error should include file path, error message, and contextual information (line number for parse errors, validation path for validation errors). Log errors using console.error with prefix "[OpenAPI Parser]" for easy identification. Provide actionable error messages guiding developers to fix issues. |
+| P1-01.7 | Add caching mechanism | Implement simple in-memory cache using a Map to store parsed specs keyed by file path. Before reading file, check if cached version exists and file modification time hasn't changed (use `fs.stat(path).mtime`). Return cached spec if valid, otherwise parse and cache new version. This optimization prevents re-parsing on every request during development. Cache will be cleared on file changes (hot reload in Phase 5). |
+| P1-01.8 | Create unit tests | Create `src/core/parser/__tests__/openapi-loader.test.ts` with Vitest tests. Test cases: 1) Valid YAML spec parses successfully, 2) Valid JSON spec parses successfully, 3) Invalid YAML throws parse error, 4) Invalid OpenAPI schema throws validation error, 5) Non-existent file throws file not found error, 6) $ref references are dereferenced correctly, 7) Cached spec is returned on second call. Use test fixtures in `__tests__/fixtures/` directory with sample valid/invalid specs. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Use `@scalar/openapi-parser` as the primary parsing library
-- [ ] Support both YAML (.yaml, .yml) and JSON (.json) formats
-- [ ] Validate document structure before any enhancement
-- [ ] Resolve all $ref references for proper schema matching
-- [ ] Handle circular references gracefully
-- [ ] Report validation errors clearly with line numbers if possible
-- [ ] Extract all operations with their operationIds
-- [ ] Extract all schemas from components/schemas
-- [ ] Provide document statistics (endpoint count, schema count)
+**Technical Considerations:**
+- **@scalar/openapi-parser API**: Uses async `parse(spec, options)` function returning Promise<{ valid: boolean, specification: object, errors: array }>
+- **Dereferencing performance**: Dereferencing can be slow for large specs with many $ref references; caching is critical
+- **Circular references**: OpenAPI allows circular $refs (e.g., recursive schemas like LinkedList); parser handles these but results in objects with circular JavaScript references
+- **Path resolution**: Relative paths in vite.config.ts are relative to Vite's root (usually project root), must resolve correctly
+- **YAML parsing**: yaml package is pure JavaScript and handles all YAML 1.2 features, but can throw on invalid syntax
+- **JSON parsing**: Native JSON.parse is fast but provides limited error context; consider using json-parse-better-errors for better messages
+- **File watching**: File modification time (mtime) is sufficient for cache invalidation; inode changes handled by hot reload in Phase 5
+- **Memory usage**: Parsed specs can be large (megabytes for complex APIs); cache size should be monitored in production
+- **Error types**: Different error types enable consumers to handle errors appropriately (file not found vs validation error)
+- **OpenAPI versions**: Parser supports both 3.0.x and 3.1.x; 3.1.x uses JSON Schema 2020-12 (more features)
+- **External $refs**: Parser can resolve external file references (e.g., `$ref: './schemas/Pet.yaml'`), but our plugin focuses on single-file specs initially
+- **Validation strictness**: Parser validates against official OpenAPI schema; some tools accept invalid specs, so validation errors are expected
+
+**Expected Outputs:**
+
+After completing this task:
+
+1. **Parser directory structure**:
+   ```
+   packages/vite-plugin-open-api-server/src/core/parser/
+   ├── index.ts                    # Public exports
+   ├── openapi-loader.ts           # Main parsing logic
+   ├── types.ts                    # TypeScript interfaces
+   └── __tests__/
+       ├── openapi-loader.test.ts  # Unit tests
+       └── fixtures/
+           ├── valid-petstore.yaml # Valid spec fixture
+           ├── invalid-yaml.yaml   # Invalid YAML fixture
+           └── invalid-schema.yaml # Invalid OpenAPI fixture
+   ```
+
+2. **openapi-loader.ts exports**:
+   ```typescript
+   // Main parsing function
+   export async function loadOpenApiSpec(openApiPath: string): Promise<OpenApiDocument>
+   
+   // Custom error classes
+   export class OpenApiFileNotFoundError extends Error
+   export class OpenApiParseError extends Error
+   export class OpenApiValidationError extends Error
+   ```
+
+3. **Usage example** (in plugin.ts):
+   ```typescript
+   import { loadOpenApiSpec } from './core/parser';
+   
+   const spec = await loadOpenApiSpec(options.openApiPath);
+   console.log(`Loaded OpenAPI spec: ${spec.info.title}`);
+   console.log(`Endpoints: ${Object.keys(spec.paths).length}`);
+   ```
+
+4. **Parsed spec structure** (OpenApiDocument):
+   ```typescript
+   {
+     openapi: '3.1.0',
+     info: { title: 'Swagger Petstore', version: '1.0.19' },
+     servers: [{ url: 'https://petstore3.swagger.io/api/v3' }],
+     paths: {
+       '/pet': {
+         post: { operationId: 'addPet', requestBody: {...}, responses: {...} },
+         put: { operationId: 'updatePet', ... }
+       },
+       '/pet/{petId}': {
+         get: { operationId: 'getPetById', parameters: [...], responses: {...} }
+       }
+     },
+     components: {
+       schemas: {
+         Pet: { type: 'object', properties: { id: {...}, name: {...} } },
+         Category: { ... },
+         User: { ... }
+       },
+       securitySchemes: {
+         petstore_auth: { type: 'oauth2', flows: {...} },
+         api_key: { type: 'apiKey', in: 'header', name: 'api_key' }
+       }
+     }
+   }
+   ```
+
+5. **Error handling examples**:
+   ```typescript
+   // File not found
+   throw new OpenApiFileNotFoundError(
+     `OpenAPI spec not found at: ${absolutePath}\n` +
+     `Resolved from: ${openApiPath}\n` +
+     `Current working directory: ${process.cwd()}`
+   );
+   
+   // YAML parse error
+   throw new OpenApiParseError(
+     `Failed to parse YAML file: ${openApiPath}\n` +
+     `Error at line 23: unexpected indentation\n` +
+     `${yamlError.message}`
+   );
+   
+   // Validation error
+   throw new OpenApiValidationError(
+     `Invalid OpenAPI specification: ${openApiPath}\n` +
+     `Errors:\n` +
+     errors.map(e => `  - ${e.path}: ${e.message}`).join('\n')
+   );
+   ```
+
+6. **Cache implementation**:
+   ```typescript
+   const cache = new Map<string, { spec: OpenApiDocument, mtime: number }>();
+   
+   // Check cache
+   const cached = cache.get(absolutePath);
+   const stats = await fs.stat(absolutePath);
+   if (cached && cached.mtime === stats.mtimeMs) {
+     return cached.spec; // Return cached version
+   }
+   
+   // Parse and cache
+   const spec = await parseSpec(contents);
+   cache.set(absolutePath, { spec, mtime: stats.mtimeMs });
+   ```
+
+**Acceptance Criteria:**
+- [ ] `src/core/parser/` directory created with proper structure
+- [ ] `openapi-loader.ts` implements `loadOpenApiSpec(path: string)` async function
+- [ ] Function resolves relative paths to absolute using `path.resolve(process.cwd(), path)`
+- [ ] Function reads file using `fs.promises.readFile` with UTF-8 encoding
+- [ ] Function detects YAML format by checking .yaml or .yml extension
+- [ ] Function detects JSON format for .json extension
+- [ ] YAML files parsed using `yaml` package's `parse()` method
+- [ ] JSON files parsed using `JSON.parse()`
+- [ ] @scalar/openapi-parser's `parse()` function called with `dereference: true` option
+- [ ] All $ref references in spec are dereferenced (resolved to inline objects)
+- [ ] Parser validates spec against OpenAPI 3.x schema
+- [ ] Validation errors are caught and wrapped in `OpenApiValidationError`
+- [ ] File not found errors are caught and wrapped in `OpenApiFileNotFoundError`
+- [ ] YAML/JSON parse errors are caught and wrapped in `OpenApiParseError`
+- [ ] Error messages include file path and contextual information
+- [ ] Parse errors include line numbers when available
+- [ ] Validation errors include JSON path and error descriptions
+- [ ] `types.ts` created with `OpenApiDocument` interface
+- [ ] `OpenApiDocument` interface includes: openapi, info, servers, paths, components, security
+- [ ] Custom error classes extend Error with proper names and messages
+- [ ] Caching mechanism implemented using Map keyed by file path
+- [ ] Cache checks file modification time (mtime) before returning cached version
+- [ ] Cache invalidates when file mtime changes
+- [ ] Cached spec returned on second call without re-parsing (performance optimization)
+- [ ] Circular references in $refs handled gracefully (no infinite loops)
+- [ ] Parser supports both OpenAPI 3.0.x and 3.1.x specifications
+- [ ] Petstore spec from P0-13 parses successfully without errors
+- [ ] Parsed spec has all paths extracted (19 endpoints for Petstore)
+- [ ] Parsed spec has all schemas extracted (Pet, Order, User, etc. for Petstore)
+- [ ] Unit tests created in `__tests__/openapi-loader.test.ts`
+- [ ] Test: Valid YAML spec parses and returns OpenApiDocument
+- [ ] Test: Valid JSON spec parses and returns OpenApiDocument
+- [ ] Test: Invalid YAML throws OpenApiParseError
+- [ ] Test: Invalid OpenAPI schema throws OpenApiValidationError
+- [ ] Test: Non-existent file throws OpenApiFileNotFoundError
+- [ ] Test: $ref references are dereferenced in returned spec
+- [ ] Test: Second call returns cached spec (verify mtime check)
+- [ ] Test fixtures directory created with sample specs
+- [ ] All tests pass with `pnpm test`
+- [ ] TypeScript compiles without errors (`pnpm typecheck`)
+- [ ] Biome linting passes (`pnpm lint`)
+- [ ] Parser function exported from `core/parser/index.ts`
+- [ ] Error classes exported from `core/parser/index.ts`
+- [ ] Types exported from `core/parser/index.ts`
+- [ ] Documentation added to functions explaining parameters and return values
+- [ ] Committed with message: `feat(parser): implement OpenAPI parser with @scalar/openapi-parser for YAML/JSON loading, validation, and $ref dereferencing`
 
 ---
 
 #### P1-02: Implement Security Normalizer (FR-010 partial)
 
-**Description:** Implement security scheme normalization using @scalar/openapi-parser sanitize().
+**Description:** Implement security scheme normalization that analyzes the parsed OpenAPI specification, identifies missing or incomplete security scheme definitions, and auto-generates default configurations for common authentication patterns (API keys, OAuth2, HTTP Basic). This normalizer ensures that the mock server can handle authenticated endpoints even when the OpenAPI spec has incomplete security definitions, improving developer experience by reducing configuration overhead.
 
-**Estimate:** S (1 day)
+**Context:**
+- **Security schemes**: OpenAPI security defines authentication methods (apiKey, http, oauth2, openIdConnect)
+- **Missing definitions**: Many OpenAPI specs reference security schemes in operations but don't define them in components.securitySchemes
+- **@scalar/openapi-parser sanitize**: Scalar's utility function that normalizes incomplete specs (not primary purpose, but useful)
+- **Why normalization**: Incomplete security definitions would cause mock server to reject authenticated requests unnecessarily
+- **Common patterns**: apiKey (header/query/cookie), HTTP Basic Auth, OAuth2 (various flows), Bearer tokens
+- **Auto-generation**: Plugin generates sensible defaults when schemes are referenced but not defined
+- **Security in operations**: Operations can have `security: [{ api_key: [] }]` requiring auth, or be public (no security array)
+
+**Why This Implementation:**
+- **Detect missing schemes**: Scan all operations for security references, compare against components.securitySchemes
+- **Generate defaults**: For missing schemes, create default configurations (apiKey in header, basic auth, etc.)
+- **Preserve existing**: Don't override explicitly defined schemes, only fill in gaps
+- **Logging**: Inform developers which schemes were auto-generated so they can add proper definitions
+- **Type-specific defaults**: Different default configurations for apiKey (header: X-API-Key), http (basic), oauth2 (dummy endpoints)
+
+**Implementation Approach:**
+1. Create `src/core/parser/security-normalizer.ts` with `normalizeSecuritySchemes(spec: OpenApiDocument)` function
+2. Extract all security requirements from operations (scan spec.paths[path][method].security)
+3. Build set of referenced scheme names (e.g., "api_key", "petstore_auth")
+4. Compare against defined schemes in spec.components.securitySchemes
+5. For each missing scheme, generate default configuration based on naming pattern
+6. Add generated schemes to spec.components.securitySchemes
+7. Log generated schemes with warning that proper definitions should be added
+8. Return modified spec with complete security definitions
+9. Create unit tests with specs having missing/incomplete security
 
 **Subtasks:**
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P1-02.1 | Create parser/security-normalizer.ts | Security normalization logic |
-| P1-02.2 | Implement sanitize() integration | Auto-generate missing schemes |
-| P1-02.3 | Implement security scheme logging | Log detected schemes |
-| P1-02.4 | Add unit tests | Test normalization |
+| P1-02.1 | Create security-normalizer.ts structure | Create `src/core/parser/security-normalizer.ts` with `normalizeSecuritySchemes(spec: OpenApiDocument): OpenApiDocument` function that takes a parsed OpenAPI spec and returns the same spec with normalized security schemes. Initialize components.securitySchemes if it doesn't exist. This function will be called after parsing in openapi-loader.ts. |
+| P1-02.2 | Extract security requirements | Implement `extractSecurityRequirements(spec: OpenApiDocument): Set<string>` helper function that iterates through all paths and operations, collecting security scheme names from `operation.security` arrays. Each security requirement is an object like `{ api_key: [] }` where the key is the scheme name. Return a Set of all referenced scheme names across the entire spec. |
+| P1-02.3 | Detect missing schemes | Compare the set of referenced scheme names against `spec.components.securitySchemes` (if it exists). Create an array of missing scheme names that are referenced in operations but not defined in components. Log a warning for each missing scheme: `[Security Normalizer] Warning: Security scheme '${name}' referenced but not defined, generating default`. |
+| P1-02.4 | Generate default security schemes | For each missing scheme name, generate a default security scheme definition based on naming patterns: 1) If name contains "api" or "key" → apiKey type with `in: "header"`, `name: "X-API-Key"`, 2) If name contains "basic" or "auth" → http type with `scheme: "basic"`, 3) If name contains "bearer" or "token" → http type with `scheme: "bearer"`, 4) If name contains "oauth" → oauth2 type with dummy authorization/token URLs, 5) Default fallback → apiKey in header. Create proper OpenAPI SecurityScheme objects for each. |
+| P1-02.5 | Add generated schemes to spec | Add all generated security scheme definitions to `spec.components.securitySchemes`. If components.securitySchemes doesn't exist, create it as an empty object first. Preserve any existing scheme definitions (don't override). Log each generated scheme with its type and configuration: `[Security Normalizer] Generated '${name}' scheme: ${type} (${details})`. Return the modified spec. |
+| P1-02.6 | Create unit tests | Create `src/core/parser/__tests__/security-normalizer.test.ts` with Vitest tests. Test cases: 1) Spec with no security returns unchanged, 2) Spec with defined security schemes returns unchanged, 3) Spec with missing scheme gets default generated, 4) Multiple missing schemes all get generated, 5) apiKey pattern generates apiKey type, 6) oauth pattern generates oauth2 type, 7) Existing schemes are preserved (not overridden), 8) Generated schemes are valid OpenAPI SecurityScheme objects. Use test fixtures with various security configurations. |
+
+**Technical Considerations:**
+- **Security scheme types**: OpenAPI supports apiKey, http, oauth2, openIdConnect (4 types with different required fields)
+- **apiKey locations**: Can be in header, query, or cookie; header is most common default
+- **HTTP schemes**: Supports basic, bearer, digest, and others; basic and bearer are most common
+- **OAuth2 flows**: Supports implicit, password, clientCredentials, authorizationCode; each requires different URLs
+- **Naming patterns**: Heuristic-based generation isn't perfect but provides reasonable defaults for common patterns
+- **Security requirements format**: `security: [{ scheme1: [], scheme2: ['scope1', 'scope2'] }]` where scopes are OAuth2-specific
+- **Global security**: Can be defined at root level (applies to all operations) or per-operation (overrides global)
+- **Empty security**: `security: []` means operation explicitly allows unauthenticated access
+- **Mock server compatibility**: Generated schemes must be valid for @scalar/mock-server to accept them
+- **Warning vs Error**: Missing schemes are warnings (auto-generated), not errors (spec is still valid)
+
+**Expected Outputs:**
+
+After completing this task:
+
+1. **security-normalizer.ts exports**:
+   ```typescript
+   export function normalizeSecuritySchemes(spec: OpenApiDocument): OpenApiDocument
+   ```
+
+2. **Generated scheme example** (for missing "api_key" reference):
+   ```typescript
+   {
+     "api_key": {
+       "type": "apiKey",
+       "in": "header",
+       "name": "X-API-Key",
+       "description": "Auto-generated API key scheme. Please define properly in your OpenAPI spec."
+     }
+   }
+   ```
+
+3. **Console output example**:
+   ```
+   [Security Normalizer] Warning: Security scheme 'api_key' referenced but not defined, generating default
+   [Security Normalizer] Generated 'api_key' scheme: apiKey (header: X-API-Key)
+   [Security Normalizer] Warning: Security scheme 'petstore_auth' referenced but not defined, generating default
+   [Security Normalizer] Generated 'petstore_auth' scheme: oauth2 (authorization code flow)
+   ```
+
+4. **Usage in openapi-loader.ts**:
+   ```typescript
+   import { normalizeSecuritySchemes } from './security-normalizer';
+   
+   // After parsing
+   const spec = await parse(parsedObject, { dereference: true });
+   
+   // Normalize security schemes
+   const normalizedSpec = normalizeSecuritySchemes(spec);
+   ```
 
 **Acceptance Criteria:**
-- [ ] Use @scalar/openapi-parser's sanitize() to normalize security schemes
-- [ ] Auto-generate missing components.securitySchemes definitions
-- [ ] Log normalized security schemes on startup
+- [ ] `security-normalizer.ts` created in `src/core/parser/` directory
+- [ ] `normalizeSecuritySchemes(spec)` function implemented and exported
+- [ ] Function extracts all security requirements from all operations
+- [ ] Function identifies schemes referenced but not defined
+- [ ] Function generates default apiKey scheme for names containing "api" or "key"
+- [ ] Function generates default http basic scheme for names containing "basic" or "auth"
+- [ ] Function generates default http bearer scheme for names containing "bearer" or "token"
+- [ ] Function generates default oauth2 scheme for names containing "oauth"
+- [ ] Generated apiKey schemes use header location with name "X-API-Key"
+- [ ] Generated http basic schemes use scheme "basic"
+- [ ] Generated http bearer schemes use scheme "bearer"
+- [ ] Generated oauth2 schemes include dummy authorization and token URLs
+- [ ] All generated schemes include description noting they're auto-generated
+- [ ] Function preserves existing security scheme definitions (no overrides)
+- [ ] Function creates components.securitySchemes object if it doesn't exist
+- [ ] Function logs warning for each missing security scheme detected
+- [ ] Function logs info for each generated scheme with type and details
+- [ ] Modified spec is returned with all security schemes defined
+- [ ] Unit tests created testing various security configurations
+- [ ] Test: Spec with no security requirements returns unchanged
+- [ ] Test: Spec with all schemes defined returns unchanged
+- [ ] Test: Spec with one missing scheme gets default generated
+- [ ] Test: Generated schemes are valid OpenAPI SecurityScheme objects
+- [ ] Test: Existing schemes are not overridden by generator
+- [ ] All tests pass with `pnpm test`
+- [ ] TypeScript compiles without errors
+- [ ] Function integrated into openapi-loader.ts parsing flow
+- [ ] Petstore spec (which has complete security definitions) processes without changes
+- [ ] Committed with message: `feat(parser): implement security scheme normalizer to auto-generate missing authentication definitions`
 
 ---
 
