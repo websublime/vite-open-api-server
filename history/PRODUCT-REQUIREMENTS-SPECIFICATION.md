@@ -277,17 +277,19 @@ async function loadOpenApiDocument(filePath) {
  * Counts total operations across all paths.
  */
 function countOperations(document) {
-  let count = 0;
-  const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+  function countOperations(document: any): number {
+    let count = 0;
+    const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
   
-  for (const pathItem of Object.values(document?.paths ?? {})) {
-    for (const method of methods) {
-      if (pathItem[method]) count++;
+    // Petstore paths: /pet, /pet/findByStatus, /pet/findByTags, /pet/{petId}, etc.
+    for (const path of Object.values(document?.paths || {})) {
+      for (const method of methods) {
+        if ((path as any)[method]) count++;
+      }
     }
-  }
   
-  return count;
-}
+    return count;  // Petstore returns 19
+  }
 ```
 
 **Startup Output:**
@@ -316,7 +318,7 @@ function countOperations(document) {
   Validation Errors:
     ✖ Line 45: Invalid $ref '#/components/schemas/UnknownType'
     ✖ Line 123: Missing required field 'responses' in operation
-    ✖ Line 200: Duplicate operationId 'getVehicles'
+    ✖ Line 200: Duplicate operationId 'getPetById'
   
   OpenAPI server cannot start with invalid OpenAPI specification.
 ```
@@ -361,53 +363,49 @@ Early validation prevents runtime errors and provides immediate feedback when:
 Handlers support two formats: **string** (static code) or **function** (dynamic code generation).
 
 ```javascript
-// health.handler.mjs
+// pets.handler.mjs
 // Exports a mapping of operationId -> x-handler code (string or function)
+// Based on Swagger Petstore OpenAPI 3.0 specification
 
 export default {
   // FORMAT 1: Direct string export (simple, static)
-  health: `
-    return {
-      environment: 'DEV',
-      status: 'healthy',
-      timestamp: new Date().toISOString()
-    }
+  getInventory: `
+    const pets = store.list('Pet');
+    const inventory = {};
+    pets.forEach(pet => {
+      const status = pet.status || 'available';
+      inventory[status] = (inventory[status] || 0) + 1;
+    });
+    return inventory;
   `,
   
   // FORMAT 2: Function export (dynamic, context-aware)
-  fetch_vehicles: ({ operation, document }) => {
+  findPetsByStatus: ({ operation, document }) => {
     // Access operation details to generate appropriate handler code
-    const hasFilterParam = operation.parameters?.some(p => p.name === 'filter');
-    const hasPaginationParams = operation.parameters?.some(p => p.name === 'page');
+    const hasStatusParam = operation.parameters?.some(p => p.name === 'status');
     
-    let code = `const vehicles = store.list('Vehicle');\n`;
+    let code = `let pets = store.list('Pet');\n`;
     
     // Generate different code based on operation parameters
-    if (req.query.simulateError) {
-      code += `
+    code += `
+      // Support error simulation via query param
+      if (req.query.simulateError) {
         const errorCode = parseInt(req.query.simulateError);
         if (errorCode === 500) throw new Error('Simulated server error');
-      `;
-    }
+      }
+    `;
     
-    if (hasFilterParam) {
+    if (hasStatusParam) {
       code += `
-        if (req.query.filter) {
-          vehicles = vehicles.filter(v => v.status === req.query.filter);
+        // Filter by status (available, pending, sold)
+        if (req.query.status) {
+          const statusFilter = req.query.status;
+          pets = pets.filter(p => p.status === statusFilter);
         }
       `;
     }
     
-    if (hasPaginationParams) {
-      code += `
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const start = (page - 1) * limit;
-        return vehicles.slice(start, start + limit);
-      `;
-    } else {
-      code += `return vehicles;`;
-    }
+    code += `return pets;`;
     
     return code;
   },
@@ -417,12 +415,12 @@ export default {
 **Handler Function Context:**
 ```typescript
 interface HandlerCodeContext {
-  operationId: string;              // e.g., "fetch_vehicles"
+  operationId: string;              // e.g., "findPetsByStatus", "getPetById"
   operation: OperationObject;       // Full OpenAPI operation object
   method: string;                   // HTTP method: "get", "post", etc.
-  path: string;                     // OpenAPI path: "/api/v1/vehicles"
+  path: string;                     // OpenAPI path: "/pet/findByStatus", "/pet/{petId}"
   document: OpenAPIDocument;        // Complete OpenAPI document
-  schemas: Record<string, Schema>;  // Available schemas
+  schemas: Record<string, Schema>;  // Available schemas (Pet, Order, User, etc.)
 }
 
 type HandlerValue = string | ((context: HandlerCodeContext) => string | Promise<string>);
@@ -433,46 +431,46 @@ type HandlerValue = string | ((context: HandlerCodeContext) => string | Promise<
 Seeds support two formats: **string** (static code) or **function** (dynamic code generation).
 
 ```javascript
-// vehicles.seed.mjs
+// pets.seed.mjs
 // Exports a mapping of schemaName -> x-seed code (string or function)
+// Based on Swagger Petstore OpenAPI 3.0 specification
 
 export default {
   // FORMAT 1: Direct string export (simple, static)
-  Vehicle: `
+  Pet: `
     seed.count(15, () => ({
-      id: faker.string.uuid(),
-      fin: faker.string.alphanumeric(17).toUpperCase(),
-      model: faker.vehicle.model(),
-      brand: 'Mercedes-Benz',
-      mileage: faker.number.int({ min: 0, max: 150000 }),
-      connected: faker.datatype.boolean()
+      id: faker.number.int({ min: 1, max: 10000 }),
+      name: faker.animal.dog(),
+      category: {
+        id: faker.number.int({ min: 1, max: 5 }),
+        name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles'])
+      },
+      photoUrls: [faker.image.url(), faker.image.url()],
+      tags: [
+        { id: faker.number.int({ min: 1, max: 100 }), name: faker.word.adjective() }
+      ],
+      status: faker.helpers.arrayElement(['available', 'pending', 'sold'])
     }))
   `,
   
   // FORMAT 2: Function export (dynamic, context-aware)
   Order: ({ schema, schemas, document }) => {
     // Check if related schemas exist to generate appropriate relationships
-    const hasCustomer = 'Customer' in schemas;
-    const hasVehicle = 'Vehicle' in schemas;
+    const hasPet = 'Pet' in schemas;
     
     let code = `seed.count(20, (index) => {\n`;
     
-    if (hasCustomer) {
-      code += `  const customer = store.list('Customer')[index % 5];\n`;
-    }
-    
-    if (hasVehicle) {
-      code += `  const vehicle = store.list('Vehicle')[index % 10];\n`;
+    if (hasPet) {
+      code += `  const pet = store.list('Pet')[index % 15];\n`;
     }
     
     code += `  return {
-      id: faker.string.uuid(),
-      orderNumber: faker.string.alphanumeric(10).toUpperCase(),
-      ${hasCustomer ? 'customerId: customer?.id,' : ''}
-      ${hasVehicle ? 'vehicleFin: vehicle?.fin,' : ''}
-      status: faker.helpers.arrayElement(['pending', 'confirmed', 'completed']),
-      createdAt: faker.date.recent().toISOString(),
-      total: faker.number.float({ min: 100, max: 5000, precision: 0.01 })
+      id: faker.number.int({ min: 1, max: 10000 }),
+      ${hasPet ? 'petId: pet?.id,' : 'petId: faker.number.int({ min: 1, max: 100 }),'}
+      quantity: faker.number.int({ min: 1, max: 5 }),
+      shipDate: faker.date.future().toISOString(),
+      status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+      complete: faker.datatype.boolean()
     };
   })`;
     
@@ -484,10 +482,10 @@ export default {
 **Seed Function Context:**
 ```typescript
 interface SeedCodeContext {
-  schemaName: string;               // e.g., "Vehicle"
+  schemaName: string;               // e.g., "Pet", "Order", "User"
   schema: SchemaObject;             // Full OpenAPI schema object
   document: OpenAPIDocument;        // Complete OpenAPI document
-  schemas: Record<string, Schema>;  // Available schemas for relationships
+  schemas: Record<string, Schema>;  // Available schemas for relationships (Pet, Category, Tag, etc.)
 }
 
 type SeedValue = string | ((context: SeedCodeContext) => string | Promise<string>);
@@ -653,10 +651,10 @@ function validateSeedExports(filePath, exports, document) {
 
   HANDLERS:
   ──────────────────────────────────────────────────────────────────────────────
-  ✓ health.handler.mjs: 2 handlers loaded
-      → health, fetch_vehicles
-  ✓ orders.handler.mjs: 3 handlers loaded
-      → create_order, get_order, cancel_order
+  ✓ pets.handler.mjs: 4 handlers loaded
+      → getPetById, findPetsByStatus, addPet, updatePet
+  ✓ store.handler.mjs: 3 handlers loaded
+      → placeOrder, getOrderById, getInventory
   ⚠ legacy.handler.mjs: 1 warning
       → 'old_endpoint' has no matching operation in OpenAPI
   ✖ broken.handler.mjs: Failed to load
@@ -664,14 +662,14 @@ function validateSeedExports(filePath, exports, document) {
 
   SEEDS:
   ──────────────────────────────────────────────────────────────────────────────
-  ✓ vehicles.seed.mjs: 1 schema seeded
-      → Vehicle (seed.count: 15)
-  ✓ orders.seed.mjs: 2 schemas seeded
-      → Order (seed.count: 10), OrderItem (seed.count: 50)
+  ✓ pets.seed.mjs: 3 schemas seeded
+      → Pet (seed.count: 15), Category (seed.count: 5), Tag (seed.count: 20)
+  ✓ store.seed.mjs: 1 schema seeded
+      → Order (seed.count: 10)
   ⚠ products.seed.mjs: 1 warning
       → 'LegacyProduct' has no matching schema in OpenAPI
 
-  SUMMARY: 5 handlers | 3 seeds | 2 warnings | 1 error
+  SUMMARY: 7 handlers | 4 seeds | 2 warnings | 1 error
 ```
 
 **Use Cases & Best Practices:**
@@ -688,52 +686,53 @@ function validateSeedExports(filePath, exports, document) {
 
 **Example Use Cases:**
 
-*Use Case 1: Pagination Support*
+*Use Case 1: Tag-based Filtering*
 ```javascript
-// Only generate pagination code if operation has page/limit parameters
+// Generate filtering code based on findPetsByTags operation
 export default {
-  list_items: ({ operation }) => {
-    const hasPagination = operation.parameters?.some(p => 
-      ['page', 'limit', 'offset'].includes(p.name)
-    );
+  findPetsByTags: ({ operation }) => {
+    const hasTagsParam = operation.parameters?.some(p => p.name === 'tags');
     
-    if (hasPagination) {
+    if (hasTagsParam) {
       return `
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
-        const items = store.list('Item');
-        const start = (page - 1) * limit;
-        return {
-          items: items.slice(start, start + limit),
-          total: items.length,
-          page,
-          limit
-        };
+        let pets = store.list('Pet');
+        const tagsQuery = req.query.tags;
+        
+        if (tagsQuery) {
+          const filterTags = Array.isArray(tagsQuery) ? tagsQuery : [tagsQuery];
+          pets = pets.filter(pet => 
+            pet.tags?.some(tag => filterTags.includes(tag.name))
+          );
+        }
+        
+        return pets;
       `;
     }
     
-    return `return store.list('Item');`;
+    return `return store.list('Pet');`;
   }
 };
 ```
 
-*Use Case 2: Smart Schema Relationships*
+*Use Case 2: Smart Schema Relationships (Petstore Order)*
 ```javascript
 // Generate seeds with relationships only if related schemas exist
 export default {
   Order: ({ schemas }) => {
-    const relations = [];
-    if ('Customer' in schemas) relations.push('customerId: store.list("Customer")[index % 5]?.id');
-    if ('Vehicle' in schemas) relations.push('vehicleFin: store.list("Vehicle")[index % 10]?.fin');
+    const hasPet = 'Pet' in schemas;
     
     return `
-      seed.count(25, (index) => ({
-        id: faker.string.uuid(),
-        orderNumber: faker.string.alphanumeric(10).toUpperCase(),
-        ${relations.join(',\n        ')},
-        status: faker.helpers.arrayElement(['pending', 'confirmed', 'completed']),
-        total: faker.number.float({ min: 100, max: 5000, precision: 0.01 })
-      }))
+      seed.count(25, (index) => {
+        ${hasPet ? 'const pet = store.list("Pet")[index % 15];' : ''}
+        return {
+          id: faker.number.int({ min: 1, max: 10000 }),
+          ${hasPet ? 'petId: pet?.id || faker.number.int({ min: 1, max: 100 }),' : 'petId: faker.number.int({ min: 1, max: 100 }),'}
+          quantity: faker.number.int({ min: 1, max: 5 }),
+          shipDate: faker.date.future().toISOString(),
+          status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+          complete: faker.datatype.boolean()
+        };
+      })
     `;
   }
 };
@@ -741,54 +740,55 @@ export default {
 
 *Use Case 3: Response Format Based on OpenAPI Schema*
 ```javascript
-// Adapt mock response to match the exact OpenAPI response schema
+// Adapt mock response to match the exact Petstore response schema
 export default {
-  get_warranty_package: ({ operation }) => {
+  getPetById: ({ operation }) => {
     const responseSchema = operation.responses?.['200']?.content?.['application/json']?.schema;
-    const isWrapped = responseSchema?.properties?.data !== undefined;
+    const hasXmlSupport = operation.responses?.['200']?.content?.['application/xml'];
     
-    if (isWrapped) {
-      return `
-        const pkg = store.get('WarrantyPackage', req.params.id);
-        return pkg ? { data: pkg } : null;
-      `;
-    }
-    
-    return `return store.get('WarrantyPackage', req.params.id);`;
+    // Check if request accepts XML
+    return `
+      const pet = store.get('Pet', req.params.petId);
+      if (!pet) {
+        res.status = 404;
+        return { code: 404, type: 'error', message: 'Pet not found' };
+      }
+      return pet;
+    `;
   }
 };
 ```
 
-*Use Case 4: Conditional Error Simulation*
+*Use Case 4: Conditional Error Simulation (Petstore Order)*
 ```javascript
 // Add error simulation only if operation has error responses defined
 export default {
-  create_order: ({ operation }) => {
+  placeOrder: ({ operation }) => {
     const has400 = operation.responses?.['400'] !== undefined;
-    const has409 = operation.responses?.['409'] !== undefined;
+    const has422 = operation.responses?.['422'] !== undefined;
     
     let code = ``;
     
-    if (has400 || has409) {
+    if (has400 || has422) {
       code += `
         // Support error simulation via special header
-        const simulateError = req.header['x-simulate-error'];
+        const simulateError = req.headers['x-simulate-error'];
       `;
       
       if (has400) {
         code += `
           if (simulateError === '400') {
             res.status = 400;
-            return { error: 'Bad Request', message: 'Invalid order data' };
+            return { code: 400, type: 'error', message: 'Invalid input' };
           }
         `;
       }
       
-      if (has409) {
+      if (has422) {
         code += `
-          if (simulateError === '409') {
-            res.status = 409;
-            return { error: 'Conflict', message: 'Order already exists' };
+          if (simulateError === '422') {
+            res.status = 422;
+            return { code: 422, type: 'error', message: 'Validation exception' };
           }
         `;
       }
@@ -797,10 +797,12 @@ export default {
     code += `
       const order = store.create('Order', {
         ...req.body,
-        id: faker.string.uuid(),
-        createdAt: new Date().toISOString()
+        id: faker.number.int({ min: 1, max: 10000 }),
+        shipDate: req.body.shipDate || new Date().toISOString(),
+        status: req.body.status || 'placed',
+        complete: req.body.complete || false
       });
-      res.status = 201;
+      res.status = 200;
       return order;
     `;
     
@@ -960,7 +962,7 @@ interface OpenApiEndpointEntry {
   /** HTTP method (GET, POST, etc.) */
   method: string;
   
-  /** URL path pattern (e.g., /api/v1/vehicles/{id}) */
+  /** URL path pattern (e.g., /pet/{petId}, /store/order/{orderId}) */
   path: string;
   
   /** OpenAPI operationId */
@@ -1005,16 +1007,16 @@ interface OpenApiServerSchemaEntry {
 
   HANDLERS INJECTED (x-handler):
   ──────────────────────────────────────────────────────────────────────────────
-  ✓ health                    → GET  /api/v1/health
-  ✓ fetch_vehicles            → GET  /api/v1/vehicles
-  ✓ get_order                 → GET  /proxy/order/api/v1/orders/{id}
+  ✓ getPetById                → GET  /pet/{petId}
+  ✓ findPetsByStatus          → GET  /pet/findByStatus
+  ✓ getOrderById              → GET  /store/order/{orderId}
   ⚠ unknown_operation         → NOT FOUND (no matching operationId)
 
   SEEDS INJECTED (x-seed):
   ──────────────────────────────────────────────────────────────────────────────
-  ✓ Vehicle                   → seed.count(15, ...)
+  ✓ Pet                       → seed.count(15, ...)
   ✓ Order                     → seed.count(10, ...)
-  ✓ Product                   → seed.count(20, ...)
+  ✓ User                      → seed.count(5, ...)
   ⚠ UnknownSchema             → NOT FOUND (no matching schema)
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1023,17 +1025,24 @@ interface OpenApiServerSchemaEntry {
 
   METHOD  PATH                                    OPERATION ID              HANDLER
   ──────  ──────────────────────────────────────  ────────────────────────  ────────
-  GET     /api/v1/health                          health                    ✓
-  GET     /api/v1/vehicles                        fetch_vehicles            ✓
-  POST    /api/v1/vehicles/{fin}/eligibility      check_eligibility         -
-  GET     /api/v1/products                        get_products              -
-  POST    /proxy/order/api/v1/orders              create_order              -
-  GET     /proxy/order/api/v1/orders/{id}         get_order                 ✓
+  PUT     /pet                                    updatePet                 -
+  POST    /pet                                    addPet                    -
+  GET     /pet/findByStatus                       findPetsByStatus          ✓
+  GET     /pet/findByTags                         findPetsByTags            -
+  GET     /pet/{petId}                            getPetById                ✓
+  DELETE  /pet/{petId}                            deletePet                 -
+  GET     /store/inventory                        getInventory              ✓
+  POST    /store/order                            placeOrder                -
+  GET     /store/order/{orderId}                  getOrderById              ✓
+  DELETE  /store/order/{orderId}                  deleteOrder               -
+  POST    /user                                   createUser                -
+  GET     /user/login                             loginUser                 -
+  GET     /user/{username}                        getUserByName             -
   ...
 
 ───────────────────────────────────────────────────────────────────────────────
-  ENDPOINTS: 47 total | 3 with x-handler | 44 auto-generated
-  SCHEMAS:   25 total | 3 with x-seed
+  ENDPOINTS: 19 total | 4 with x-handler | 15 auto-generated
+  SCHEMAS:   6 total | 3 with x-seed
 ───────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -1074,7 +1083,7 @@ curl http://localhost:3456/_openapiserver/registry
 **Configuration:**
 ```typescript
 {
-  proxyPath: '/pet/api',  // Requests to /pet/api/* forwarded to openapi server
+  proxyPath: '/api/v3',  // Requests to /api/v3/* forwarded to openapi server (Petstore base path)
 }
 ```
 
@@ -1096,8 +1105,8 @@ curl http://localhost:3456/_openapiserver/registry
 
 **Example Output:**
 ```
-[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]
-[OpenAPI] ✔ 200 GET /api/v1/vehicles
+[OpenAPI] → GET     /pet/findByStatus [findPetsByStatus]
+[OpenAPI] ✔ 200 GET /pet/findByStatus
 [OpenAPI] ✖ 401 POST /api/v1/orders
 ```
 
@@ -1119,7 +1128,7 @@ curl http://localhost:3456/_openapiserver/registry
 **Implementation via x-handler:**
 ```javascript
 // In handler file
-fetch_vehicles: `
+findPetsByStatus: `
   // Simulate errors via query param
   if (req.query.simulateError) {
     const code = parseInt(req.query.simulateError)
@@ -1132,7 +1141,12 @@ fetch_vehicles: `
     await new Promise(r => setTimeout(r, parseInt(req.query.delay)))
   }
   
-  return store.list('Vehicle')
+  // Filter pets by status (available, pending, sold)
+  let pets = store.list('Pet');
+  if (req.query.status) {
+    pets = pets.filter(p => p.status === req.query.status);
+  }
+  return pets;
 `,
 ```
 
@@ -1898,20 +1912,20 @@ export default {
    ┌─────────────────────────────────────────────────────────────────────┐
    │ Method │ Path                    │ Operation ID      │ Handler       │
    ├─────────────────────────────────────────────────────────────────────┤
-   │ GET    │ /api/v1/vehicles        │ fetch_vehicles    │ ✓ Custom      │
-   │ POST   │ /api/v1/vehicles        │ create_vehicle    │ ⚡ Generated   │
-   │ GET    │ /api/v1/vehicles/{id}   │ get_vehicle       │ ✓ Custom      │
-   │ PUT    │ /api/v1/vehicles/{id}   │ update_vehicle    │ ⚡ Generated   │
-   │ DELETE │ /api/v1/vehicles/{id}   │ delete_vehicle    │ ⚡ Generated   │
-   │ GET    │ /api/v1/orders          │ fetch_orders      │ ✓ Custom      │
-   │ POST   │ /api/v1/orders          │ create_order      │ ✓ Custom      │
+   │ GET    │ /pet/findByStatus       │ findPetsByStatus  │ ✓ Custom      │
+   │ POST   │ /pet                    │ addPet            │ ⚡ Generated   │
+   │ GET    │ /pet/{petId}            │ getPetById        │ ✓ Custom      │
+   │ PUT    │ /pet                    │ updatePet         │ ⚡ Generated   │
+   │ DELETE │ /pet/{petId}            │ deletePet         │ ⚡ Generated   │
+   │ GET    │ /store/inventory        │ getInventory      │ ✓ Custom      │
+   │ POST   │ /store/order            │ placeOrder        │ ✓ Custom      │
    └─────────────────────────────────────────────────────────────────────┘
    ```
 
 3. **Response Simulation Panel (per endpoint):**
    When an endpoint is selected:
    ```
-   Selected: GET /api/v1/vehicles [fetch_vehicles]
+   Selected: GET /pet/findByStatus [findPetsByStatus]
    
    ┌─ Simulate Response ────────────────────────────────────────────┐
    │                                                                  │
@@ -1951,9 +1965,9 @@ export default {
    │                                                                  │
    │ Probability:  [ 100% ▼  ]  (100%, 80%, 50%, 20% failure rate) │
    │                                                                  │
-   │ ┌────────────────────────────────────────────────────────┐     │
+   │ ┌────────────────────────────────────────────────────────────────┐     │
    │ │ Generated URL:                                          │     │
-   │ │ http://localhost:5173/api/v1/vehicles?                 │     │
+   │ │ http://localhost:5173/pet/findByStatus?status=available& │     │
    │ │   simulateStatus=200&simulateDelay=500&                │     │
    │ │   simulateConnection=stable                            │     │
    │ │                                                          │     │
@@ -2111,29 +2125,29 @@ export default {
 | `simulateProbability` | number | Success probability percentage | `100`, `80`, `50`, `20` |
 | `simulateHeaders` | JSON | Custom response headers | `{"X-Custom":"value"}` |
 
-**Example URLs:**
+**Example URLs (Petstore):**
 
 ```bash
-# Slow 3G simulation
-GET /api/v1/vehicles?simulateDelay=2000&simulateConnection=intermittent
+# Slow 3G simulation - finding pets by status
+GET /pet/findByStatus?status=available&simulateDelay=2000&simulateConnection=intermittent
 
-# Rate limiting error
-GET /api/v1/vehicles?simulateStatus=429&simulateError=ratelimit
+# Rate limiting error - getting pet by ID
+GET /pet/123?simulateStatus=429&simulateError=ratelimit
 
-# Server maintenance
-GET /api/v1/vehicles?simulateStatus=503&simulateError=maintenance&simulateDelay=5000
+# Server maintenance - store inventory
+GET /store/inventory?simulateStatus=503&simulateError=maintenance&simulateDelay=5000
 
-# Malformed response
-GET /api/v1/vehicles?simulateStatus=200&simulateResponse=malformed
+# Malformed response - user login
+GET /user/login?username=test&password=test&simulateStatus=200&simulateResponse=malformed
 
-# Network failure with 50% probability
-GET /api/v1/vehicles?simulateError=network&simulateProbability=50
+# Network failure with 50% probability - placing order
+POST /store/order?simulateError=network&simulateProbability=50
 
-# Timeout after 10 seconds
-GET /api/v1/vehicles?simulateTimeout=10
+# Timeout after 10 seconds - finding pets by tags
+GET /pet/findByTags?tags=cute&simulateTimeout=10
 
-# Combined edge case
-GET /api/v1/vehicles?simulateStatus=500&simulateDelay=3000&simulateResponse=partial
+# Combined edge case - get order by ID
+GET /store/order/456?simulateStatus=500&simulateDelay=3000&simulateResponse=partial
 ```
 
 **Benefits:**
@@ -2421,9 +2435,9 @@ Provides TypeScript types for:
 #### 7.3.2 Request Flow
 
 ```
-1. Browser makes API request to /pet/api/api/v1/vehicles
-2. Vite proxy intercepts request matching /pet/api/*
-3. Proxy rewrites path: /pet/api/api/v1/vehicles → /api/v1/vehicles
+1. Browser makes API request to /api/v3/pet/findByStatus?status=available
+2. Vite proxy intercepts request matching /api/v3/*
+3. Proxy rewrites path: /api/v3/pet/findByStatus → /pet/findByStatus
 4. Proxy forwards request to http://localhost:3456
 5. OpenAPI server receives request
 6. Scalar Mock Server handles request:
@@ -2443,17 +2457,17 @@ Provides TypeScript types for:
 
 **Request Logging:**
 ```
-[OpenAPI] → GET     /api/v1/health [health]
-[OpenAPI] ✔ 200 GET /api/v1/health
+[OpenAPI] → GET     /pet/findByStatus [findPetsByStatus]
+[OpenAPI] ✔ 200 GET /pet/findByStatus
 
-[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]  
-[OpenAPI] ✔ 200 GET /api/v1/vehicles
+[OpenAPI] → GET     /pet/123 [getPetById]  
+[OpenAPI] ✔ 200 GET /pet/123
 
-[OpenAPI] → POST    /api/v1/orders [create_order]
-[OpenAPI] ✔ 201 POST /api/v1/orders
+[OpenAPI] → POST    /store/order [placeOrder]
+[OpenAPI] ✔ 200 POST /store/order
 
-[OpenAPI] → GET     /api/v1/orders/invalid-id [get_order]
-[OpenAPI] ✖ 404 GET /api/v1/orders/invalid-id
+[OpenAPI] → GET     /pet/99999 [getPetById]
+[OpenAPI] ✖ 404 GET /pet/99999
 ```
 
 **Note:** The Scalar Mock Server handles x-handler execution internally. We don't need to manually register Hono routes - we just inject the code strings into the document.
@@ -2499,10 +2513,10 @@ export function openApiServerPlugin(options: OpenApiServerPluginOptions): Plugin
       return {
         server: {
           proxy: {
-            [options.proxyPath || '/pet/api']: {
+            [options.proxyPath || '/api/v3']: {
               target: `http://localhost:${options.port || 3456}`,
               changeOrigin: true,
-              rewrite: (path) => path.replace(options.proxyPath, ''),
+              rewrite: (path) => path.replace(options.proxyPath || '/api/v3', ''),
             },
           },
         },
@@ -2522,7 +2536,7 @@ export function openApiServerPlugin(options: OpenApiServerPluginOptions): Plugin
       openApiServerProcess = fork('openapi-server-runner.mjs', [], {
         env: {
           OPENAPI_SERVER_PORT: String(options.port || 3456),
-          OPENAPI_SERVER_OPENAPI_PATH: path.resolve(config.root, options.openApiPath),
+          OPENAPI_SERVER_OPENAPI_PATH: path.resolve(config.root, options.openApiPath), // e.g., petstore.openapi.yaml
           OPENAPI_SERVER_SEEDS_DIR: options.seedsDir ? path.resolve(config.root, options.seedsDir) : '',
           OPENAPI_SERVER_HANDLERS_DIR: options.handlersDir ? path.resolve(config.root, options.handlersDir) : '',
           OPENAPI_SERVER_VERBOSE: String(options.verbose || false),
@@ -3752,23 +3766,37 @@ The openapi server must expose a `/_openapiserver/registry` endpoint that return
   "endpoints": [
     {
       "method": "GET",
-      "path": "/api/v1/vehicles",
-      "operationId": "fetch_vehicles",
+      "path": "/pet/findByStatus",
+      "operationId": "findPetsByStatus",
       "hasCustomHandler": true,
-      "availableStatusCodes": [200, 400, 404, 429, 500, 503]
+      "availableStatusCodes": [200, 400, 500]
     },
     {
       "method": "POST",
-      "path": "/api/v1/vehicles",
-      "operationId": "create_vehicle",
+      "path": "/pet",
+      "operationId": "addPet",
       "hasCustomHandler": false,
-      "availableStatusCodes": [201, 400, 409, 422, 500]
+      "availableStatusCodes": [200, 400, 422, 500]
+    },
+    {
+      "method": "GET",
+      "path": "/pet/{petId}",
+      "operationId": "getPetById",
+      "hasCustomHandler": true,
+      "availableStatusCodes": [200, 400, 404, 500]
+    },
+    {
+      "method": "POST",
+      "path": "/store/order",
+      "operationId": "placeOrder",
+      "hasCustomHandler": false,
+      "availableStatusCodes": [200, 400, 422, 500]
     }
   ],
-  "stats": {
-    "total": 12,
-    "customHandlers": 5,
-    "autoGenerated": 7
+  stats: {
+    total: 19,           // Petstore has 19 endpoints
+    customHandlers: 4,   // 4 with custom handlers
+    autoGenerated: 15    // 15 auto-generated
   },
   "timestamp": 1704117600000
 }
@@ -3953,24 +3981,23 @@ async function startOpenApiServer(enhancedDocument: OpenAPIDocument, port: numbe
 
 ```typescript
 // In OpenAPI document (injected by our plugin):
+// Petstore example - findPetsByStatus endpoint
 {
   "paths": {
-    "/vehicles": {
+    "/pet/findByStatus": {
       "get": {
-        "operationId": "fetch_vehicles",
+        "operationId": "findPetsByStatus",
         "x-handler": `
           // JavaScript code executed by Scalar Mock Server
-          const items = store.list('Vehicle');
+          let pets = store.list('Pet');
           
-          // Apply filters from query params
-          const filtered = req.query.status 
-            ? items.filter(v => v.status === req.query.status)
-            : items;
+          // Apply status filter from query params (available, pending, sold)
+          const status = req.query.status;
+          if (status) {
+            pets = pets.filter(p => p.status === status);
+          }
           
-          return {
-            data: filtered,
-            total: filtered.length
-          };
+          return pets;
         `
       }
     }
@@ -3984,9 +4011,9 @@ async function startOpenApiServer(enhancedDocument: OpenAPIDocument, port: numbe
 |----------|------|-------------|
 | `store` | `OpenApiStore` | In-memory data store with CRUD operations |
 | `faker` | `Faker` | Faker.js instance for data generation |
-| `req.body` | `any` | Parsed request body (JSON) |
-| `req.params` | `Record<string, string>` | Path parameters |
-| `req.query` | `Record<string, string>` | Query string parameters |
+| `req.body` | `any` | Parsed request body (JSON) - e.g., Pet object for addPet |
+| `req.params` | `Record<string, string>` | Path parameters - e.g., `{ petId: "123" }` |
+| `req.query` | `Record<string, string>` | Query string parameters - e.g., `{ status: "available" }` |
 | `req.headers` | `Record<string, string>` | Request headers |
 | `res` | `object` | Response helper (set status: `res.status = 404`) |
 
@@ -3994,19 +4021,19 @@ async function startOpenApiServer(enhancedDocument: OpenAPIDocument, port: numbe
 
 ```typescript
 interface OpenApiStore {
-  // List all items of a schema
+  // List all items of a schema (e.g., store.list('Pet'), store.list('Order'))
   list<T>(schema: string): T[];
   
-  // Get single item by ID
+  // Get single item by ID (e.g., store.get('Pet', petId))
   get<T>(schema: string, id: string): T | null;
   
-  // Create new item (auto-generates ID if not provided)
+  // Create new item (e.g., store.create('Pet', { name: 'doggie', status: 'available' }))
   create<T>(schema: string, data: Partial<T>): T;
   
-  // Update existing item
+  // Update existing item (e.g., store.update('Pet', petId, { status: 'sold' }))
   update<T>(schema: string, id: string, data: Partial<T>): T | null;
   
-  // Delete item
+  // Delete item (e.g., store.delete('Pet', petId))
   delete(schema: string, id: string): boolean;
   
   // Clear all items of a schema (or all schemas)
@@ -4028,24 +4055,33 @@ interface OpenApiStore {
 
 ```typescript
 // In OpenAPI document (injected by our plugin):
+// Petstore example - Pet schema with seed data
 {
   "components": {
     "schemas": {
-      "Vehicle": {
+      "Pet": {
         "type": "object",
+        "required": ["name", "photoUrls"],
         "properties": {
-          "id": { "type": "string" },
-          "make": { "type": "string" },
-          "model": { "type": "string" }
+          "id": { "type": "integer", "format": "int64" },
+          "name": { "type": "string" },
+          "category": { "$ref": "#/components/schemas/Category" },
+          "photoUrls": { "type": "array", "items": { "type": "string" } },
+          "tags": { "type": "array", "items": { "$ref": "#/components/schemas/Tag" } },
+          "status": { "type": "string", "enum": ["available", "pending", "sold"] }
         },
         "x-seed": `
-          // Seed 10 vehicles on startup
-          seed.count(10, () => ({
-            id: faker.string.uuid(),
-            make: faker.vehicle.manufacturer(),
-            model: faker.vehicle.model(),
-            year: faker.number.int({ min: 2015, max: 2024 }),
-            status: faker.helpers.arrayElement(['active', 'inactive'])
+          // Seed 15 pets on startup
+          seed.count(15, () => ({
+            id: faker.number.int({ min: 1, max: 10000 }),
+            name: faker.animal.dog(),
+            category: {
+              id: faker.number.int({ min: 1, max: 5 }),
+              name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles'])
+            },
+            photoUrls: [faker.image.url(), faker.image.url()],
+            tags: [{ id: faker.number.int({ min: 1, max: 100 }), name: faker.word.adjective() }],
+            status: faker.helpers.arrayElement(['available', 'pending', 'sold'])
           }))
         `
       }
@@ -4059,52 +4095,69 @@ interface OpenApiStore {
 | Variable | Type | Description |
 |----------|------|-------------|
 | `seed` | `SeedHelper` | Helper for seeding data |
-| `seed.count(n, fn)` | `Function` | Generate N items using factory function |
-| `seed(array)` | `Function` | Seed from static array |
+| `seed.count(n, fn)` | `Function` | Generate N items using factory function (e.g., `seed.count(15, () => ({ ... }))`) |
+| `seed(array)` | `Function` | Seed from static array (e.g., `seed([{ id: 1, name: 'Fido' }])`) |
 | `seed(fn)` | `Function` | Seed from factory function (single item) |
-| `faker` | `Faker` | Faker.js instance |
-| `store` | `OpenApiStore` | Direct store access (advanced) |
-| `schema` | `string` | Schema name being seeded |
+| `faker` | `Faker` | Faker.js instance for realistic data |
+| `store` | `OpenApiStore` | Direct store access for relationships (e.g., `store.list('Category')`) |
+| `schema` | `string` | Schema name being seeded (e.g., "Pet", "Order", "User") |
 
 **Security Scheme Handling:**
 
 The openapi server validates security schemes defined in OpenAPI:
 
 ```typescript
-// OpenAPI document with security
+// Petstore OpenAPI document with security
 {
   "paths": {
-    "/protected": {
+    "/pet/{petId}": {
       "get": {
-        "security": [{ "bearerAuth": [] }],
+        "operationId": "getPetById",
+        "security": [
+          { "api_key": [] },
+          { "petstore_auth": ["read:pets"] }
+        ],
         // ...
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
+      "petstore_auth": {
+        "type": "oauth2",
+        "flows": {
+          "implicit": {
+            "authorizationUrl": "https://petstore3.swagger.io/oauth/authorize",
+            "scopes": {
+              "write:pets": "modify pets in your account",
+              "read:pets": "read your pets"
+            }
+          }
+        }
+      },
+      "api_key": {
+        "type": "apiKey",
+        "name": "api_key",
+        "in": "header"
       }
     }
   }
 }
 
-// OpenAPI server behavior:
-// - Without Authorization header → 401 Unauthorized
-// - With any Authorization: Bearer <token> → 200 OK (mock accepts any token)
+// Petstore OpenAPI server behavior:
+// - Without api_key header → 401 Unauthorized
+// - With any api_key header value → 200 OK (mock accepts any key)
+// - OAuth2 tokens are validated for presence only
 ```
 
-**Supported Security Schemes:**
+**Supported Security Schemes (Petstore uses api_key and oauth2):**
 
-| Type | Location | Mock Behavior |
-|------|----------|---------------|
-| `http` (bearer) | `Authorization` header | Validates presence, accepts any token |
-| `apiKey` | Header/Query/Cookie | Validates presence, accepts any value |
-| `oauth2` | `Authorization` header | Validates presence, accepts any token |
-| `openIdConnect` | `Authorization` header | Validates presence, accepts any token |
+| Type | Location | Mock Behavior | Petstore Example |
+|------|----------|---------------|------------------|
+| `http` (bearer) | `Authorization` header | Validates presence, accepts any token | - |
+| `apiKey` | Header/Query/Cookie | Validates presence, accepts any value | `api_key` header |
+| `oauth2` | `Authorization` header | Validates presence, accepts any token | `petstore_auth` |
+| `openIdConnect` | `Authorization` header | Validates presence, accepts any token | - |
 
 **Limitations & Considerations:**
 
@@ -4125,20 +4178,20 @@ import { openApiServerPlugin } from './vite-plugins';
 export default defineConfig({
   plugins: [
     openApiServerPlugin({
-      // Required: Path to OpenAPI specification
-      openApiPath: 'src/apis/api/pet-api-service.openapi.bundle.yaml',
+      // Required: Path to OpenAPI specification (Swagger Petstore 3.0)
+      openApiPath: 'src/apis/petstore/petstore.openapi.yaml',
       
       // Optional: OpenAPI server port (default: 3456)
       port: 3456,
       
-      // Optional: Proxy path prefix (default: '/pet/api')
-      proxyPath: '/pet/api',
+      // Optional: Proxy path prefix (default: '/api/v3' for Petstore)
+      proxyPath: '/api/v3',
       
       // Optional: Seeds directory
-      seedsDir: 'src/apis/api/openapi/seeds',
+      seedsDir: 'src/apis/petstore/open-api-server/seeds',
       
       // Optional: Handlers directory
-      handlersDir: 'src/apis/api/openapi/handlers',
+      handlersDir: 'src/apis/petstore/open-api-server/handlers',
       
       // Optional: Enable/disable (default: true)
       enabled: process.env.USE_OPENAPI_SERVER === 'true',
@@ -4163,7 +4216,7 @@ Handler files can export either **static strings** or **dynamic functions** that
  * Contains information about the operation and OpenAPI document.
  */
 interface HandlerCodeContext {
-  /** Operation identifier from OpenAPI spec */
+  /** Operation identifier from OpenAPI spec (e.g., "getPetById", "findPetsByStatus") */
   operationId: string;
   
   /** Full operation object from OpenAPI */
@@ -4185,7 +4238,7 @@ interface HandlerCodeContext {
   /** HTTP method (get, post, put, delete, patch, options) */
   method: string;
   
-  /** OpenAPI path pattern (e.g., /api/v1/vehicles/{id}) */
+  /** OpenAPI path pattern (e.g., /pet/{petId}, /store/order/{orderId}) */
   path: string;
   
   /** Complete OpenAPI document */
@@ -4214,31 +4267,41 @@ interface HandlerFileExports {
 **Usage Examples:**
 
 ```typescript
-// Static string handler
+// Static string handler - Petstore inventory endpoint
 export default {
-  health: `
-    return {
-      status: 'healthy',
-      timestamp: new Date().toISOString()
+  getInventory: `
+    const pets = store.list('Pet');
+    const inventory = {};
+    pets.forEach(pet => {
+      const status = pet.status || 'available';
+      inventory[status] = (inventory[status] || 0) + 1;
+    });
+    return inventory;
     };
   `,
 };
 
-// Dynamic function handler
+// Dynamic function handler - Petstore findPetsByStatus
 export default {
-  fetch_vehicles: ({ operation }) => {
-    const hasFilter = operation.parameters?.some(p => p.name === 'filter');
-    return hasFilter 
-      ? `return store.list('Vehicle').filter(v => v.status === req.query.filter);`
-      : `return store.list('Vehicle');`;
+  findPetsByStatus: ({ operation }) => {
+    const hasStatusParam = operation.parameters?.some(p => p.name === 'status');
+    return hasStatusParam 
+      ? `return store.list('Pet').filter(p => p.status === req.query.status);`
+      : `return store.list('Pet');`;
   },
 };
 
-// Async function handler
+// Async function handler - Petstore getPetById with template
 export default {
-  get_data: async ({ operation, document }) => {
-    const template = await loadTemplate('data-handler');
-    return template.replace('{{OPERATION}}', operation.operationId);
+  getPetById: async ({ operation, document }) => {
+    return `
+      const pet = store.get('Pet', req.params.petId);
+      if (!pet) {
+        res.status = 404;
+        return { code: 404, type: 'error', message: 'Pet not found' };
+      }
+      return pet;
+    `;
   },
 };
 ```
@@ -4253,12 +4316,12 @@ Seed files can export either **static strings** or **dynamic functions** that ge
  * Contains information about the schema and OpenAPI document.
  */
 interface SeedCodeContext {
-  /** Schema name from components/schemas */
+  /** Schema name from components/schemas (e.g., "Pet", "Order", "User") */
   schemaName: string;
   
-  /** Full schema object from OpenAPI */
+  /** Full schema object */
   schema: {
-    type?: string;
+    type: string;
     properties?: Record<string, unknown>;
     required?: string[];
     [key: string]: unknown;
@@ -4267,7 +4330,7 @@ interface SeedCodeContext {
   /** Complete OpenAPI document */
   document: Record<string, unknown>;
   
-  /** Available schemas from components/schemas */
+  /** All schemas for relationship checking (Pet, Category, Tag, Order, User, etc.) */
   schemas: Record<string, unknown>;
 }
 
@@ -4291,25 +4354,34 @@ interface SeedFileExports {
 
 ```typescript
 // Static string seed
+// pets.seed.mjs - Petstore example
 export default {
-  Vehicle: `
+  Pet: `
     seed.count(15, () => ({
-      id: faker.string.uuid(),
-      fin: faker.string.alphanumeric(17).toUpperCase(),
-      model: faker.vehicle.model()
+      id: faker.number.int({ min: 1, max: 10000 }),
+      name: faker.animal.dog(),
+      category: { id: faker.number.int({ min: 1, max: 5 }), name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds']) },
+      photoUrls: [faker.image.url()],
+      tags: [{ id: faker.number.int({ min: 1, max: 100 }), name: faker.word.adjective() }],
+      status: faker.helpers.arrayElement(['available', 'pending', 'sold'])
     }))
-  `,
+  `
 };
 
-// Dynamic function seed
+// Dynamic function seed - Petstore User example
 export default {
-  Order: ({ schemas }) => {
-    const hasCustomer = 'Customer' in schemas;
+  User: ({ schemas }) => {
+    // User schema is standalone in Petstore (no dependencies)
     return `
-      seed.count(20, (index) => ({
-        id: faker.string.uuid(),
-        ${hasCustomer ? 'customerId: store.list("Customer")[index % 5]?.id,' : ''}
-        total: faker.number.float({ min: 100, max: 5000 })
+      seed.count(10, (index) => ({
+        id: faker.number.int({ min: 1, max: 10000 }),
+        username: faker.internet.userName(),
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        email: faker.internet.email(),
+        password: faker.internet.password(),
+        phone: faker.phone.number(),
+        userStatus: faker.helpers.arrayElement([0, 1, 2])
       }))
     `;
   },
@@ -4369,9 +4441,10 @@ interface HandlerRuntimeContext {
 type HandlerReturnValue = unknown | Promise<unknown>;
 ```
 
-**Example:**
+**Example (Petstore):**
 ```javascript
 // This code string is what you generate in the handler file
+// Example: findPetsByStatus handler
 const handlerCode = `
   // These variables are automatically available:
   // - req: request object
@@ -4379,14 +4452,19 @@ const handlerCode = `
   // - store: data store
   // - faker: faker instance
   
-  const vehicles = store.list('Vehicle');
+  let pets = store.list('Pet');
+  
+  // Filter by status if provided (available, pending, sold)
+  if (req.query.status) {
+    pets = pets.filter(p => p.status === req.query.status);
+  }
   
   if (req.query.simulateError) {
     res.status = 500;
     throw new Error('Simulated error');
   }
   
-  return vehicles;
+  return pets;
 `;
 ```
 
@@ -4520,8 +4598,8 @@ interface RequestLogMessage {
   type: 'REQUEST';
   id: string; // Unique request ID
   method: string; // GET, POST, etc.
-  path: string; // /api/v1/vehicles
-  operationId?: string; // fetch_vehicles
+  path: string; // /pet/findByStatus, /pet/{petId}
+  operationId?: string; // findPetsByStatus, getPetById
   status?: number; // 200, 404, etc. (only in REQUEST_END)
   duration?: number; // milliseconds (only in REQUEST_END)
   phase: 'START' | 'END';
@@ -4611,16 +4689,16 @@ interface RegistryStats {
   timestamp: '2026-01-07T19:30:00.500Z'
 }
 
-// 6. Server ready
+// 6. Server ready (Petstore example)
 { 
   type: 'READY', 
   port: 3456,
   registry: {
-    totalEndpoints: 45,
-    withCustomHandler: 8,
-    withCustomSeed: 5,
-    autoGenerated: 37,
-    securitySchemes: 2
+    totalEndpoints: 19,
+    withCustomHandler: 4,
+    withCustomSeed: 3,
+    autoGenerated: 15,
+    securitySchemes: 2  // api_key and petstore_auth
   },
   uptime: 625,
   timestamp: '2026-01-07T19:30:00.625Z'
@@ -4643,7 +4721,7 @@ interface RegistryStats {
     message: 'Invalid YAML syntax: unexpected end of file',
     stack: 'YAMLException: unexpected end of file\n  at parseYaml...',
     context: {
-      file: '/path/to/openapi.yaml',
+      file: '/path/to/petstore.openapi.yaml',
       line: 42,
       operation: 'parsing OpenAPI document'
     }
@@ -4666,13 +4744,13 @@ interface RegistryStats {
 ```typescript
 // Child → Parent for each request
 
-// Request starts
+// Request starts (Petstore example)
 {
   type: 'REQUEST',
   id: 'req_abc123',
   method: 'GET',
-  path: '/api/v1/vehicles',
-  operationId: 'fetch_vehicles',
+  path: '/pet/findByStatus',
+  operationId: 'findPetsByStatus',
   phase: 'START',
   timestamp: '2026-01-07T19:30:10.000Z'
 }
@@ -4682,8 +4760,8 @@ interface RegistryStats {
   type: 'REQUEST',
   id: 'req_abc123',
   method: 'GET',
-  path: '/api/v1/vehicles',
-  operationId: 'fetch_vehicles',
+  path: '/pet/findByStatus',
+  operationId: 'findPetsByStatus',
   status: 200,
   duration: 45, // 45ms
   phase: 'END',
@@ -4877,7 +4955,7 @@ interface OpenApiEndpointEntry {
 ```json
 {
   "api": {
-    "url": "/pet/api"
+    "url": "/api/v3"
   }
 }
 ```
@@ -4892,10 +4970,10 @@ The Vue application requires no changes to work with the openapi server. The `En
 
 ```typescript
 // env.store.ts
-// When USE_OPENAPI_SERVER=true, api.url resolves to '/pet/api'
-// Vite proxy forwards to http://localhost:3456
+// When USE_OPENAPI_SERVER=true, api.url resolves to '/api/v3'
+// Vite proxy forwards to http://localhost:3456 (Petstore OpenAPI server)
 
-const apiApi = new PetApi({ 
+const petApi = new PetApi({ 
   baseUrl: envStore.envVariables.api.url 
 });
 ```
@@ -4905,7 +4983,7 @@ const apiApi = new PetApi({
 The openapi server reads the existing OpenAPI specification used for API client generation:
 
 ```
-src/apis/api/pet-api-service.openapi.bundle.yaml
+src/apis/petstore/petstore.openapi.yaml
 ```
 
 No modifications to the spec are required, though optional extensions can enhance mock behavior.
@@ -4974,7 +5052,7 @@ Errors are classified into four categories based on severity and impact:
 **Example - Fatal Error Display:**
 ```
 ✖ [OpenAPI] ERROR_OPENAPI_PARSE: Failed to parse OpenAPI file
-  File: src/apis/api/openapi.yaml:42
+  File: src/apis/petstore/petstore.openapi.yaml:42
   Error: unexpected end of file
   
   → Fix: Check YAML syntax at line 42
@@ -4994,12 +5072,12 @@ Errors are classified into four categories based on severity and impact:
 **Example - Recoverable Error Display:**
 ```
 ⚠ [OpenAPI] ERROR_HANDLER_LOAD: Failed to load handler file
-  File: src/apis/api/openapi/handlers/vehicles.handler.mjs
+  File: src/apis/petstore/open-api-server/handlers/pets.handler.mjs
   Error: SyntaxError: Unexpected token '}'
   
-  → Impact: fetch_vehicles endpoint will use auto-generated response
+  → Impact: findPetsByStatus endpoint will use auto-generated response
   → Fix: Check handler file syntax
-  → Server will continue with 44/45 endpoints working
+  → Server will continue with 18/19 endpoints working
 ```
 
 **Warnings (Partial Functionality):**
@@ -5014,7 +5092,7 @@ Errors are classified into four categories based on severity and impact:
 **Example - Warning Display:**
 ```
 ⚠ [OpenAPI] WARN_HANDLER_NOT_MATCHED: Handler 'old_endpoint' not matched to any endpoint
-  File: src/apis/api/openapi/handlers/old.handler.mjs
+  File: src/apis/petstore/open-api-server/handlers/legacy.handler.mjs
   
   → Suggestion: Remove unused handler or check operationId spelling
   → This will not affect server functionality
@@ -5060,31 +5138,31 @@ interface ErrorDisplay {
 **Startup Logging:**
 ```
 [OpenAPI] Starting openapi server...
-[OpenAPI] ✓ OpenAPI parsed (42 endpoints, 15 schemas)
-[OpenAPI] ✓ Loaded 8 custom handlers
-[OpenAPI] ✓ Loaded 5 custom seeds
+[OpenAPI] ✓ OpenAPI parsed (19 endpoints, 6 schemas)
+[OpenAPI] ✓ Loaded 4 custom handlers
+[OpenAPI] ✓ Loaded 3 custom seeds
 [OpenAPI] ✓ Document enhanced with x-handler/x-seed
 [OpenAPI] ✓ OpenAPI server ready on port 3456 (1.2s)
-[OpenAPI]   45 endpoints (8 custom handlers, 37 auto-generated)
+[OpenAPI]   19 endpoints (4 custom handlers, 15 auto-generated)
 ```
 
 **Request Logging (Verbose Mode):**
 ```
-[OpenAPI] → GET     /api/v1/vehicles [fetch_vehicles]
-[OpenAPI] ✔ 200 GET /api/v1/vehicles [fetch_vehicles] (45ms)
+[OpenAPI] → GET     /pet/findByStatus [findPetsByStatus]
+[OpenAPI] ✔ 200 GET /pet/findByStatus [findPetsByStatus] (45ms)
 
-[OpenAPI] → POST    /api/v1/orders [create_order]
-[OpenAPI] ✔ 201 POST /api/v1/orders [create_order] (12ms)
+[OpenAPI] → POST    /store/order [placeOrder]
+[OpenAPI] ✔ 200 POST /store/order [placeOrder] (12ms)
 
-[OpenAPI] → GET     /api/v1/orders/invalid-id [get_order]
-[OpenAPI] ✖ 404 GET /api/v1/orders/invalid-id [get_order] (5ms)
+[OpenAPI] → GET     /pet/99999 [getPetById]
+[OpenAPI] ✖ 404 GET /pet/99999 [getPetById] (5ms)
 ```
 
 **Error Logging:**
 ```
 [OpenAPI] ✖ ERROR_OPENAPI_VALIDATION: OpenAPI validation failed
-  - paths./api/v1/users.get: responses is required
-  - paths./api/v1/orders.post: requestBody.content is required
+  - paths./pet.put: responses is required
+  - paths./store/order.post: requestBody.content is required
   
   → Fix: Add missing required fields to OpenAPI specification
   → Docs: https://spec.openapis.org/oas/v3.1.0
@@ -5106,10 +5184,10 @@ Error: undefined is not a function
 **Good Example:**
 ```
 ✖ [OpenAPI] ERROR_HANDLER_LOAD: Failed to load handler file
-  File: src/apis/api/openapi/handlers/vehicles.handler.mjs:15
+  File: src/apis/petstore/open-api-server/handlers/pets.handler.mjs:15
   Error: ReferenceError: faker is not defined
   
-  → Impact: fetch_vehicles endpoint will use auto-generated response
+  → Impact: findPetsByStatus endpoint will use auto-generated response
   → Fix: Import faker at top of file: import { faker } from '@faker-js/faker';
   → Docs: https://fakerjs.dev/api/
 ```
@@ -5530,29 +5608,32 @@ This plugin relies on three core external dependencies that provide the foundati
 ### 16.3 File Structure
 
 ```
-packages/foc-pet/
+packages/petstore-app/
 ├── vite-plugins/
 │   ├── index.ts                           # Plugin exports
 │   ├── vite-plugin-open-api-server.ts     # Main Vite plugin
-│   ├── openapi-server-runner.mjs             # ESM runner (child process)
-│   ├── openapi-server-runner.ts              # TS version (reference)
-│   ├── openapi-server.types.ts               # TypeScript type definitions
-│   └── openapi-enhancer.mjs               # Document enhancer & registry (NEW)
+│   ├── openapi-server-runner.mjs          # ESM runner (child process)
+│   ├── openapi-server-runner.ts           # TS version (reference)
+│   ├── openapi-server.types.ts            # TypeScript type definitions
+│   └── openapi-enhancer.mjs               # Document enhancer & registry
 │
-├── src/apis/api/
-│   ├── pet-api-service.openapi.bundle.yaml  # OpenAPI spec
+├── src/apis/petstore/
+│   ├── petstore.openapi.yaml              # Swagger Petstore OpenAPI 3.0 spec
 │   └── open-api-server/
 │       ├── README.md                 # OpenAPI Server documentation
 │       ├── index.ts                  # OpenAPI Server exports
 │       ├── handlers/
-│       │   ├── health.handler.mjs    # Health check handler
-│       │   ├── health.handler.ts     # TS reference
-│       │   └── vehicles.handler.ts   # TS reference
+│       │   ├── pets.handler.mjs      # Pet endpoints (getPetById, findPetsByStatus, etc.)
+│       │   ├── pets.handler.ts       # TS reference
+│       │   ├── store.handler.mjs     # Store endpoints (placeOrder, getOrderById, etc.)
+│       │   ├── store.handler.ts      # TS reference
+│       │   └── user.handler.ts       # User endpoints (loginUser, getUserByName, etc.)
 │       └── seeds/
-│           ├── vehicles.seed.mjs     # Vehicle seed data
-│           ├── vehicles.seed.ts      # TS reference
-│           ├── orders.seed.ts        # TS reference
-│           └── products.seed.ts      # TS reference
+│           ├── pets.seed.mjs         # Pet, Category, Tag seed data
+│           ├── pets.seed.ts          # TS reference
+│           ├── store.seed.mjs        # Order seed data
+│           ├── store.seed.ts         # TS reference
+│           └── user.seed.ts          # User seed data
 │
 ├── env.dev.json                     # Dev environment config
 ├── vite.config.mts                   # Vite configuration
@@ -5575,6 +5656,7 @@ packages/foc-pet/
 | 1.0.9-draft | 2026-01-08 | **FR-015 DevTools Detection Strategy**: Added comprehensive DevTools detection pattern following Pinia and Vue Router implementation. **Detection Strategy:** (1) Build-time guard (`__DEV__` constant, tree-shaken in production), (2) Runtime guard (`IS_CLIENT` for browser environment, excludes SSR), (3) Feature guard (`HAS_PROXY` for modern browsers), (4) Silent buffer pattern (plugins buffered until DevTools connects, no errors if DevTools missing), (5) API version validation (`typeof api.now === 'function'` check). **Global State Exposure:** Following Pinia's pattern, exposed `globalThis.$openApiServer` and `globalThis.$openApiRegistry` for console debugging. `$openApiServer` provides: url, connected, port, startedAt, lastError, refresh(), getEndpoint(), listEndpoints(). `$openApiRegistry` provides: endpoints, stats, byMethod, byOperationId. **Updated Sections:** FR-015 acceptance criteria (added 7 new criteria for detection/exposure), section 7.4.2 with complete implementation code including `registerOpenApiServerDevTools()`, `exposeGlobalOpenApiServerState()`, helper functions, TypeScript declarations, and Vite plugin integration examples. Added build configuration for `__DEV__` constant. Research based on Pinia (`@vue/devtools-api` integration in `packages/pinia/src/devtools/plugin.ts`) and Vue DevTools Kit (`@vue/devtools-kit` source code). |
 | 1.0.10-draft | 2026-01-08 | **Terminology Standardization**: Comprehensive rename throughout document. **Domain Terms:** gpme/GPME/GPme → pet/PET/Pet (example domain), bff/BFF → api/API (paths, variables, descriptions), BffApi → PetApi (class names). **Product Naming:** "Mock Server" → "OpenAPI Server" for all references to our product (preserved "Scalar Mock Server" as external package name and "generic mock servers" for comparison context). **Code Identifiers:** mockServer → openApiServer, $mockServer → $openApiServer, $openApiServerRegistry → $openApiRegistry, __MOCK_*__ → __OPENAPI_*__, MOCK_SERVER_* → OPENAPI_SERVER_*, MockEndpoint* → OpenApiEndpoint*, MockStore → OpenApiStore. **Paths:** /mock/seeds → /openapi/seeds, /mock/handlers → /openapi/handlers, /__registry → /_openapiserver/registry, /__mock-* → /__openapi-*. **Files:** mock-server-runner → openapi-server-runner, mock-server.types → openapi-server.types. Updated glossary entry: BFF → API. Preserved historical accuracy in changelog entries. |
 | 1.0.11-draft | 2026-01-08 | **Additional Terminology Fixes**: (1) **Banners:** MOCK SERVER → OPEN API SERVER in console output banners (loading, error, enhancement, registry). (2) **Handler example:** environment: 'MOCK' → 'DEV'. (3) **Types:** MockSchemaEntry → OpenApiServerSchemaEntry. (4) **Endpoint paths:** /_mock/registry → /_openapiserver/registry (all occurrences). (5) **Plugin ID:** dev.websublime.mock-server → com.websublime.open-api-server. (6) **FR-015 title:** "Mock Management" → "OpenAPI Server Management". (7) **CSS classes:** mock-server-devtools → open-api-server-devtools. (8) **Virtual modules:** virtual:mock-server-devtools → virtual:open-api-server-devtools. (9) **Timeline layer:** mock-server:requests → open-api-server:requests. (10) **Inspector ID:** 'mock-server' → 'open-api-server'. (11) **Variables:** mockRegistry → openApiServerRegistry, mockState → openApiServerState. (12) **npm scripts:** Simplified to "start" (with USE_OPENAPI_SERVER=true) and "start:verbose", removed "start:mock" variants. (13) **Config files:** env.mock.json → env.dev.json. (14) **Directory structure:** mock/ → open-api-server/. (15) **Typo fix:** @webssublime → @websublime. |
+| 1.0.12-draft | 2026-01-08 | **Swagger Petstore OpenAPI Example Refactor**: Replaced all custom/generic examples with Swagger Petstore OpenAPI 3.0 specification (https://petstore3.swagger.io). **Schema Updates:** Vehicle → Pet (with category, photoUrls, tags, status), Customer → User (with username, firstName, lastName, email, password, phone, userStatus), Order updated to Petstore format (petId, quantity, shipDate, status, complete). **Endpoint Updates:** All examples now use Petstore operationIds: getPetById, findPetsByStatus, findPetsByTags, addPet, updatePet, deletePet, getInventory, placeOrder, getOrderById, deleteOrder, createUser, loginUser, getUserByName, etc. **Handler Examples:** health.handler.mjs → pets.handler.mjs/store.handler.mjs with Petstore operations. **Seed Examples:** vehicles.seed.mjs → pets.seed.mjs with Pet, Category, Tag schemas; orders.seed.mjs → store.seed.mjs with Petstore Order format. **Path Updates:** `/api/v1/vehicles` → `/pet/findByStatus`, `/pet/{petId}`, etc.; `/api/v1/orders` → `/store/order`, `/store/order/{orderId}`. **Proxy Path:** `/pet/api` → `/api/v3` (Petstore base path). **OpenAPI File:** `pet-api-service.openapi.bundle.yaml` → `petstore.openapi.yaml`. **Directory Structure:** `src/apis/api/` → `src/apis/petstore/`, `packages/foc-pet/` → `packages/petstore-app/`. **Security Schemes:** Updated examples to use Petstore's `api_key` (apiKey in header) and `petstore_auth` (OAuth2 implicit flow). **Registry Stats:** Updated counts to reflect Petstore spec (19 endpoints, 6 schemas, 4 custom handlers, 3 custom seeds). **Simulation URLs:** All examples updated to use Petstore paths. **IPC Messages:** Request log examples use Petstore operationIds. |
 
 ---
 
