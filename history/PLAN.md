@@ -5959,7 +5959,22 @@ DELETE  /user/{username}        deleteUser             -
 
 #### P3-01: Implement Request Proxying (FR-007)
 
-**Description:** Configure Vite to proxy API requests to the mock server.
+**Description:** Configure Vite's dev server to proxy requests matching `proxyPath` (e.g., `/api`) to the mock server child process (e.g., `http://localhost:3001`). Path rewriting strips the proxy prefix so `/api/pets` becomes `/pets` when forwarded. This allows frontend code to make requests to `/api/*` which Vite automatically routes to the mock server, enabling seamless local development without CORS issues.
+
+**Context:**
+- **Vite proxy**: Built-in feature using `server.proxy` config option (uses http-proxy-middleware internally)
+- **Path rewriting**: `rewrite: (path) => path.replace(/^\/api/, '')` strips prefix
+- **CORS**: Same-origin proxy eliminates CORS issues (browser sees requests as same-origin)
+- **Implementation location**: Plugin's `config()` hook returns proxy configuration
+- **Target**: `http://localhost:${pluginOptions.port}` (mock server address)
+
+**Implementation Approach:**
+1. In plugin.ts `config()` hook, return Vite config with `server.proxy` object
+2. Add proxy rule: key = `pluginOptions.proxyPath`, value = proxy config object
+3. Set `target: http://localhost:${pluginOptions.port}`
+4. Set `changeOrigin: true` to adjust Host header
+5. Set `rewrite` function to strip proxy path prefix
+6. Test with playground app making requests to `/api/pets`
 
 **Estimate:** S (1 day)
 
@@ -5967,24 +5982,105 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P3-01.1 | Create proxy/proxy-config.ts | Proxy configuration |
-| P3-01.2 | Implement config hook proxy | Add proxy rules |
-| P3-01.3 | Implement path rewriting | Strip proxy prefix |
-| P3-01.4 | Test with playground | Verify proxying works |
+| P3-01.1 | Implement config() hook proxy | In plugin.ts `config()` hook, return `{ server: { proxy: { ... } } }`. Use `pluginOptions.proxyPath` as key, `pluginOptions.port` in target URL. |
+| P3-01.2 | Configure proxy options | Set `target` to mock server URL, `changeOrigin: true`, `ws: true` (WebSocket support), `secure: false` (dev mode). |
+| P3-01.3 | Implement path rewriting | Add `rewrite: (path) => path.replace(new RegExp('^' + proxyPath), '')` to strip proxy prefix. Example: `/api/pets` → `/pets`. |
+| P3-01.4 | Add proxy logging | If verbose mode, add `configure: (proxy) => { proxy.on('proxyReq', ...) }` to log proxied requests. |
+| P3-01.5 | Test with playground | In playground app, make fetch request to `/api/pet/1`. Verify request reaches mock server. Check Vite logs show proxy activity. Verify response returns correctly. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Configurable proxy path (e.g., `/api/v3`)
-- [ ] Path rewriting from proxy path to root
-- [ ] Preserve request headers
-- [ ] Preserve request body
-- [ ] Support all HTTP methods
-- [ ] Handle CORS appropriately
+**Technical Considerations:**
+- **Regex escaping**: Escape special chars in proxyPath for regex (e.g., `/api/v3` → `\/api\/v3`)
+- **WebSocket support**: `ws: true` enables WebSocket proxying (future SSE/WebSocket mock support)
+- **Trailing slashes**: Handle both `/api` and `/api/` configurations consistently
+- **Multiple proxy paths**: Future enhancement could support array of proxy paths
+- **Proxy timing**: Config hook runs before mock server starts; proxy is ready when server listening
+
+**Expected Outputs:**
+
+1. **Updated plugin.ts config() hook**:
+```typescript
+config() {
+  if (!pluginOptions.enabled) return {};
+  
+  const proxyConfig = {
+    [pluginOptions.proxyPath]: {
+      target: `http://localhost:${pluginOptions.port}`,
+      changeOrigin: true,
+      ws: true,
+      secure: false,
+      rewrite: (path: string) => 
+        path.replace(new RegExp(`^${pluginOptions.proxyPath}`), ''),
+    },
+  };
+
+  if (pluginOptions.verbose) {
+    logger.info(`[plugin] Configuring proxy: ${pluginOptions.proxyPath} → http://localhost:${pluginOptions.port}`);
+  }
+
+  return {
+    server: {
+      proxy: proxyConfig,
+    },
+  };
+}
+```
+
+2. **Test request in playground**:
+```typescript
+// App.vue or similar
+async function fetchPet() {
+  const response = await fetch('/api/pet/1'); // Proxied to http://localhost:3001/pet/1
+  const pet = await response.json();
+  console.log(pet);
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Plugin `config()` hook returns `server.proxy` configuration
+- [ ] Proxy rule key matches `pluginOptions.proxyPath` (e.g., `/api`)
+- [ ] Proxy target is `http://localhost:${pluginOptions.port}`
+- [ ] `changeOrigin: true` set to adjust Host header
+- [ ] `ws: true` set for WebSocket support
+- [ ] `secure: false` set for dev mode (self-signed certs)
+- [ ] `rewrite` function strips proxy path prefix
+- [ ] Path rewriting tested: `/api/pets` → `/pets`
+- [ ] Requests to `/api/*` proxied to mock server
+- [ ] All HTTP methods supported (GET, POST, PUT, DELETE, etc.)
+- [ ] Request headers preserved in proxy
+- [ ] Request body preserved in proxy (POST/PUT)
+- [ ] Response headers returned to client
+- [ ] Response body returned to client
+- [ ] CORS issues eliminated (same-origin proxy)
+- [ ] Verbose logging shows proxy activity if enabled
+- [ ] Tested with playground app fetch requests
+- [ ] Vite dev server logs show proxy configuration
+- [ ] Mock server receives requests without proxy path prefix
+- [ ] 404 errors proxied correctly (mock server returns 404)
+- [ ] Committed with message: `feat(plugin): implement Vite proxy configuration for mock server routing`
 
 ---
 
 #### P3-02: Implement Request Logger (FR-008)
 
-**Description:** Implement logging of all mock server activity.
+**Description:** Implement comprehensive request/response logging in the mock server with emoji indicators (✔ success, ✖ error), operationId resolution, timing information, and verbose mode for detailed headers/body logging. Logs are sent to parent process via IPC and displayed using Vite's logger for consistent formatting with the dev server output.
+
+**Context:**
+- **Logging location**: Mock server child process (Hono middleware)
+- **Display location**: Parent process (Vite plugin) receives IPC log messages
+- **Format**: `✔ GET /pets (listPets) 200 45ms` or `✖ POST /pet (addPet) 400 12ms`
+- **Verbose mode**: Shows request/response headers, body (truncated), query params, path params
+- **OperationId lookup**: Match request path+method against registry to find operationId
+- **Color coding**: Green for 2xx, yellow for 3xx/4xx, red for 5xx
+
+**Implementation Approach:**
+1. Add Hono middleware in mock server runner before Scalar routes
+2. Capture request start time with `performance.now()`
+3. Call `next()` to process request, then capture response
+4. Match request against registry to find operationId
+5. Format log message with emoji, method, path, operationId, status, duration
+6. Send log message to parent via IPC: `process.send({ type: 'log', ... })`
+7. In parent process, listen for log messages and output via Vite logger
+8. Support verbose mode with additional request/response details
 
 **Estimate:** M (2 days)
 
@@ -5992,27 +6088,114 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P3-02.1 | Create logging/logger.ts | Vite-integrated logger |
-| P3-02.2 | Create logging/request-logger.ts | Request/response logging |
-| P3-02.3 | Implement request logging | Method, path, operationId |
-| P3-02.4 | Implement response logging | Status code |
-| P3-02.5 | Implement emoji indicators | ✔ for success, ✖ for error |
-| P3-02.6 | Implement verbose mode | Detailed logging option |
-| P3-02.7 | Add timestamps | To all log entries |
+| P3-02.1 | Add request logging middleware | In mock server runner, add Hono middleware: `app.use('*', async (c, next) => { ... })`. Middleware runs before all routes to capture timing. |
+| P3-02.2 | Capture timing | Store request start time: `const start = performance.now()`. After `await next()`, calculate duration: `performance.now() - start`. |
+| P3-02.3 | Resolve operationId | Match `c.req.method + ' ' + c.req.path` against registry endpoints to find operationId. Handle missing operationId gracefully (show "unknown"). |
+| P3-02.4 | Format log message | Build message: `${emoji} ${method} ${path} (${operationId}) ${status} ${duration}ms`. Use ✔ for 2xx, ✖ for 4xx/5xx. |
+| P3-02.5 | Send IPC log message | Use `process.send({ type: 'log', level: 'info', message, timestamp: Date.now() })` to send log to parent. |
+| P3-02.6 | Add verbose details | If VERBOSE env var, include headers, query params, body preview (first 200 chars) in log message. |
+| P3-02.7 | Handle log messages in parent | In plugin.ts, listen for `mockServerProcess.on('message', ...)`. If message type is 'log', output via `resolvedConfig.logger[level](message)`. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Log each incoming request with method, path, and operationId
-- [ ] Log response status codes
-- [ ] Use emoji indicators for success/error (✔/✖)
-- [ ] Support verbose mode for detailed logging
-- [ ] Timestamps on all log entries
-- [ ] Route logs through Vite's logger for consistent formatting
+**Technical Considerations:**
+- **Middleware order**: Logging middleware must run before Scalar routes to capture all requests
+- **Timing accuracy**: Use `performance.now()` for sub-millisecond precision
+- **OperationId lookup**: O(n) search through registry; acceptable for <100 endpoints per request
+- **IPC overhead**: Sending logs via IPC adds ~1ms latency; negligible for dev server
+- **Log volume**: Verbose mode can generate 100+ lines per request; use sparingly
+- **Color in IPC**: Don't send ANSI codes via IPC; apply colors in parent process
+- **Body logging**: Truncate large bodies (>1KB) to prevent IPC message size issues
+
+**Expected Outputs:**
+
+1. **Logging middleware in runner**:
+```typescript
+app.use('*', async (c, next) => {
+  const start = performance.now();
+  const method = c.req.method;
+  const path = c.req.path;
+
+  await next();
+
+  const duration = (performance.now() - start).toFixed(0);
+  const status = c.res.status;
+  
+  // Resolve operationId
+  const key = `${method} ${path}`;
+  const operationId = registry.endpoints.get(key)?.operationId || 'unknown';
+  
+  // Format message
+  const emoji = status >= 200 && status < 300 ? '✔' : '✖';
+  const message = `${emoji} ${method} ${path} (${operationId}) ${status} ${duration}ms`;
+  
+  // Send to parent
+  if (process.send) {
+    process.send({
+      type: 'log',
+      level: status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info',
+      message,
+      timestamp: Date.now(),
+    });
+  }
+});
+```
+
+2. **Console output**:
+```
+✔ GET /pets (listPets) 200 45ms
+✔ POST /pet (addPet) 201 23ms
+✖ GET /pet/999 (getPetById) 404 12ms
+✖ POST /pet (addPet) 400 8ms
+```
+
+**Acceptance Criteria:**
+- [ ] Logging middleware added to Hono app before Scalar routes
+- [ ] Request start time captured with `performance.now()`
+- [ ] Response timing calculated: `performance.now() - start`
+- [ ] OperationId resolved by matching method+path against registry
+- [ ] Unknown operationId handled gracefully (show "unknown")
+- [ ] Log message formatted: `emoji method path (operationId) status durationms`
+- [ ] Emoji indicators: ✔ for 2xx, ✖ for 4xx/5xx
+- [ ] Status code included in log message
+- [ ] Duration in milliseconds (rounded to integer)
+- [ ] Log message sent to parent via IPC (`process.send()`)
+- [ ] IPC message type is 'log' with level, message, timestamp
+- [ ] Parent process listens for 'message' events on mockServerProcess
+- [ ] Log messages output via Vite logger (info/warn/error)
+- [ ] Verbose mode shows additional details (headers, body preview)
+- [ ] Query parameters logged in verbose mode
+- [ ] Request headers logged in verbose mode (truncated if large)
+- [ ] Response body preview logged in verbose mode (first 200 chars)
+- [ ] Large bodies truncated to prevent IPC issues
+- [ ] Timestamps included in all log messages
+- [ ] Log level determined by status code (2xx=info, 4xx=warn, 5xx=error)
+- [ ] Colors applied in parent process (not sent via IPC)
+- [ ] Tested with playground app making requests
+- [ ] Verified logs appear in Vite dev server console
+- [ ] Verified operationId resolution works correctly
+- [ ] Committed with message: `feat(logging): implement request/response logger with emoji indicators and IPC`
 
 ---
 
 #### P3-03: Implement Error Simulation (FR-009)
 
-**Description:** Implement error scenario simulation via query parameters.
+**Description:** Document and provide example implementations of error simulation in custom handlers. Handlers can check for query parameters like `?simulateError=401&delay=2000` and return appropriate error responses or introduce delays. This is not a plugin feature but a pattern developers use in their custom handler code. Task focuses on documentation, example handlers, and playground demonstrations.
+
+**Context:**
+- **Implementation location**: Custom handler files (user code, not plugin code)
+- **Query parameters**: `simulateError=<code>` (e.g., 401, 404, 500), `delay=<ms>` (e.g., 2000)
+- **Error responses**: Return `HandlerResponse` with error status and body
+- **Delay simulation**: Use `await new Promise(resolve => setTimeout(resolve, delay))`
+- **Documentation**: README examples showing how to implement error simulation
+- **Playground examples**: Update Petstore handlers to demonstrate pattern
+
+**Implementation Approach:**
+1. Create documentation section in README: "Error Simulation in Handlers"
+2. Show example handler code checking for `simulateError` query param
+3. Demonstrate returning error responses with appropriate status codes and bodies
+4. Show delay simulation with setTimeout wrapped in Promise
+5. Update playground handlers (add-pet.handler.ts, get-pet-by-id.handler.ts) with simulation
+6. Add test cases in playground app to trigger simulations
+7. Document common error scenarios (network timeout, server error, validation error, auth failure)
 
 **Estimate:** M (2 days)
 
@@ -6020,25 +6203,187 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P3-03.1 | Document simulation query params | simulateError, delay, etc. |
-| P3-03.2 | Create example handlers | With error simulation code |
-| P3-03.3 | Update playground handlers | Add simulation support |
-| P3-03.4 | Document in README | Usage examples |
+| P3-03.1 | Document error simulation pattern | Add README section "Error Simulation". Explain query parameter pattern. Show example handler code checking `context.query.simulateError`. List supported error codes: 400, 401, 403, 404, 500, 503. |
+| P3-03.2 | Create example handler with simulation | Create `examples/error-simulation.handler.ts` showing full implementation: check simulateError param, switch on code, return appropriate response. Include delay simulation. |
+| P3-03.3 | Implement delay simulation | Show pattern: `if (context.query.delay) { await new Promise(resolve => setTimeout(resolve, parseInt(context.query.delay))) }`. Demonstrate network timeout simulation. |
+| P3-03.4 | Update playground add-pet handler | Modify `playground/petstore-app/.../add-pet.handler.ts` to check for simulateError/delay params. Return 400 for validation error, 500 for server error. |
+| P3-03.5 | Update playground get-pet handler | Modify `get-pet-by-id.handler.ts` to simulate 404 not found, 401 unauthorized based on query params. |
+| P3-03.6 | Add playground test UI | Create buttons in playground app to trigger error scenarios: "Test 404", "Test 500", "Test Slow Response (3s)". Make requests with appropriate query params. |
+| P3-03.7 | Document error response bodies | Show examples of error response bodies: `{ error: 'Not Found', code: 404, message: '...' }`. Follow common error response patterns. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Simulate HTTP error codes (400, 401, 403, 404, 500, 503)
-- [ ] Simulate empty responses
-- [ ] Simulate network delays
-- [ ] Configurable via query parameters: `?simulateError=401&delay=2000`
-- [ ] Return appropriate error response bodies
+**Technical Considerations:**
+- **Type safety**: Query params are `string | string[]`; parse carefully with `parseInt()`, handle arrays
+- **Error bodies**: Use consistent error response format across handlers (consider standard problem details RFC 7807)
+- **Delay limits**: Document reasonable delay limits (e.g., max 10 seconds) to prevent hung requests
+- **Default behavior**: Handlers return `null` by default (use mock); simulation is opt-in
+- **Testing**: Error simulation enables frontend error handling testing without breaking real APIs
 
-**Note:** Error simulation is implemented in x-handler code, not in the plugin itself.
+**Expected Outputs:**
+
+1. **README documentation**:
+```markdown
+## Error Simulation
+
+Custom handlers can check query parameters to simulate error scenarios:
+
+### Supported Parameters
+
+- `simulateError=<code>` - HTTP error code (400, 401, 403, 404, 500, 503)
+- `delay=<ms>` - Response delay in milliseconds (e.g., 2000 for 2 seconds)
+
+### Example Handler
+
+```typescript
+export default async function handler(context: HandlerContext) {
+  // Simulate delay
+  if (context.query.delay) {
+    const ms = parseInt(context.query.delay as string);
+    await new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Simulate error
+  if (context.query.simulateError) {
+    const code = parseInt(context.query.simulateError as string);
+    
+    switch (code) {
+      case 400:
+        return { status: 400, body: { error: 'Bad Request', message: 'Invalid input' } };
+      case 401:
+        return { status: 401, body: { error: 'Unauthorized', message: 'Missing credentials' } };
+      case 404:
+        return { status: 404, body: { error: 'Not Found', message: 'Resource not found' } };
+      case 500:
+        return { status: 500, body: { error: 'Internal Server Error', message: 'Something went wrong' } };
+    }
+  }
+
+  // Normal response
+  return null; // Use default mock
+}
+```
+
+### Usage
+
+```typescript
+// Simulate 404 error
+fetch('/api/pet/999?simulateError=404')
+
+// Simulate slow network (3 second delay)
+fetch('/api/pets?delay=3000')
+
+// Combine both
+fetch('/api/pet/1?simulateError=500&delay=2000')
+```
+```
+
+2. **Example handler file** (`examples/error-simulation.handler.ts`):
+```typescript
+import type { HandlerContext, HandlerResponse } from '@websublime/vite-plugin-open-api-server';
+
+/**
+ * Example handler demonstrating error simulation.
+ * 
+ * Query parameters:
+ * - simulateError: HTTP error code (400, 401, 404, 500, 503)
+ * - delay: Response delay in milliseconds
+ */
+export default async function simulateErrorHandler(
+  context: HandlerContext
+): Promise<HandlerResponse | null> {
+  // Simulate network delay
+  if (context.query.delay) {
+    const delayMs = parseInt(context.query.delay as string, 10);
+    if (!isNaN(delayMs) && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  // Simulate error response
+  if (context.query.simulateError) {
+    const errorCode = parseInt(context.query.simulateError as string, 10);
+
+    const errorResponses: Record<number, HandlerResponse> = {
+      400: {
+        status: 400,
+        body: { error: 'Bad Request', message: 'Invalid request parameters' },
+      },
+      401: {
+        status: 401,
+        body: { error: 'Unauthorized', message: 'Authentication required' },
+      },
+      403: {
+        status: 403,
+        body: { error: 'Forbidden', message: 'Access denied' },
+      },
+      404: {
+        status: 404,
+        body: { error: 'Not Found', message: 'Resource does not exist' },
+      },
+      500: {
+        status: 500,
+        body: { error: 'Internal Server Error', message: 'An unexpected error occurred' },
+      },
+      503: {
+        status: 503,
+        body: { error: 'Service Unavailable', message: 'Service temporarily unavailable' },
+      },
+    };
+
+    if (errorCode in errorResponses) {
+      return errorResponses[errorCode];
+    }
+  }
+
+  // No simulation, use default mock
+  return null;
+}
+```
+
+**Acceptance Criteria:**
+- [ ] README includes "Error Simulation" documentation section
+- [ ] Query parameter pattern documented: `simulateError=<code>&delay=<ms>`
+- [ ] Supported error codes documented: 400, 401, 403, 404, 500, 503
+- [ ] Example handler code provided in documentation
+- [ ] Example shows delay simulation with setTimeout
+- [ ] Example shows error response generation with appropriate bodies
+- [ ] Example handler file created at `examples/error-simulation.handler.ts`
+- [ ] Example handler demonstrates all supported error codes
+- [ ] Delay simulation implementation documented
+- [ ] Error response body format documented (error, message, code)
+- [ ] Playground add-pet handler updated with simulation support
+- [ ] Playground get-pet-by-id handler updated with simulation support
+- [ ] Playground app UI includes test buttons for error scenarios
+- [ ] Test UI triggers: 404 error, 500 error, 3-second delay
+- [ ] Query parameter parsing handles both string and array types
+- [ ] parseInt used with error handling for invalid values
+- [ ] Error responses include appropriate HTTP status codes
+- [ ] Error bodies follow consistent format across examples
+- [ ] Usage examples in README show fetch requests with query params
+- [ ] Documentation explains this is handler pattern, not plugin feature
+- [ ] Committed with message: `docs(examples): add error simulation pattern documentation and examples`
 
 ---
 
 #### P3-04: Complete Security Implementation (FR-010)
 
-**Description:** Complete the security scheme handling with runtime validation.
+**Description:** Verify that Scalar mock server handles security schemes correctly (presence validation only, not credential validity). Document security behavior in README with examples of how to include authentication headers in requests. Add logging to show which security schemes are configured on startup. Test all scheme types (API key, HTTP bearer, OAuth2) with Petstore spec.
+
+**Context:**
+- **Security normalization**: Already implemented in P1-02 (extracts schemes from spec)
+- **Scalar behavior**: Scalar validates credential presence, not validity (any non-empty value accepted)
+- **401 responses**: Returned when required credentials missing
+- **OR logic**: Multiple schemes in security array handled with OR (any one sufficient)
+- **Documentation focus**: Show developers how to include auth headers in requests
+- **Testing**: Use Petstore spec (has api_key and petstore_auth schemes)
+
+**Implementation Approach:**
+1. Test Scalar with Petstore spec to verify security validation works
+2. Make requests with and without required headers (API key, Bearer token)
+3. Verify 401 returned when credentials missing
+4. Verify request succeeds with any non-empty credential value
+5. Document security behavior in README with curl examples
+6. Add startup logging to show configured security schemes
+7. Update registry display to show security requirements per endpoint
 
 **Estimate:** S (1 day)
 
@@ -6046,17 +6391,100 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P3-04.1 | Verify Scalar handles security | Test with Petstore |
-| P3-04.2 | Document security behavior | In README |
-| P3-04.3 | Add security scheme logging | On startup |
-| P3-04.4 | Test all scheme types | Bearer, API Key, OAuth2 |
+| P3-04.1 | Test Scalar security validation | Use Petstore spec with security requirements. Make request without API key header, verify 401 response. Make request with `api_key: test123`, verify 200 response. |
+| P3-04.2 | Test Bearer authentication | Make request to endpoint requiring Bearer token. Try without Authorization header (expect 401). Try with `Authorization: Bearer test` (expect 200). Verify any non-empty token works. |
+| P3-04.3 | Test OAuth2 schemes | Make request to endpoint with OAuth2 security. Verify presence validation (any Bearer token accepted). Document OAuth2 flows not validated (dev mode simplification). |
+| P3-04.4 | Document security in README | Add "Security Schemes" section. Explain presence-only validation. Show examples: API key header, Bearer token, Basic auth. Include curl commands for each type. |
+| P3-04.5 | Add security scheme logging | In mock server startup, log configured security schemes: "Security schemes: api_key (apiKey in header), petstore_auth (OAuth2)". List scheme types and locations. |
+| P3-04.6 | Test multiple security schemes | Test endpoint with multiple schemes (OR logic). Verify request succeeds if any one scheme satisfied. Document OR behavior in README. |
+| P3-04.7 | Update SecurityContext in handlers | Verify handlers receive populated SecurityContext with scheme, credentials, scopes. Test accessing security info in custom handler. Document handler security access. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Mock server validates presence of credentials (not validity)
-- [ ] Return 401 Unauthorized when required credentials are missing
-- [ ] Accept any non-empty credential value as valid
-- [ ] Support all OpenAPI security scheme types
-- [ ] Handle multiple security schemes with OR logic
+**Technical Considerations:**
+- **Scalar limitations**: Scalar may not support all OpenAPI security features; document gaps
+- **Dev mode simplification**: Production would validate token signatures; dev accepts any value
+- **Credential extraction**: Headers must be extracted and passed to Scalar (verify Hono middleware)
+- **Case sensitivity**: HTTP headers are case-insensitive; normalize to lowercase for comparison
+- **Security context**: HandlerContext includes security info; handlers can access for custom validation
+
+**Expected Outputs:**
+
+1. **README security documentation**:
+```markdown
+## Security Schemes
+
+The mock server validates the **presence** of authentication credentials, not their validity. Any non-empty credential value is accepted in development mode.
+
+### API Key Authentication
+
+```bash
+# Without API key (returns 401)
+curl http://localhost:3001/pet/1
+
+# With API key (returns 200)
+curl -H "api_key: my-test-key" http://localhost:3001/pet/1
+```
+
+### Bearer Token Authentication
+
+```bash
+# Without token (returns 401)
+curl http://localhost:3001/store/inventory
+
+# With token (returns 200)
+curl -H "Authorization: Bearer my-test-token" http://localhost:3001/store/inventory
+```
+
+### Basic Authentication
+
+```bash
+# With Basic auth (any credentials accepted)
+curl -H "Authorization: Basic dGVzdDp0ZXN0" http://localhost:3001/user/john
+```
+
+### Multiple Security Schemes (OR Logic)
+
+Endpoints with multiple security schemes accept any one:
+
+```typescript
+security: [
+  { api_key: [] },
+  { petstore_auth: ['write:pets', 'read:pets'] }
+]
+```
+
+Request succeeds if **either** `api_key` header **or** Bearer token provided.
+```
+
+2. **Security logging output**:
+```
+[mock-server] Security schemes configured:
+  - api_key (apiKey in header 'api_key')
+  - petstore_auth (OAuth2 with implicit, authorizationCode flows)
+```
+
+**Acceptance Criteria:**
+- [ ] Scalar security validation tested with Petstore spec
+- [ ] Request without required credentials returns 401 Unauthorized
+- [ ] Request with any non-empty credential value returns 2xx
+- [ ] API key authentication tested (header-based)
+- [ ] Bearer token authentication tested (Authorization header)
+- [ ] Basic authentication tested (Authorization header with Basic scheme)
+- [ ] OAuth2 authentication tested (any Bearer token accepted)
+- [ ] Multiple security schemes tested (OR logic verified)
+- [ ] Credential presence validated, not validity (any value accepted)
+- [ ] README includes "Security Schemes" documentation section
+- [ ] Examples show API key, Bearer, Basic auth with curl commands
+- [ ] OR logic for multiple schemes documented
+- [ ] Security scheme logging added to startup output
+- [ ] Startup log lists all configured schemes with types and locations
+- [ ] SecurityContext populated correctly in handlers
+- [ ] Handlers can access `context.security` with scheme, credentials, scopes
+- [ ] Handler security access documented in README
+- [ ] All OpenAPI security scheme types supported: apiKey, http, oauth2, openIdConnect
+- [ ] Case-insensitive header matching works correctly
+- [ ] Tested with Petstore spec (api_key and petstore_auth schemes)
+- [ ] Verified 401 response body includes authentication error message
+- [ ] Committed with message: `docs(security): document security scheme validation and add examples`
 
 ---
 
@@ -6097,7 +6525,25 @@ DELETE  /user/{username}        deleteUser             -
 
 #### P4-01: Implement Process Manager (FR-011)
 
-**Description:** Implement child process spawning and management.
+**Description:** Implement child process spawning using Node.js `fork()` to run the mock server in isolation. The process manager handles spawning, environment variable passing, IPC setup, crash recovery, graceful shutdown, and force-kill timeouts. This ensures the mock server runs independently and doesn't crash Vite if it fails.
+
+**Context:**
+- **fork() vs spawn()**: Use `fork()` for built-in IPC channel and Node.js process spawning
+- **Entry point**: Fork `dist/runner/openapi-server-runner.mjs` compiled by tsdown
+- **Environment variables**: Pass PORT, OPENAPI_SPEC_PATH, VERBOSE, HANDLERS_DIR, SEEDS_DIR
+- **IPC channel**: Automatically created by fork(), used for ready/error/log messages
+- **Crash isolation**: Child crashes logged but don't terminate parent (Vite continues)
+- **Graceful shutdown**: Send IPC shutdown message, wait 5s, then SIGTERM, then SIGKILL
+
+**Implementation Approach:**
+1. Create `src/process/process-manager.ts` module
+2. Implement `spawnMockServer(options, logger)` function
+3. Use `fork()` with runner script path and IPC enabled
+4. Pass configuration via `env` object (PORT, OPENAPI_SPEC_PATH, etc.)
+5. Listen for child `exit` event to detect crashes
+6. Implement `shutdownMockServer(process, timeout)` for graceful cleanup
+7. Send IPC shutdown message, wait for exit, then escalate to SIGTERM/SIGKILL
+8. Return ChildProcess handle for lifecycle management
 
 **Estimate:** M (3 days)
 
@@ -6105,28 +6551,161 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P4-01.1 | Create runner/process-manager.ts | Process management |
-| P4-01.2 | Implement fork() spawning | Spawn child process |
-| P4-01.3 | Pass environment variables | Configuration to child |
-| P4-01.4 | Implement process cleanup | On Vite shutdown |
-| P4-01.5 | Implement SIGTERM handling | Graceful shutdown |
-| P4-01.6 | Implement force kill timeout | After graceful fails |
-| P4-01.7 | Handle child crash | Don't crash Vite |
-| P4-01.8 | Add error recovery | Log and continue |
+| P4-01.1 | Create process/process-manager.ts | Create module at `src/process/process-manager.ts`. Export `spawnMockServer()` and `shutdownMockServer()` functions. Import Node.js `fork` from `child_process`. |
+| P4-01.2 | Implement spawnMockServer() | Use `fork(runnerPath, [], { env, stdio: 'pipe', cwd })` to spawn child. Pass PORT, OPENAPI_SPEC_PATH, VERBOSE env vars. Set `stdio: 'pipe'` to capture stdout/stderr. Return ChildProcess. |
+| P4-01.3 | Build environment object | Create env object with `PORT`, `OPENAPI_SPEC_PATH`, `VERBOSE`, `HANDLERS_DIR`, `SEEDS_DIR` from plugin options. Inherit parent env with `...process.env`. |
+| P4-01.4 | Listen for exit events | Add `childProcess.on('exit', (code, signal) => { ... })` listener. Log exit with code/signal. If unexpected exit (code !== 0), log error but don't crash parent. |
+| P4-01.5 | Handle stdout/stderr | Pipe child stdout/stderr to parent logger: `childProcess.stdout.on('data', ...)`. Forward console output from child to Vite logger for unified logging. |
+| P4-01.6 | Implement shutdownMockServer() | Send IPC shutdown message: `process.send({ type: 'shutdown' })`. Wait for exit event with timeout (5s). If no exit, send SIGTERM. Wait 2s more, then SIGKILL. Return Promise. |
+| P4-01.7 | Add error recovery | Wrap fork() in try-catch. Handle ENOENT (runner not built), EACCES (permission denied). Log errors and return null instead of crashing. Vite continues without mock server. |
+| P4-01.8 | Integrate with plugin | Call `spawnMockServer()` in plugin buildStart() hook. Store ChildProcess in closure. Call `shutdownMockServer()` in closeBundle() hook. Handle process reference cleanup. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Spawn mock server using Node.js fork()
-- [ ] IPC communication between plugin and mock server
-- [ ] Mock server crash doesn't crash Vite
-- [ ] Graceful shutdown on SIGTERM/SIGINT
-- [ ] Force kill after timeout if graceful shutdown fails
-- [ ] Proper cleanup on Vite server close
+**Technical Considerations:**
+- **Runner path**: Resolve relative to compiled dist directory: `path.resolve(__dirname, '../runner/openapi-server-runner.mjs')`
+- **IPC availability**: fork() sets up IPC automatically; `process.send()` exists in child
+- **Stdio piping**: Capture stdout/stderr for logging; don't inherit parent stdio (breaks Vite output)
+- **Exit codes**: 0 = success, 1 = error, null = killed by signal
+- **Zombie processes**: Always cleanup child processes to prevent resource leaks
+- **Force kill**: SIGKILL is last resort (non-graceful); only use after timeout
+- **Windows compatibility**: SIGTERM not fully supported on Windows; use IPC shutdown message first
+
+**Expected Outputs:**
+
+1. **src/process/process-manager.ts**:
+```typescript
+import { fork, ChildProcess } from 'node:child_process';
+import path from 'node:path';
+import type { Logger } from 'vite';
+import type { OpenApiServerPluginOptions } from '../types';
+
+export async function spawnMockServer(
+  options: OpenApiServerPluginOptions,
+  logger: Logger
+): Promise<ChildProcess | null> {
+  const runnerPath = path.resolve(__dirname, '../runner/openapi-server-runner.mjs');
+  
+  const env = {
+    ...process.env,
+    PORT: String(options.port || 3001),
+    OPENAPI_SPEC_PATH: options.openApiPath,
+    VERBOSE: String(options.verbose || false),
+    HANDLERS_DIR: options.handlersDir || '',
+    SEEDS_DIR: options.seedsDir || '',
+  };
+
+  try {
+    const child = fork(runnerPath, [], {
+      env,
+      stdio: 'pipe',
+      cwd: process.cwd(),
+    });
+
+    // Forward stdout/stderr
+    child.stdout?.on('data', (data) => logger.info(data.toString().trim()));
+    child.stderr?.on('data', (data) => logger.error(data.toString().trim()));
+
+    // Handle unexpected exits
+    child.on('exit', (code, signal) => {
+      if (code !== 0 && code !== null) {
+        logger.error(`[process-manager] Mock server exited with code ${code}`);
+      } else if (signal) {
+        logger.warn(`[process-manager] Mock server killed by signal ${signal}`);
+      }
+    });
+
+    return child;
+  } catch (error) {
+    const err = error as Error;
+    logger.error(`[process-manager] Failed to spawn mock server: ${err.message}`);
+    return null;
+  }
+}
+
+export async function shutdownMockServer(
+  child: ChildProcess,
+  timeout: number = 5000,
+  logger: Logger
+): Promise<void> {
+  return new Promise((resolve) => {
+    const forceKillTimer = setTimeout(() => {
+      logger.warn('[process-manager] Force killing mock server (timeout)');
+      child.kill('SIGKILL');
+      resolve();
+    }, timeout + 2000);
+
+    child.once('exit', () => {
+      clearTimeout(forceKillTimer);
+      resolve();
+    });
+
+    // Try graceful shutdown via IPC
+    if (child.send) {
+      child.send({ type: 'shutdown' });
+    }
+
+    // Escalate to SIGTERM after timeout
+    setTimeout(() => {
+      if (child.exitCode === null) {
+        logger.warn('[process-manager] Sending SIGTERM to mock server');
+        child.kill('SIGTERM');
+      }
+    }, timeout);
+  });
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `src/process/process-manager.ts` created with spawn/shutdown functions
+- [ ] `spawnMockServer()` uses Node.js `fork()` to spawn child process
+- [ ] Runner path resolved correctly: `dist/runner/openapi-server-runner.mjs`
+- [ ] Environment variables passed via `env` option in fork()
+- [ ] PORT, OPENAPI_SPEC_PATH, VERBOSE, HANDLERS_DIR, SEEDS_DIR included in env
+- [ ] Parent env inherited with `...process.env`
+- [ ] stdio set to 'pipe' to capture output
+- [ ] stdout forwarded to Vite logger with `logger.info()`
+- [ ] stderr forwarded to Vite logger with `logger.error()`
+- [ ] Exit event listener registered on child process
+- [ ] Unexpected exits (code !== 0) logged as errors
+- [ ] Normal exits (code === 0) logged as info
+- [ ] Signal kills logged with signal name
+- [ ] Parent process continues running if child crashes
+- [ ] `shutdownMockServer()` sends IPC shutdown message first
+- [ ] Graceful shutdown timeout configurable (default 5s)
+- [ ] SIGTERM sent after timeout if child still running
+- [ ] SIGKILL sent after additional 2s if still running
+- [ ] Promise resolves when child exits
+- [ ] Force kill timer cleared if child exits gracefully
+- [ ] Error handling for fork() failures (ENOENT, EACCES)
+- [ ] Returns null on spawn failure (doesn't crash parent)
+- [ ] Integrated in plugin buildStart() hook
+- [ ] Integrated in plugin closeBundle() hook
+- [ ] ChildProcess reference stored in plugin closure
+- [ ] Process cleanup prevents zombie processes
+- [ ] Committed with message: `feat(process): implement process manager with fork, IPC, and graceful shutdown`
 
 ---
 
 #### P4-02: Implement IPC Handler (FR-011)
 
-**Description:** Implement IPC message protocol between parent and child.
+**Description:** Implement structured IPC message handling between parent (Vite plugin) and child (mock server) processes. Define message handlers for each message type (ready, error, log, shutdown), validate message structure, and forward logs to Vite's logger for unified console output. Uses discriminated union types for type-safe message handling.
+
+**Context:**
+- **Message types**: ReadyMessage, ErrorMessage, LogMessage, ShutdownMessage (defined in P1-03)
+- **Direction**: Mostly child → parent (status updates, logs); parent → child (shutdown command)
+- **Type safety**: Use discriminated union with `type` field for exhaustive switch
+- **Handler pattern**: Map message type to handler function
+- **Validation**: Check message structure before processing to prevent crashes
+- **Logging**: Forward all log messages to Vite logger with appropriate level
+
+**Implementation Approach:**
+1. In plugin.ts, add message listener: `childProcess.on('message', handleIpcMessage)`
+2. Implement `handleIpcMessage(message)` function with type narrowing
+3. Use switch on `message.type` to dispatch to appropriate handler
+4. For 'ready': store port, set isReady flag, print success banner
+5. For 'error': log error, print error banner, mark startup as failed
+6. For 'log': forward to Vite logger at specified level
+7. For 'shutdown': acknowledge (child-initiated shutdown)
+8. Add message validation to ensure required fields present
 
 **Estimate:** M (2 days)
 
@@ -6134,25 +6713,126 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P4-02.1 | Create runner/ipc-handler.ts | IPC handling |
-| P4-02.2 | Implement message sending | Child to parent |
-| P4-02.3 | Implement message receiving | Parent from child |
-| P4-02.4 | Implement INITIALIZING message | Startup phase |
-| P4-02.5 | Implement READY message | Server ready |
-| P4-02.6 | Implement ERROR message | Error reporting |
-| P4-02.7 | Implement LOG message | Log forwarding |
-| P4-02.8 | Implement REQUEST message | Request logging |
+| P4-02.1 | Add message listener in plugin | In buildStart() after spawn, add `mockServerProcess.on('message', handleIpcMessage)`. Remove listener in closeBundle() to prevent memory leaks. |
+| P4-02.2 | Implement handleIpcMessage() | Create handler function with parameter typed as `unknown`. Validate it's an object with `type` property. Cast to `OpenApiServerMessage` union type. |
+| P4-02.3 | Add type narrowing switch | Use `switch (message.type)` with cases for each message type. TypeScript narrows union type in each case. Add `default` case for unknown message types (log warning). |
+| P4-02.4 | Handle ready message | Case 'ready': Extract port and endpointCount. Set `mockServerPort = message.port`, `isReady = true`. Call `printSuccessBanner()`. Resolve startup promise. |
+| P4-02.5 | Handle error message | Case 'error': Extract message and stack. Log error with Vite logger. Call `printErrorBanner()`. Reject startup promise. Don't kill child (already crashed). |
+| P4-02.6 | Handle log message | Case 'log': Extract level and message. Forward to Vite logger: `logger[message.level](message.message)`. Respect log level (info/warn/error/debug). |
+| P4-02.7 | Handle shutdown message | Case 'shutdown': Log "Mock server initiated shutdown". Clean up process reference. Set `isReady = false`. (Child is shutting down on its own, rare but possible). |
+| P4-02.8 | Add message validation | Before switch, check `typeof message === 'object' && message !== null && 'type' in message`. If invalid, log warning and return early. Prevents crashes from malformed messages. |
 
-**Acceptance Criteria (from PRS Section 8.7):**
-- [ ] Support all message types from IPC Message API
-- [ ] Handle message flow correctly
-- [ ] Forward logs to Vite logger
+**Technical Considerations:**
+- **Type safety**: Use TypeScript discriminated unions for exhaustive type checking
+- **Message validation**: Always validate before accessing properties (child could send anything)
+- **Error handling**: Wrap handler in try-catch to prevent uncaught exceptions
+- **Memory leaks**: Remove message listener when plugin closes
+- **Race conditions**: Ready message might arrive before listener attached; handle in startup coordinator
+- **Log flooding**: Don't forward debug logs unless verbose mode enabled
+
+**Expected Outputs:**
+
+1. **IPC handler in plugin.ts**:
+```typescript
+function handleIpcMessage(message: unknown): void {
+  // Validate message structure
+  if (typeof message !== 'object' || message === null || !('type' in message)) {
+    logger.warn('[plugin] Received invalid IPC message');
+    return;
+  }
+
+  const ipcMessage = message as OpenApiServerMessage;
+
+  try {
+    switch (ipcMessage.type) {
+      case 'ready':
+        mockServerPort = ipcMessage.port;
+        isReady = true;
+        printSuccessBanner(
+          ipcMessage.port,
+          ipcMessage.endpointCount,
+          pluginOptions.openApiPath,
+          startTime,
+          logger
+        );
+        break;
+
+      case 'error':
+        logger.error(`[plugin] Mock server error: ${ipcMessage.message}`);
+        if (ipcMessage.stack) {
+          logger.error(ipcMessage.stack);
+        }
+        printErrorBanner(
+          new Error(ipcMessage.message),
+          pluginOptions.openApiPath,
+          logger
+        );
+        break;
+
+      case 'log':
+        if (pluginOptions.verbose || ipcMessage.level !== 'debug') {
+          logger[ipcMessage.level](ipcMessage.message);
+        }
+        break;
+
+      case 'shutdown':
+        logger.info('[plugin] Mock server initiated shutdown');
+        isReady = false;
+        break;
+
+      default:
+        logger.warn(`[plugin] Unknown IPC message type: ${(ipcMessage as any).type}`);
+    }
+  } catch (error) {
+    const err = error as Error;
+    logger.error(`[plugin] Error handling IPC message: ${err.message}`);
+  }
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Message listener registered on childProcess: `childProcess.on('message', ...)`
+- [ ] Listener added after process spawns in buildStart()
+- [ ] Listener removed in closeBundle() to prevent leaks
+- [ ] `handleIpcMessage()` function implemented with type validation
+- [ ] Message structure validated: object with 'type' property
+- [ ] Invalid messages logged as warnings and ignored
+- [ ] Type narrowing switch statement on `message.type`
+- [ ] 'ready' case: stores port, sets isReady flag, prints success banner
+- [ ] 'error' case: logs error+stack, prints error banner
+- [ ] 'log' case: forwards to Vite logger at correct level
+- [ ] 'shutdown' case: logs shutdown, sets isReady=false
+- [ ] Default case: warns about unknown message types
+- [ ] Try-catch wraps handler to prevent crashes
+- [ ] Log level filtering: debug logs only shown in verbose mode
+- [ ] Success banner shows port, endpoint count, startup time
+- [ ] Error banner shows error message and helpful suggestions
+- [ ] All message types from IPC protocol supported
+- [ ] TypeScript compiler checks exhaustiveness of switch
+- [ ] Message handler tested with mock messages
+- [ ] Committed with message: `feat(process): implement IPC message handler with type-safe dispatch`
 
 ---
 
 #### P4-03: Implement Startup Coordinator (FR-012)
 
-**Description:** Implement startup readiness coordination.
+**Description:** Implement startup coordination that waits for the mock server's 'ready' IPC message with a configurable timeout. Uses Promise-based async/await pattern to block plugin initialization until server is ready or timeout expires. Displays success banner on ready or error banner on timeout/failure.
+
+**Context:**
+- **Blocking startup**: Plugin buildStart() should await mock server ready before continuing
+- **Timeout**: Default 5000ms (configurable via `startupTimeout` option)
+- **Promise pattern**: Create Promise that resolves on 'ready' message or rejects on timeout
+- **Error handling**: Timeout shows clear error with troubleshooting steps
+- **Success display**: Ready message triggers success banner with URL, endpoint count, timing
+
+**Implementation Approach:**
+1. Create `waitForReady(childProcess, timeout)` function returning Promise
+2. Set up Promise that listens for 'ready' IPC message
+3. Set timeout timer that rejects Promise if no ready message
+4. In plugin buildStart(), await `waitForReady()` after spawning
+5. On success: continue plugin initialization
+6. On timeout: log error, print error banner, throw or continue (configurable)
+7. Cleanup: clear timeout timer when Promise resolves/rejects
 
 **Estimate:** S (1 day)
 
@@ -6160,17 +6840,112 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P4-03.1 | Create runner/startup-coordinator.ts | Coordination logic |
-| P4-03.2 | Implement ready wait | Wait for READY message |
-| P4-03.3 | Implement timeout handling | Configurable timeout |
-| P4-03.4 | Display server URL | On successful startup |
-| P4-03.5 | Show error on timeout | Clear error message |
+| P4-03.1 | Implement waitForReady() | Create async function `waitForReady(child, timeout)` returning `Promise<ReadyMessage>`. Promise resolves when 'ready' message received, rejects on timeout. |
+| P4-03.2 | Set up message listener | Inside Promise, add one-time listener: `child.once('message', ...)`. Check if message type is 'ready', resolve if yes. |
+| P4-03.3 | Set timeout timer | Use `setTimeout(() => reject(new Error('Timeout')), timeout)`. Clear timer in Promise finally block to prevent leaks. |
+| P4-03.4 | Handle error messages | Also listen for 'error' messages during startup. If error received before ready, reject Promise with error details. |
+| P4-03.5 | Integrate in buildStart() | After spawning, call `await waitForReady(childProcess, pluginOptions.startupTimeout)`. Wrap in try-catch for timeout handling. |
+| P4-03.6 | Handle timeout errors | In catch block, check if error is timeout. Print error banner with troubleshooting: "Increase startupTimeout, check spec path, check port conflicts". |
+| P4-03.7 | Display success on ready | When Promise resolves, extract port and endpointCount from ReadyMessage. Pass to printSuccessBanner() with startup time. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Mock server sends `ready` message via IPC
-- [ ] Configurable startup timeout (default: 15000ms)
-- [ ] Clear error message if startup times out
-- [ ] Display mock server URL on successful startup
+**Technical Considerations:**
+- **Race condition**: Ready message might arrive before listener attached (unlikely but possible)
+- **Cleanup**: Always clear timeout timer to prevent memory leaks
+- **Error vs timeout**: Distinguish between timeout (no response) and error (explicit failure)
+- **Large specs**: Increase default timeout for specs with 100+ endpoints (parsing takes longer)
+- **Configurable behavior**: Allow plugin to continue even on timeout (dev choice)
+
+**Expected Outputs:**
+
+1. **waitForReady() implementation**:
+```typescript
+function waitForReady(
+  child: ChildProcess,
+  timeout: number
+): Promise<ReadyMessage> {
+  return new Promise((resolve, reject) => {
+    const timeoutTimer = setTimeout(() => {
+      reject(new Error(`Mock server startup timeout after ${timeout}ms`));
+    }, timeout);
+
+    const messageHandler = (message: unknown) => {
+      if (
+        typeof message === 'object' &&
+        message !== null &&
+        'type' in message
+      ) {
+        const ipcMessage = message as OpenApiServerMessage;
+        
+        if (ipcMessage.type === 'ready') {
+          clearTimeout(timeoutTimer);
+          child.off('message', messageHandler);
+          resolve(ipcMessage);
+        } else if (ipcMessage.type === 'error') {
+          clearTimeout(timeoutTimer);
+          child.off('message', messageHandler);
+          reject(new Error(ipcMessage.message));
+        }
+      }
+    };
+
+    child.on('message', messageHandler);
+  });
+}
+```
+
+2. **Usage in buildStart()**:
+```typescript
+async buildStart() {
+  const startTime = performance.now();
+  printLoadingBanner(pluginOptions.openApiPath, logger);
+
+  mockServerProcess = await spawnMockServer(pluginOptions, logger);
+  if (!mockServerProcess) {
+    throw new Error('Failed to spawn mock server');
+  }
+
+  try {
+    const readyMessage = await waitForReady(
+      mockServerProcess,
+      pluginOptions.startupTimeout || 5000
+    );
+    
+    printSuccessBanner(
+      readyMessage.port,
+      readyMessage.endpointCount,
+      pluginOptions.openApiPath,
+      startTime,
+      logger
+    );
+  } catch (error) {
+    const err = error as Error;
+    printErrorBanner(err, pluginOptions.openApiPath, logger);
+    throw err;
+  }
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `waitForReady()` function implemented returning Promise
+- [ ] Function accepts ChildProcess and timeout parameters
+- [ ] Promise resolves when 'ready' IPC message received
+- [ ] Promise rejects on timeout after configured milliseconds
+- [ ] Promise rejects on 'error' IPC message
+- [ ] Timeout timer set with `setTimeout()`
+- [ ] Timeout timer cleared when Promise resolves or rejects
+- [ ] Message listener removed after Promise settles (no memory leak)
+- [ ] Default timeout is 5000ms (5 seconds)
+- [ ] Timeout configurable via plugin option `startupTimeout`
+- [ ] buildStart() hook awaits `waitForReady()` before continuing
+- [ ] Try-catch wraps waitForReady() call
+- [ ] Timeout error caught and handled gracefully
+- [ ] Error banner printed on timeout with troubleshooting steps
+- [ ] Success banner printed on ready with port, endpoint count, timing
+- [ ] Startup time calculated: `performance.now() - startTime`
+- [ ] Error message distinguishes timeout from explicit error
+- [ ] Timeout message includes actual timeout value for debugging
+- [ ] Large specs (>50 endpoints) recommendation: increase timeout
+- [ ] Committed with message: `feat(process): implement startup coordinator with ready-wait and timeout handling`
 
 ---
 
@@ -6210,7 +6985,15 @@ DELETE  /user/{username}        deleteUser             -
 
 #### P5-01: Implement File Watcher (FR-014)
 
-**Description:** Implement file watching for handler/seed directories.
+**Description:** Implement file system watching using chokidar to detect changes in handler/seed directories. Emit events on file add/change/unlink, debounce rapid changes to prevent excessive restarts, and integrate with plugin to trigger hot reload. Watches `.ts`, `.js`, `.mts`, `.mjs` files matching handler/seed patterns.
+
+**Context:**
+- **chokidar**: Robust cross-platform file watcher (better than fs.watch)
+- **Watch patterns**: `**/*.handler.{ts,js,mts,mjs}` and `**/*.seed.{ts,js,mts,mjs}`
+- **Events**: 'add', 'change', 'unlink' (file created, modified, deleted)
+- **Debouncing**: Wait 100ms after last change before emitting to batch rapid edits
+- **Ignore**: node_modules, .git, dist directories
+- **Integration**: Watcher emits 'change' event consumed by hot reload logic
 
 **Estimate:** M (2 days)
 
@@ -6218,21 +7001,102 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P5-01.1 | Create utils/file-watcher.ts | File watching logic |
-| P5-01.2 | Configure chokidar | Watch handler/seed dirs |
-| P5-01.3 | Implement change detection | Add/modify/delete events |
-| P5-01.4 | Debounce rapid changes | Avoid excessive restarts |
-| P5-01.5 | Log file changes | Notify developer |
+| P5-01.1 | Create hot-reload/file-watcher.ts | Create module at `src/hot-reload/file-watcher.ts`. Export `createFileWatcher()` function returning EventEmitter. Import chokidar. |
+| P5-01.2 | Configure chokidar instance | Call `chokidar.watch([handlersDir, seedsDir])` with options: `{ ignored: /node_modules|\.git|dist/, persistent: true, ignoreInitial: true }`. |
+| P5-01.3 | Listen for file events | Add listeners for 'add', 'change', 'unlink' events. Log file path and event type. Emit custom 'file-change' event with file path and type. |
+| P5-01.4 | Implement debouncing | Use lodash.debounce or custom debounce to batch changes. Wait 100ms after last event before emitting. Prevents restart spam during rapid saves. |
+| P5-01.5 | Add watcher lifecycle | Implement `start()` and `stop()` methods on watcher. `stop()` calls `watcher.close()` to release resources. Call stop() in plugin closeBundle(). |
+| P5-01.6 | Integrate with plugin | In plugin configureServer(), create file watcher. Listen for 'file-change' events. Trigger hot reload when event received. Log "File changed: path" in verbose mode. |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Watch handler/seed directories for file changes
-- [ ] Detect file add/modify/delete events
+**Technical Considerations:**
+- **chokidar options**: `ignoreInitial: true` prevents firing events for existing files on startup
+- **Debounce timing**: 100ms good balance between responsiveness and batching
+- **Memory usage**: chokidar keeps file tree in memory; acceptable for <1000 files
+- **Platform differences**: chokidar abstracts away Windows/Linux/macOS file watcher differences
+
+**Expected Outputs:**
+
+1. **src/hot-reload/file-watcher.ts**:
+```typescript
+import chokidar, { FSWatcher } from 'chokidar';
+import { EventEmitter } from 'node:events';
+import debounce from 'lodash.debounce';
+
+export interface FileChangeEvent {
+  path: string;
+  type: 'add' | 'change' | 'unlink';
+}
+
+export class FileWatcher extends EventEmitter {
+  private watcher: FSWatcher | null = null;
+
+  start(handlersDir: string, seedsDir: string): void {
+    this.watcher = chokidar.watch([handlersDir, seedsDir], {
+      ignored: /(node_modules|\.git|dist)/,
+      persistent: true,
+      ignoreInitial: true,
+    });
+
+    const emitChange = debounce((event: FileChangeEvent) => {
+      this.emit('change', event);
+    }, 100);
+
+    this.watcher.on('add', (path) => emitChange({ path, type: 'add' }));
+    this.watcher.on('change', (path) => emitChange({ path, type: 'change' }));
+    this.watcher.on('unlink', (path) => emitChange({ path, type: 'unlink' }));
+  }
+
+  stop(): void {
+    if (this.watcher) {
+      this.watcher.close();
+      this.watcher = null;
+    }
+  }
+}
+
+export function createFileWatcher(): FileWatcher {
+  return new FileWatcher();
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `src/hot-reload/file-watcher.ts` created
+- [ ] `createFileWatcher()` function returns FileWatcher instance
+- [ ] FileWatcher extends EventEmitter for event-driven architecture
+- [ ] `start()` method accepts handlersDir and seedsDir paths
+- [ ] chokidar watch initialized with both directories
+- [ ] Watch options: `ignored: /(node_modules|\.git|dist)/`
+- [ ] Watch options: `persistent: true, ignoreInitial: true`
+- [ ] Listeners registered for 'add', 'change', 'unlink' events
+- [ ] File path logged when event fired (if verbose)
+- [ ] Custom 'change' event emitted with path and type
+- [ ] Debouncing implemented with 100ms delay
+- [ ] Rapid file saves batched into single change event
+- [ ] `stop()` method closes chokidar watcher
+- [ ] Watcher resources released on stop (no memory leak)
+- [ ] Integrated in plugin configureServer() hook
+- [ ] File watcher started after mock server ready
+- [ ] Watcher stopped in plugin closeBundle() hook
+- [ ] 'change' event triggers hot reload logic (P5-02)
+- [ ] chokidar package added to dependencies
+- [ ] lodash.debounce package added to dependencies
+- [ ] TypeScript types included (@types/lodash.debounce)
+- [ ] Cross-platform file watching works (Windows, Linux, macOS)
+- [ ] Committed with message: `feat(hot-reload): implement file watcher with chokidar and debouncing`
 
 ---
 
 #### P5-02: Implement Hot Reload (FR-014)
 
-**Description:** Implement automatic server restart on file changes.
+**Description:** Implement automatic mock server restart when handler/seed files change. On file change event, gracefully shutdown current mock server, clear Node.js module cache for changed files, respawn mock server with reloaded handlers/seeds, wait for ready, and display reload notification with timing. Target: complete reload in <2 seconds for good DX.
+
+**Context:**
+- **Trigger**: File watcher emits 'change' event
+- **Steps**: Shutdown → Clear cache → Respawn → Wait ready → Notify
+- **Module cache**: Node.js caches dynamic imports; must clear for hot reload
+- **Cache clearing**: Delete from `require.cache` and ESM loader cache (if possible)
+- **Timing goal**: <2s from change to ready (includes shutdown, spawn, parse, enhance, listen)
+- **UX**: Show "Reloading..." and "Reloaded in Xs" messages
 
 **Estimate:** M (3 days)
 
@@ -6240,26 +7104,115 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P5-02.1 | Integrate file watcher with plugin | Connect events |
-| P5-02.2 | Implement graceful restart | Kill and respawn |
-| P5-02.3 | Reload handler/seed files | Fresh import |
-| P5-02.4 | Re-enhance OpenAPI document | With new handlers/seeds |
-| P5-02.5 | Wait for new server ready | Before continuing |
-| P5-02.6 | Display reload notification | In Vite console |
-| P5-02.7 | Measure reload time | Ensure < 2 seconds |
+| P5-02.1 | Implement handleFileChange() | Create async handler for file watcher 'change' events. Extract file path and type. Log "File changed: path". Trigger reload sequence. |
+| P5-02.2 | Implement reload sequence | Sequence: 1) Print "Reloading mock server...", 2) Shutdown current process, 3) Clear module cache, 4) Respawn process, 5) Wait for ready, 6) Print "Reloaded in Xs". |
+| P5-02.3 | Clear Node.js module cache | For changed file path, delete from `require.cache[path]`. For ESM, use dynamic import with cache-busting query: `import(path + '?t=' + Date.now())`. |
+| P5-02.4 | Implement graceful restart | Call `shutdownMockServer(currentProcess)` to gracefully stop. Then call `spawnMockServer()` to start new process. Store new process reference. |
+| P5-02.5 | Wait for new server ready | After spawn, call `waitForReady()` with timeout. Ensure new server fully initialized before declaring reload complete. |
+| P5-02.6 | Display reload notification | Print "[mock-server] Reloading..." at start. Print "[mock-server] Reloaded in 1.2s" at end. Use Vite logger for consistency. Add emoji for visual feedback. |
+| P5-02.7 | Measure reload time | Capture `const reloadStart = performance.now()` before shutdown. Calculate duration after ready: `(performance.now() - reloadStart) / 1000`. Log with 2 decimal places. |
+| P5-02.8 | Optimize reload speed | Test with Petstore: target <2s. If slower, profile bottlenecks. Consider keeping registry cached (don't re-parse spec unless changed). |
 
-**Acceptance Criteria (from PRS):**
-- [ ] Reload modified handler/seed files
-- [ ] Re-enhance OpenAPI document with updated x-handler/x-seed
-- [ ] Gracefully restart mock server child process
-- [ ] Display clear reload notification in Vite console
-- [ ] Reload completes in < 2 seconds
+**Technical Considerations:**
+- **ESM cache**: ESM imports cached by URL; add query param or use `delete import.meta.cache` (Node 20.6+)
+- **File path normalization**: Normalize paths before cache lookup (Windows \ vs /)
+- **Concurrency**: Prevent multiple reloads firing simultaneously (debounce or lock)
+- **Error handling**: If reload fails, keep old server running (don't break dev)
+- **Spec changes**: Watch OpenAPI spec file too; reload on spec changes
+
+**Expected Outputs:**
+
+1. **Hot reload handler**:
+```typescript
+async function handleFileChange(event: FileChangeEvent): Promise<void> {
+  logger.info(`[hot-reload] File ${event.type}: ${event.path}`);
+  
+  const reloadStart = performance.now();
+  logger.info('[hot-reload] ⟳ Reloading mock server...');
+
+  try {
+    // Graceful shutdown
+    if (mockServerProcess) {
+      await shutdownMockServer(mockServerProcess, 3000, logger);
+    }
+
+    // Clear module cache for changed file
+    const normalizedPath = path.normalize(event.path);
+    delete require.cache[normalizedPath];
+
+    // Respawn
+    mockServerProcess = await spawnMockServer(pluginOptions, logger);
+    if (!mockServerProcess) {
+      throw new Error('Failed to respawn mock server');
+    }
+
+    // Wait for ready
+    const readyMessage = await waitForReady(
+      mockServerProcess,
+      pluginOptions.startupTimeout || 5000
+    );
+
+    // Success
+    const duration = ((performance.now() - reloadStart) / 1000).toFixed(2);
+    logger.info(`[hot-reload] ✓ Reloaded in ${duration}s`);
+  } catch (error) {
+    const err = error as Error;
+    logger.error(`[hot-reload] ✗ Reload failed: ${err.message}`);
+  }
+}
+```
+
+2. **Console output**:
+```
+[hot-reload] File change: src/apis/petstore/open-api-server/handlers/add-pet.handler.ts
+[hot-reload] ⟳ Reloading mock server...
+[mock-server] Shutting down...
+[mock-server] Loading OpenAPI spec...
+[mock-server] Server listening on http://localhost:3001
+[hot-reload] ✓ Reloaded in 1.24s
+```
+
+**Acceptance Criteria:**
+- [ ] File watcher 'change' event handler implemented
+- [ ] Handler extracts file path and change type from event
+- [ ] Reload sequence triggered on file change
+- [ ] "Reloading mock server..." message logged
+- [ ] Current mock server gracefully shutdown with timeout
+- [ ] Node.js require.cache cleared for changed file path
+- [ ] ESM cache busting attempted (query param or import.meta)
+- [ ] New mock server spawned with `spawnMockServer()`
+- [ ] New process reference stored (replaces old)
+- [ ] `waitForReady()` called on new process
+- [ ] Reload timeout is configurable (use startupTimeout)
+- [ ] Success message logged: "Reloaded in Xs"
+- [ ] Reload time measured with `performance.now()`
+- [ ] Reload time displayed with 2 decimal places
+- [ ] Reload completes in <2 seconds for typical specs
+- [ ] Error handling: reload failures don't crash Vite
+- [ ] On reload failure, old server kept running (if possible)
+- [ ] Concurrent reload prevented (lock or debounce)
+- [ ] File path normalization for Windows compatibility
+- [ ] Handler/seed file changes trigger reload
+- [ ] OpenAPI spec file changes trigger reload (if watched)
+- [ ] Visual feedback: ⟳ for reloading, ✓ for success, ✗ for failure
+- [ ] Reload notification visible in Vite dev server console
+- [ ] Tested with rapid file saves (debouncing works)
+- [ ] Tested with handler file changes (new logic picked up)
+- [ ] Tested with seed file changes (new data used)
+- [ ] Committed with message: `feat(hot-reload): implement automatic mock server restart on file changes`
 
 ---
 
 #### P5-03: Implement DevTools Plugin (FR-015)
 
-**Description:** Implement Vue DevTools integration with custom tab.
+**Description:** Implement Vue DevTools custom inspector plugin that displays OpenAPI registry, endpoint list, handler status, and request logs in a dedicated DevTools tab. Requires Vue 3 app using DevTools 6+ and browser environment. Plugin registers custom inspector showing endpoints, schemas, and live request activity.
+
+**Context:**
+- **Vue DevTools API**: Use `setupDevtoolsPlugin()` from `@vue/devtools-api`
+- **Custom inspector**: Shows tree view of endpoints with metadata
+- **State exposure**: Registry, handlers, request log accessible in DevTools
+- **Detection guards**: Only register in browser, dev mode, with DevTools
+- **Integration**: Inject DevTools plugin into Vite client code
 
 **Estimate:** L (5 days)
 
@@ -6267,9 +7220,198 @@ DELETE  /user/{username}        deleteUser             -
 
 | ID | Subtask | Description |
 |----|---------|-------------|
-| P5-03.1 | Create devtools/devtools-plugin.ts | DevTools plugin |
-| P5-03.2 | Implement detection guards | __DEV__, IS_CLIENT, HAS_PROXY |
-| P5-03.3 | Implement plugin registration | addCustomTab() |
+| P5-03.1 | Create devtools/devtools-plugin.ts | Vue DevTools plugin file. Import `setupDevtoolsPlugin` from `@vue/devtools-api`. Export plugin setup function. |
+| P5-03.2 | Implement detection guards | Check `import.meta.env.DEV` (dev mode), `typeof window !== 'undefined'` (browser), `window.__VUE_DEVTOOLS_GLOBAL_HOOK__` (DevTools installed). Return early if any false. |
+| P5-03.3 | Register custom inspector | Call `setupDevtoolsPlugin({ id: 'vite-openapi-server', label: 'OpenAPI Server', ... }, (api) => { ... })`. Create inspector with `api.addInspector()`. |
+| P5-03.4 | Implement getInspectorTree() | Return tree structure of endpoints: root node "Endpoints" with children for each operation. Show method, path, operationId. Badge for custom handlers. |
+| P5-03.5 | Implement getInspectorState() | When endpoint selected, show detailed state: parameters, requestBody schema, responses, security requirements. Format as key-value pairs. |
+| P5-03.6 | Expose global state | Create `window.__VITE_OPENAPI_SERVER__` object with registry, handlers Map, request log array. DevTools plugin reads from this. |
+| P5-03.7 | Add client injection | In plugin configureServer(), inject DevTools script into Vite's client. Use `server.middlewares.use()` to inject `<script>` tag. |
+| P5-03.8 | Test with playground | Enable DevTools in playground app. Open DevTools, verify "OpenAPI Server" tab appears. Verify endpoint tree displays. Click endpoint, verify details shown. |
+
+**Technical Considerations:**
+- **Vue 3 only**: DevTools API only works with Vue 3 apps
+- **Browser only**: DevTools runs in browser, not SSR
+- **DevTools 6+**: Requires modern DevTools version with custom inspector API
+- **Global state**: Avoid polluting global namespace; use namespaced key
+- **Performance**: Large registries (100+ endpoints) may slow DevTools
+
+**Expected Outputs:**
+
+1. **src/devtools/devtools-plugin.ts**:
+```typescript
+import { setupDevtoolsPlugin } from '@vue/devtools-api';
+
+export function setupOpenApiDevTools(registry: any): void {
+  if (import.meta.env.PROD) return;
+  if (typeof window === 'undefined') return;
+  if (!window.__VUE_DEVTOOLS_GLOBAL_HOOK__) return;
+
+  setupDevtoolsPlugin(
+    {
+      id: 'vite-openapi-server',
+      label: 'OpenAPI Server',
+      app: window.__VUE__?.[0],
+    },
+    (api) => {
+      api.addInspector({
+        id: 'openapi-endpoints',
+        label: 'Endpoints',
+        icon: 'api',
+      });
+
+      api.on.getInspectorTree((payload) => {
+        if (payload.inspectorId === 'openapi-endpoints') {
+          payload.rootNodes = [
+            {
+              id: 'endpoints',
+              label: `Endpoints (${registry.endpoints.size})`,
+              children: Array.from(registry.endpoints.values()).map((ep: any) => ({
+                id: ep.operationId,
+                label: `${ep.method} ${ep.path}`,
+                tags: ep.hasHandler ? [{ label: 'Custom', color: 0x00ff00 }] : [],
+              })),
+            },
+          ];
+        }
+      });
+
+      api.on.getInspectorState((payload) => {
+        if (payload.inspectorId === 'openapi-endpoints') {
+          const endpoint = registry.endpoints.get(payload.nodeId);
+          if (endpoint) {
+            payload.state = {
+              'Endpoint Info': [
+                { key: 'Method', value: endpoint.method },
+                { key: 'Path', value: endpoint.path },
+                { key: 'Operation ID', value: endpoint.operationId },
+                { key: 'Has Handler', value: endpoint.hasHandler },
+              ],
+            };
+          }
+        }
+      });
+    }
+  );
+}
+```
+
+**Acceptance Criteria:**
+- [ ] `src/devtools/devtools-plugin.ts` created
+- [ ] `setupOpenApiDevTools()` function exported
+- [ ] Detection guards check: `import.meta.env.DEV`, browser, DevTools installed
+- [ ] `setupDevtoolsPlugin()` called with plugin metadata
+- [ ] Custom inspector registered with ID 'openapi-endpoints'
+- [ ] Inspector label is "Endpoints"
+- [ ] `getInspectorTree` handler returns endpoint tree structure
+- [ ] Tree root shows total endpoint count
+- [ ] Each endpoint child shows method, path, operationId
+- [ ] Custom handlers marked with green "Custom" badge
+- [ ] `getInspectorState` handler returns selected endpoint details
+- [ ] Details include: method, path, operationId, hasHandler, parameters, requestBody, responses
+- [ ] Global `window.__VITE_OPENAPI_SERVER__` object created
+- [ ] Global object exposes registry, handlers, request log
+- [ ] DevTools script injected into Vite client
+- [ ] Injection middleware added in configureServer()
+- [ ] `@vue/devtools-api` package added to dependencies
+- [ ] Tested with Vue 3 playground app
+- [ ] DevTools "OpenAPI Server" tab appears
+- [ ] Endpoint tree displays correctly
+- [ ] Clicking endpoint shows details in inspector
+- [ ] Works in Chrome, Firefox, Edge DevTools
+- [ ] Committed with message: `feat(devtools): implement Vue DevTools integration with custom inspector`
+#### P5-04: Implement Global State Exposure (FR-015)
+
+**Description:** Expose OpenAPI registry and runtime state on `window.__VITE_OPENAPI_SERVER__` for DevTools and debugging. Includes endpoint list, handler status, schema registry, request log, and helper methods. Only available in dev mode and browser environment. Provides programmatic access to mock server state for advanced debugging and testing.
+
+**Context:**
+- **Global object**: `window.__VITE_OPENAPI_SERVER__` namespace
+- **Dev only**: Only expose in development mode (security)
+- **Contents**: registry, endpoints array, handlers Map, schemas, request log, helpers
+- **Use cases**: DevTools integration, console debugging, automated testing, documentation generation
+- **Updates**: Registry set once on startup; request log updated in real-time (if logged)
+
+**Estimate:** S (1 day)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P5-04.1 | Define global interface | Create TypeScript interface for `__VITE_OPENAPI_SERVER__` object. Include: registry, endpoints, handlers, schemas, version, methods. |
+| P5-04.2 | Implement global object | In client injection, create global object: `window.__VITE_OPENAPI_SERVER__ = { registry, getEndpoints(), getHandlers(), ... }`. |
+| P5-04.3 | Add helper methods | `getEndpoints()` returns endpoint array. `getHandlerStatus(operationId)` returns boolean. `getSchema(name)` returns schema object. |
+| P5-04.4 | Add request logging | If verbose mode, push request logs to global array: `window.__VITE_OPENAPI_SERVER__.requestLog.push(...)`. Limit to last 100 requests. |
+| P5-04.5 | Document global API | Add section to README: "Debugging with Console". Show example: `window.__VITE_OPENAPI_SERVER__.getEndpoints()`. List all available methods and properties. |
+
+**Technical Considerations:**
+- **Security**: Only expose in dev mode; remove in production builds
+- **TypeScript**: Extend Window interface for type safety
+- **Memory**: Limit request log size to prevent memory leaks
+- **Reactivity**: Global object is static snapshot; doesn't update automatically (except request log)
+
+**Expected Outputs:**
+
+1. **Global object structure**:
+```typescript
+declare global {
+  interface Window {
+    __VITE_OPENAPI_SERVER__?: {
+      version: string;
+      registry: OpenApiEndpointRegistry;
+      getEndpoints(): Array<EndpointInfo>;
+      getHandlerStatus(operationId: string): boolean;
+      getSchema(name: string): SchemaObject | undefined;
+      requestLog: Array<RequestLogEntry>;
+    };
+  }
+}
+
+window.__VITE_OPENAPI_SERVER__ = {
+  version: '1.0.0',
+  registry,
+  getEndpoints: () => Array.from(registry.endpoints.values()),
+  getHandlerStatus: (id) => registry.endpoints.get(id)?.hasHandler || false,
+  getSchema: (name) => registry.schemas.get(name)?.schema,
+  requestLog: [],
+};
+```
+
+2. **Console debugging example**:
+```javascript
+// In browser console
+window.__VITE_OPENAPI_SERVER__.getEndpoints()
+// Returns: [{ method: 'GET', path: '/pets', operationId: 'listPets', ... }]
+
+window.__VITE_OPENAPI_SERVER__.getHandlerStatus('addPet')
+// Returns: true (has custom handler)
+
+window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
+// Returns: { type: 'object', properties: { ... } }
+```
+
+**Acceptance Criteria:**
+- [ ] Global object interface defined in TypeScript
+- [ ] Window interface extended with `__VITE_OPENAPI_SERVER__` property
+- [ ] Global object created in client injection code
+- [ ] Object only created in dev mode (`import.meta.env.DEV`)
+- [ ] Object only created in browser (`typeof window !== 'undefined'`)
+- [ ] `version` property shows plugin version
+- [ ] `registry` property exposes full OpenAPI registry
+- [ ] `getEndpoints()` method returns array of all endpoints
+- [ ] `getHandlerStatus(operationId)` method returns boolean
+- [ ] `getSchema(name)` method returns schema object or undefined
+- [ ] `requestLog` array initialized as empty
+- [ ] Request log populated if verbose mode enabled
+- [ ] Request log entries include: method, path, operationId, status, timestamp
+- [ ] Request log limited to last 100 entries (circular buffer)
+- [ ] README includes "Debugging with Console" section
+- [ ] Documentation shows example console commands
+- [ ] Documentation lists all available properties and methods
+- [ ] TypeScript autocomplete works for global object
+- [ ] Tested in browser console with playground app
+- [ ] Verified methods return correct data
+- [ ] Verified request log updates in real-time
+- [ ] Committed with message: `feat(devtools): expose global state object for debugging and DevTools integration`
 | P5-03.4 | Implement inspector | Endpoint tree view |
 | P5-03.5 | Implement endpoint details | Show handler, seeds, etc. |
 | P5-03.6 | Implement simulation panel | Query param generation |
