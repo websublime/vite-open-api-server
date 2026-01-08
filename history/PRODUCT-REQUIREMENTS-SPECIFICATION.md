@@ -2,9 +2,9 @@
 
 ## vite-plugin-open-api-server
 
-**Version:** 1.0.0-draft  
-**Last Updated:** 2025-01-XX  
-**Status:** Draft - In Review  
+**Version:** 1.0.0  
+**Last Updated:** 2026-01-08  
+**Status:** Approved - Ready for Implementation  
 **Author:** Development Team  
 
 ---
@@ -5657,14 +5657,16 @@ packages/petstore-app/
 | 1.0.10-draft | 2026-01-08 | **Terminology Standardization**: Comprehensive rename throughout document. **Domain Terms:** gpme/GPME/GPme → pet/PET/Pet (example domain), bff/BFF → api/API (paths, variables, descriptions), BffApi → PetApi (class names). **Product Naming:** "Mock Server" → "OpenAPI Server" for all references to our product (preserved "Scalar Mock Server" as external package name and "generic mock servers" for comparison context). **Code Identifiers:** mockServer → openApiServer, $mockServer → $openApiServer, $openApiServerRegistry → $openApiRegistry, __MOCK_*__ → __OPENAPI_*__, MOCK_SERVER_* → OPENAPI_SERVER_*, MockEndpoint* → OpenApiEndpoint*, MockStore → OpenApiStore. **Paths:** /mock/seeds → /openapi/seeds, /mock/handlers → /openapi/handlers, /__registry → /_openapiserver/registry, /__mock-* → /__openapi-*. **Files:** mock-server-runner → openapi-server-runner, mock-server.types → openapi-server.types. Updated glossary entry: BFF → API. Preserved historical accuracy in changelog entries. |
 | 1.0.11-draft | 2026-01-08 | **Additional Terminology Fixes**: (1) **Banners:** MOCK SERVER → OPEN API SERVER in console output banners (loading, error, enhancement, registry). (2) **Handler example:** environment: 'MOCK' → 'DEV'. (3) **Types:** MockSchemaEntry → OpenApiServerSchemaEntry. (4) **Endpoint paths:** /_mock/registry → /_openapiserver/registry (all occurrences). (5) **Plugin ID:** dev.websublime.mock-server → com.websublime.open-api-server. (6) **FR-015 title:** "Mock Management" → "OpenAPI Server Management". (7) **CSS classes:** mock-server-devtools → open-api-server-devtools. (8) **Virtual modules:** virtual:mock-server-devtools → virtual:open-api-server-devtools. (9) **Timeline layer:** mock-server:requests → open-api-server:requests. (10) **Inspector ID:** 'mock-server' → 'open-api-server'. (11) **Variables:** mockRegistry → openApiServerRegistry, mockState → openApiServerState. (12) **npm scripts:** Simplified to "start" (with USE_OPENAPI_SERVER=true) and "start:verbose", removed "start:mock" variants. (13) **Config files:** env.mock.json → env.dev.json. (14) **Directory structure:** mock/ → open-api-server/. (15) **Typo fix:** @webssublime → @websublime. |
 | 1.0.12-draft | 2026-01-08 | **Swagger Petstore OpenAPI Example Refactor**: Replaced all custom/generic examples with Swagger Petstore OpenAPI 3.0 specification (https://petstore3.swagger.io). **Schema Updates:** Vehicle → Pet (with category, photoUrls, tags, status), Customer → User (with username, firstName, lastName, email, password, phone, userStatus), Order updated to Petstore format (petId, quantity, shipDate, status, complete). **Endpoint Updates:** All examples now use Petstore operationIds: getPetById, findPetsByStatus, findPetsByTags, addPet, updatePet, deletePet, getInventory, placeOrder, getOrderById, deleteOrder, createUser, loginUser, getUserByName, etc. **Handler Examples:** health.handler.mjs → pets.handler.mjs/store.handler.mjs with Petstore operations. **Seed Examples:** vehicles.seed.mjs → pets.seed.mjs with Pet, Category, Tag schemas; orders.seed.mjs → store.seed.mjs with Petstore Order format. **Path Updates:** `/api/v1/vehicles` → `/pet/findByStatus`, `/pet/{petId}`, etc.; `/api/v1/orders` → `/store/order`, `/store/order/{orderId}`. **Proxy Path:** `/pet/api` → `/api/v3` (Petstore base path). **OpenAPI File:** `pet-api-service.openapi.bundle.yaml` → `petstore.openapi.yaml`. **Directory Structure:** `src/apis/api/` → `src/apis/petstore/`, `packages/foc-pet/` → `packages/petstore-app/`. **Security Schemes:** Updated examples to use Petstore's `api_key` (apiKey in header) and `petstore_auth` (OAuth2 implicit flow). **Registry Stats:** Updated counts to reflect Petstore spec (19 endpoints, 6 schemas, 4 custom handlers, 3 custom seeds). **Simulation URLs:** All examples updated to use Petstore paths. **IPC Messages:** Request log examples use Petstore operationIds. |
+| 1.0.0 | 2026-01-08 | **Production Release**: Document finalized and approved for implementation. All draft versions consolidated. Specification complete with Swagger Petstore OpenAPI 3.0 as reference implementation example. |
 
 ---
 
-**Document Status:** Draft - Awaiting Review
+**Document Status:** ✅ Approved - Ready for Implementation
 
-**Next Steps:**
-1. Review and approve specification
-2. Validate against existing implementation
-3. Identify gaps between spec and implementation
-4. Prioritize missing features for v1.1
-5. Finalize acceptance testing criteria
+**Implementation Roadmap:**
+1. Implement core plugin infrastructure (FR-001 to FR-006)
+2. Add request proxying and logging (FR-007, FR-008)
+3. Implement error simulation and security normalization (FR-009, FR-010)
+4. Add process isolation and startup coordination (FR-011, FR-012)
+5. Implement hot reload and Vue DevTools integration (FR-014, FR-015)
+6. Testing and validation against acceptance criteria
