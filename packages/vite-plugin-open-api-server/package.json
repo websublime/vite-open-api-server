@@ -25,5 +25,15 @@
   "bugs": {
     "url": "https://github.com/websublime/vite-open-api-server/issues"
   },
-  "homepage": "https://github.com/websublime/vite-open-api-server#readme"
+  "homepage": "https://github.com/websublime/vite-open-api-server#readme",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.mts"
+    },
+    "./package.json": "./package.json"
+  }
 }
