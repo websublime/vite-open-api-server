@@ -1,0 +1,29 @@
+{
+  "name": "@websublime/vite-plugin-open-api-server",
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "author": "WebSublime",
+  "description": "Vite plugin for OpenAPI-based mock server with Scalar integration. Enables frontend developers to work independently of backend services during local development, with realistic mock data and customizable response logic.",
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "openapi",
+    "mock-server",
+    "scalar",
+    "api",
+    "development",
+    "swagger",
+    "rest",
+    "testing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/websublime/vite-open-api-server.git",
+    "directory": "packages/vite-plugin-open-api-server"
+  },
+  "bugs": {
+    "url": "https://github.com/websublime/vite-open-api-server/issues"
+  },
+  "homepage": "https://github.com/websublime/vite-open-api-server#readme"
+}
