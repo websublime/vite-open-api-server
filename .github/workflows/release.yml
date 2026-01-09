@@ -69,7 +69,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          workspace bump --execute --git-tag --force
+          workspace bump --execute --git-commit --git-tag --force
           git push origin main --follow-tags
           # TODO: Uncomment when ready to publish to npm
           # pnpm -r --filter='./packages/*' publish --access public --no-git-checks
