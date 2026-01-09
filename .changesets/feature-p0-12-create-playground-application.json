@@ -1,16 +1,9 @@
 {
   "branch": "feature/p0-12-create-playground-application",
   "bump": "minor",
-  "environments": [
-    "production"
-  ],
-  "packages": [
-    "petstore-app"
-  ],
-  "changes": [
-    "e3b1ae1599b2fda2eb06453ffecd25de5767ce4f",
-    "4003a2feb8747fef244dd5311b8a3ff926323db3"
-  ],
+  "environments": ["production"],
+  "packages": ["@websublime/petstore-app"],
+  "changes": ["e3b1ae1599b2fda2eb06453ffecd25de5767ce4f", "4003a2feb8747fef244dd5311b8a3ff926323db3"],
   "created_at": "2026-01-09T14:58:46.952411Z",
   "updated_at": "2026-01-09T15:02:35.497054Z"
 }
