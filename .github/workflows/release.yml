@@ -53,8 +53,9 @@ jobs:
       - name: Check for changesets
         id: changesets
         run: |
-          COUNT=$(workspace --format json changeset list | jq '.total // 0')
+          COUNT=$(workspace --format json --log-level silent changeset list | jq '.data.total // 0')
           echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Found $COUNT changeset(s)"
 
       - name: Create release
         if: steps.changesets.outputs.count > 0
