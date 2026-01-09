@@ -41,5 +41,10 @@
  * @packageDocumentation
  */
 
-export { openApiServerPlugin } from "./plugin";
-export type { HandlerContext, OpenApiEndpointRegistry, OpenApiServerPluginOptions, SeedContext } from "./types";
+export { openApiServerPlugin } from './plugin';
+export type {
+  HandlerContext,
+  OpenApiEndpointRegistry,
+  OpenApiServerPluginOptions,
+  SeedContext,
+} from './types';

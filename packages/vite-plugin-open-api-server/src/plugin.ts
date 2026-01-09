@@ -20,9 +20,9 @@
  * @module
  */
 
-import type { Plugin, ViteDevServer } from "vite";
+import type { Plugin, ViteDevServer } from 'vite';
 
-import type { OpenApiServerPluginOptions } from "./types";
+import type { OpenApiServerPluginOptions } from './types';
 
 /**
  * The unique name identifier for this Vite plugin.
@@ -32,7 +32,7 @@ import type { OpenApiServerPluginOptions } from "./types";
  *
  * @internal
  */
-export const PLUGIN_NAME = "vite-plugin-open-api-server";
+export const PLUGIN_NAME = 'vite-plugin-open-api-server';
 
 /**
  * Creates a Vite plugin instance for OpenAPI mock server integration.
@@ -72,13 +72,11 @@ export const PLUGIN_NAME = "vite-plugin-open-api-server";
  * });
  * ```
  */
-export function openApiServerPlugin(
-  options?: OpenApiServerPluginOptions,
-): Plugin {
+export function openApiServerPlugin(options?: OpenApiServerPluginOptions): Plugin {
   // Store resolved options for use in lifecycle hooks
   const resolvedOptions: OpenApiServerPluginOptions = {
     port: 3456,
-    proxyPath: "/api",
+    proxyPath: '/api',
     verbose: false,
     ...options,
   };
@@ -106,10 +104,8 @@ export function openApiServerPlugin(
      */
     configureServer(_server: ViteDevServer): void {
       if (resolvedOptions.verbose) {
-        console.log(
-          `[${PLUGIN_NAME}] Configuring server with options:`,
-          resolvedOptions,
-        );
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+        console.log(`[${PLUGIN_NAME}] Configuring server with options:`, resolvedOptions);
       }
       // Implementation in Phase 1: P1-04
     },
@@ -129,6 +125,7 @@ export function openApiServerPlugin(
      */
     buildStart(): void {
       if (resolvedOptions.verbose) {
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] Build starting...`);
       }
       // Implementation in Phase 1: P1-04
@@ -149,6 +146,7 @@ export function openApiServerPlugin(
      */
     buildEnd(): void {
       if (resolvedOptions.verbose) {
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] Build ended.`);
       }
       // Implementation in Phase 1: P1-04
