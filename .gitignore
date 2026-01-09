@@ -3,6 +3,7 @@ target
 .idea
 .DS_Store
 node_modules/
+dist/
 
 # Workspace Tools
 # Note: .changesets/ and repo.config.* should be versioned in git
