@@ -1,12 +1,8 @@
 {
   "branch": "feature/p0-10-plugin-package-skeleton",
   "bump": "minor",
-  "environments": [
-    "production"
-  ],
-  "packages": [
-    "@websublime/vite-plugin-open-api-server"
-  ],
+  "environments": ["production"],
+  "packages": ["@websublime/vite-plugin-open-api-server"],
   "changes": [
     "a5d80a4cd145813e97ae92c8e6bb607e01bb10d0",
     "b6071f194abd7a3fd039fbf653329b60cede6566",

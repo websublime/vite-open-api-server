@@ -8,3 +8,4 @@ node_modules/
 # Note: .changesets/ and repo.config.* should be versioned in git
 # Only backups are excluded
 .workspace-backups/
+*.tsbuildinfo
