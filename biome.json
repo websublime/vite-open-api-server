@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!node_modules", "!dist", "!.beads", "!*.md", "!pnpm-lock.yaml"],
+    "includes": [
+      "**",
+      "!node_modules",
+      "!dist",
+      "!.beads",
+      "!.changesets",
+      "!*.md",
+      "!pnpm-lock.yaml"
+    ],
     "ignoreUnknown": false
   },
   "formatter": {
