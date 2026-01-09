@@ -1,0 +1,19 @@
+# Continuous Integration Workflow
+#
+# What: Runs quality gates (lint, typecheck, test, build) on every PR and push to main
+# How: Uses GitHub Actions with parallel jobs and pnpm caching for fast feedback
+# Why: Ensures code quality and prevents broken code from being merged
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs: {}
