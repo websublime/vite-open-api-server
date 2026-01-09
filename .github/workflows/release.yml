@@ -1,0 +1,66 @@
+# Release Workflow
+#
+# What: Automates versioning, changelog generation, git tagging, and npm publishing
+# How: Uses workspace-tools to process changesets and pnpm to publish packages
+# Why: Ensures consistent releases with proper versioning and changelog updates
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.repository == 'websublime/vite-open-api-server'
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".node-version"
+          cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Install workspace-tools
+        run: |
+          curl --proto '=https' --tlsv1.2 -LsSf \
+            https://github.com/websublime/workspace-tools/releases/latest/download/sublime_cli_tools-installer.sh | sh
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          COUNT=$(workspace --format json changeset list | jq '.total // 0')
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Create release
+        if: steps.changesets.outputs.count > 0
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          workspace bump --execute --git-tag --git-push --force
+          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
