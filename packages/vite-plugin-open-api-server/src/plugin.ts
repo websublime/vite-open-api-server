@@ -22,7 +22,7 @@
 
 import type { Plugin, ViteDevServer } from 'vite';
 
-import type { OpenApiServerPluginOptions } from './types';
+import type { OpenApiServerPluginOptions } from './types/index.js';
 
 /**
  * The unique name identifier for this Vite plugin.
