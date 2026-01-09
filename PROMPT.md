@@ -60,7 +60,76 @@ bd ready --json
 ```bash
 # Create feature branch (naming convention: feature/p0-XX-short-description)
 git checkout -b feature/<task-id-kebab-case>
+```
 
+### 1.4 Create Workspace Changeset
+
+**CRITICAL**: Every feature branch MUST have an associated changeset for version control and changelog generation.
+
+```bash
+# Create changeset for this branch (interactive mode)
+workspace changeset create
+
+# Or use non-interactive mode with explicit options
+workspace changeset create --bump <patch|minor|major> --message "<description>" --non-interactive
+```
+
+**Command Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--bump <TYPE>` | Bump type: `major`, `minor`, or `patch` |
+| `--message <TEXT>` | Description of the changes |
+| `--packages <LIST>` | Comma-separated list of packages (auto-detected if omitted) |
+| `--env <LIST>` | Comma-separated list of environments (e.g., `staging,prod`) |
+| `--branch <NAME>` | Branch name (defaults to current Git branch) |
+| `--non-interactive` | Uses provided flags without prompting |
+| `--force` | Overwrite existing changeset for this branch |
+
+**Bump Type Guidelines:**
+
+- `patch` - Bug fixes, documentation, refactoring (no API changes)
+- `minor` - New features, backwards-compatible additions
+- `major` - Breaking changes, API modifications
+
+**Examples:**
+
+```bash
+# Feature addition (minor bump)
+workspace changeset create --bump minor --message "Add OpenAPI schema validation" --non-interactive
+
+# Bug fix (patch bump)
+workspace changeset create --bump patch --message "Fix response type inference" --non-interactive
+
+# Breaking change (major bump)
+workspace changeset create --bump major --message "Refactor plugin configuration API" --non-interactive
+
+# Specific packages only
+workspace changeset create --bump minor --packages "vite-open-api-server,@voas/core" --non-interactive
+```
+
+**Other Changeset Commands:**
+
+```bash
+# List all pending changesets
+workspace changeset list
+
+# Show details of a specific changeset
+workspace changeset show
+
+# Edit an existing changeset
+workspace changeset edit
+
+# Delete a changeset
+workspace changeset delete
+
+# Check if changeset exists for current branch
+workspace changeset check
+```
+
+### 1.5 Start Task
+
+```bash
 # Set task to in_progress
 bd update <task-id> --status in_progress --json
 
@@ -68,7 +137,7 @@ bd update <task-id> --status in_progress --json
 bd sync
 ```
 
-### 1.4 Load Task Context
+### 1.6 Load Task Context
 
 **CRITICAL**: Always read the PLAN.md section for the task before implementation.
 
@@ -267,6 +336,18 @@ git checkout main                  # Switch to main
 git pull origin main               # Update main
 ```
 
+### Workspace Changeset Commands
+
+```bash
+workspace changeset create         # Create changeset (interactive)
+workspace changeset create --bump patch --message "..." --non-interactive  # Non-interactive
+workspace changeset list           # List all pending changesets
+workspace changeset show           # Show changeset details
+workspace changeset edit           # Edit existing changeset
+workspace changeset delete         # Delete a changeset
+workspace changeset check          # Check if changeset exists for branch
+```
+
 ### Conventional Commit Template
 
 ```
@@ -288,6 +369,7 @@ Closes: <issue-id>
 5. **Descriptive close reasons** - Document what was accomplished
 6. **Sync bd frequently** - After every subtask completion
 7. **Read the PLAN** - Always load context from PLAN.md before implementation
+8. **Create changeset early** - Run `workspace changeset create` right after creating the feature branch
 
 ---
 
