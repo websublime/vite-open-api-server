@@ -63,4 +63,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           workspace bump --execute --git-tag --git-push --force
-          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
+          # TODO: Uncomment when ready to publish to npm
+          # pnpm -r --filter='./packages/*' publish --access public --no-git-checks
