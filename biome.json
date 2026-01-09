@@ -17,23 +17,6 @@
     ],
     "ignoreUnknown": false
   },
-  "overrides": [
-    {
-      "includes": ["**/*.vue"],
-      "linter": {
-        "rules": {
-          "style": {
-            "useConst": "off",
-            "useImportType": "off"
-          },
-          "correctness": {
-            "noUnusedVariables": "off",
-            "noUnusedImports": "off"
-          }
-        }
-      }
-    }
-  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
