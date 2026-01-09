@@ -1,0 +1,45 @@
+# Example Changeset
+#
+# This is an example changeset file to help you understand the format.
+# When you're ready to create real changesets, use: workspace changeset add
+#
+# Important: Changesets should be committed to git as part of your PR.
+# They tell the CI/CD pipeline what version bumps to perform on merge.
+#
+# Workflow:
+# 1. Create a changeset: workspace changeset add
+# 2. Commit it with your changes: git add .changesets/your-changeset.yaml
+# 3. Push your branch: git push
+# 4. When merged to main, CI runs: workspace bump --execute
+# 5. Versions are bumped, changesets move to history/
+#
+# You can delete this example file when you're ready.
+
+# Changeset ID (typically branch name or custom identifier)
+id: example-feature
+
+# Git branch this changeset is associated with
+branch: main
+
+# Version bump type: patch, minor, or major
+bump: minor
+
+# Packages affected (for monorepos, list package names; for single packages, use the package name)
+packages:
+  - "@myorg/core"
+  - "@myorg/utils"
+
+# Target environments (e.g., dev, staging, production)
+environments:
+  - production
+
+# Commits included in this changeset (optional, auto-tracked)
+commits:
+  - abc123: "feat: add new feature"
+  - def456: "fix: resolve issue"
+
+# Timestamp when changeset was created
+createdAt: "2024-01-01T00:00:00Z"
+
+# Timestamp when changeset was last updated
+updatedAt: "2024-01-01T00:00:00Z"

@@ -1,0 +1,149 @@
+[changeset]
+path = ".changesets"
+history_path = ".changesets/history"
+available_environments = [
+    "dev",
+    "staging",
+    "production",
+]
+default_environments = ["production"]
+
+[version]
+strategy = "independent"
+default_bump = "patch"
+snapshot_format = "{version}-{branch}.{timestamp}"
+
+[dependency]
+propagation_bump = "patch"
+propagate_dependencies = true
+propagate_dev_dependencies = false
+propagate_peer_dependencies = true
+max_depth = 10
+fail_on_circular = true
+skip_workspace_protocol = true
+skip_file_protocol = true
+skip_link_protocol = true
+skip_portal_protocol = true
+
+[upgrade]
+auto_changeset = true
+changeset_bump = "patch"
+
+[upgrade.registry]
+default_registry = "https://registry.npmjs.org"
+timeout_secs = 30
+retry_attempts = 3
+retry_delay_ms = 1000
+read_npmrc = true
+
+[upgrade.registry.scoped_registries]
+
+[upgrade.registry.auth_tokens]
+
+[upgrade.backup]
+enabled = true
+backup_dir = ".workspace-backups"
+keep_after_success = false
+max_backups = 5
+
+[changelog]
+enabled = true
+format = "keep-a-changelog"
+filename = "CHANGELOG.md"
+include_commit_links = true
+include_issue_links = true
+include_authors = false
+monorepo_mode = "per-package"
+version_tag_format = "{name}@{version}"
+root_tag_format = "v{version}"
+
+[changelog.conventional]
+enabled = true
+breaking_section = "Breaking Changes"
+
+[changelog.conventional.types]
+fix = "Bug Fixes"
+refactor = "Code Refactoring"
+docs = "Documentation"
+perf = "Performance Improvements"
+build = "Build System"
+test = "Tests"
+chore = "Chores"
+feat = "Features"
+ci = "Continuous Integration"
+
+[changelog.exclude]
+patterns = []
+authors = []
+
+[changelog.template]
+header = """
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+"""
+version_header = "## [{version}] - {date}"
+section_header = "### {section}"
+entry_format = "- {description} ({hash})"
+
+[git]
+merge_commit_template = """
+chore(release): {version}
+
+Release version {version}
+
+{changelog_summary}"""
+monorepo_merge_commit_template = """
+chore(release): {package_name}@{version}
+
+Release {package_name} version {version}
+
+{changelog_summary}"""
+include_breaking_warning = true
+breaking_warning_template = """
+
+⚠️  BREAKING CHANGES: {breaking_changes_count}
+"""
+
+[audit]
+enabled = true
+min_severity = "warning"
+
+[audit.sections]
+upgrades = true
+dependencies = true
+breaking_changes = true
+categorization = true
+version_consistency = true
+
+[audit.upgrades]
+include_patch = true
+include_minor = true
+include_major = true
+deprecated_as_critical = true
+
+[audit.dependencies]
+check_circular = true
+check_missing = false
+check_unused = false
+check_version_conflicts = true
+
+[audit.breaking_changes]
+check_conventional_commits = true
+check_changelog = true
+
+[audit.version_consistency]
+fail_on_inconsistency = false
+warn_on_inconsistency = true
+
+[audit.health_score_weights]
+critical_weight = 15.0
+warning_weight = 5.0
+info_weight = 1.0
+security_multiplier = 1.5
+breaking_changes_multiplier = 1.3
+dependencies_multiplier = 1.2
+version_consistency_multiplier = 1.0
+upgrades_multiplier = 0.8
+other_multiplier = 1.0
