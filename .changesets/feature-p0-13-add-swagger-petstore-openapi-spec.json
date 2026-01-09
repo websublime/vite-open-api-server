@@ -1,0 +1,13 @@
+{
+  "branch": "feature/p0-13-add-swagger-petstore-openapi-spec",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-01-09T15:58:15.645530Z",
+  "updated_at": "2026-01-09T15:58:15.645808Z"
+}
