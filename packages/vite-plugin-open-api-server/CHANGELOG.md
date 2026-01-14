@@ -1,3 +1,18 @@
+## [0.5.0] - 2026-01-14
+
+### Features
+
+- implement plugin factory with option validation (d162f2b)
+- update index.ts exports and verify build (d4d7bfc)
+
+
+### Other Changes
+
+- sync changeset for feature/p1-04-vite-plugin-skeleton (d90974d)
+- add changeset for P1-04 vite plugin skeleton (2d4222e)
+
+
+
 ## [0.4.0] - 2026-01-14
 
 ### Features

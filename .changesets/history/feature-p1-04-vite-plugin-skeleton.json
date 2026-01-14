@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/p1-04-vite-plugin-skeleton",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "a1fbc07df8d3272e252fb388d300e76d9c5147e2",
+      "64b1e616f6d8b8efd1687e1dfbce4083140ed32e",
+      "6394bac59cff0846a53423cd9a255e9ace32b94e"
+    ],
+    "created_at": "2026-01-14T10:50:56.774580Z",
+    "updated_at": "2026-01-14T11:00:52.144215Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T11:03:30.142457738Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "d90974dca01a0c333091f8bc9789bae817749baa",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.5.0"
+    }
+  }
+}
