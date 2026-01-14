@@ -266,14 +266,10 @@ describe('Handler Loader', () => {
         expect(handlers.has('getPet')).toBe(true);
         expect(handlers.has('addNewPet')).toBe(true);
 
-        // Find warning calls about unmatched endpoints
-        const unmatchedWarnings = mockLogger.warn.mock.calls.filter(
-          (call) => typeof call[0] === 'string' && call[0].includes('does not match any endpoint'),
-        );
-
-        // Invalid handlers shouldn't be loaded, so they won't trigger this warning
-        // Valid handlers that match the registry shouldn't trigger this warning
-        // Only the duplicate getPet might cause a different warning
+        // Valid handlers that match the registry shouldn't trigger "does not match" warning
+        // Only the duplicate getPet might cause a different warning (which is expected)
+        // Verify that getPet and addNewPet are loaded successfully
+        expect(handlers.size).toBeGreaterThanOrEqual(2);
       });
     });
 

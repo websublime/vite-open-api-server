@@ -5,7 +5,7 @@
  *
  * Used to test that duplicate operationIds are detected and warned about.
  */
-export default async function handler(context) {
+export default async function handler(_context) {
   return {
     status: 200,
     body: { id: 2, name: 'Duplicate Fluffy', status: 'pending' },
