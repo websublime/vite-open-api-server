@@ -231,7 +231,7 @@ export interface HandlerResponse {
  * ```
  */
 export type HandlerCodeGenerator<TBody = unknown> = (
-  context: HandlerContext<TBody>
+  context: HandlerContext<TBody>,
 ) => Promise<HandlerResponse | null>;
 
 /**

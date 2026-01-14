@@ -152,3 +152,49 @@ export interface OpenApiServerPluginOptions {
    */
   verbose?: boolean;
 }
+
+/**
+ * Input options for the plugin function.
+ *
+ * This type allows all options to be optional at the input level,
+ * with validation happening at runtime. This enables the plugin
+ * to provide helpful error messages when required options are missing.
+ *
+ * @internal
+ */
+export type InputPluginOptions = Partial<OpenApiServerPluginOptions>;
+
+/**
+ * Resolved plugin options with defaults applied.
+ *
+ * This type represents the internal state after merging user options
+ * with default values. Some properties may still be undefined if
+ * they weren't provided and don't have defaults.
+ *
+ * @internal
+ */
+export interface ResolvedPluginOptions {
+  /** Path to OpenAPI spec file (may be undefined before validation). */
+  openApiPath?: string;
+
+  /** Port for mock server. Default: 3001 */
+  port: number;
+
+  /** Base path to proxy. Default: '/api' */
+  proxyPath: string;
+
+  /** Directory for seed files. */
+  seedsDir?: string;
+
+  /** Directory for handler files. */
+  handlersDir?: string;
+
+  /** Whether plugin is enabled. Default: true */
+  enabled: boolean;
+
+  /** Startup timeout in ms. Default: 5000 */
+  startupTimeout: number;
+
+  /** Verbose logging. Default: false */
+  verbose: boolean;
+}
