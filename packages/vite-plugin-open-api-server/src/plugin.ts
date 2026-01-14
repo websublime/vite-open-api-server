@@ -23,7 +23,7 @@
  */
 
 import type { ChildProcess } from 'node:child_process';
-import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
+import type { Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 
 import { printErrorBanner, printLoadingBanner } from './logging/index.js';
 import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
@@ -204,28 +204,78 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
      * Modify Vite config before it's resolved.
      * Used to add proxy configuration for mock server.
      *
-     * @returns Partial Vite config to merge
+     * Configures Vite's built-in proxy to forward requests matching
+     * `proxyPath` (e.g., `/api`) to the mock server running on
+     * `http://localhost:${port}`. Path rewriting strips the proxy
+     * prefix so `/api/pets` becomes `/pets` when forwarded.
+     *
+     * @returns Partial Vite config to merge with proxy configuration
      */
     config() {
+      if (!resolvedOptions.enabled) {
+        return {};
+      }
+
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] config() called`);
       }
 
-      // Phase 3: P3-01 - Add proxy configuration
-      // return {
-      //   server: {
-      //     proxy: {
-      //       [resolvedOptions.proxyPath]: {
-      //         target: `http://localhost:${resolvedOptions.port}`,
-      //         changeOrigin: true,
-      //         rewrite: (path) => path.replace(new RegExp(`^${resolvedOptions.proxyPath}`), ''),
-      //       },
-      //     },
-      //   },
-      // };
+      const { proxyPath, port, verbose } = resolvedOptions;
+      const targetUrl = `http://localhost:${port}`;
 
-      return {};
+      // Escape special regex characters in proxyPath for safe regex construction
+      const escapedProxyPath = proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      // Build proxy configuration for mock server routing
+      const proxyConfig: ProxyOptions = {
+        // Target mock server URL
+        target: targetUrl,
+        // Adjust Host header to match target (required for virtual hosting)
+        changeOrigin: true,
+        // Enable WebSocket proxying for future SSE/WebSocket mock support
+        ws: true,
+        // Skip SSL certificate verification in dev mode
+        secure: false,
+        // Strip proxy path prefix: /api/pets → /pets
+        rewrite: (path: string) => path.replace(new RegExp(`^${escapedProxyPath}`), ''),
+        // Configure proxy event handlers for logging
+        configure: verbose
+          ? (proxy) => {
+              proxy.on('proxyReq', (proxyReq, req) => {
+                // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for proxy debugging
+                console.log(
+                  `[${PLUGIN_NAME}] Proxy: ${req.method} ${req.url} → ${targetUrl}${proxyReq.path}`,
+                );
+              });
+              proxy.on('proxyRes', (proxyRes, req) => {
+                // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for proxy debugging
+                console.log(
+                  `[${PLUGIN_NAME}] Proxy response: ${req.method} ${req.url} ← ${proxyRes.statusCode}`,
+                );
+              });
+              proxy.on('error', (err, req) => {
+                // biome-ignore lint/suspicious/noConsole: Intentional error logging for proxy failures
+                console.error(
+                  `[${PLUGIN_NAME}] Proxy error: ${req.method} ${req.url} - ${err.message}`,
+                );
+              });
+            }
+          : undefined,
+      };
+
+      if (verbose) {
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+        console.log(`[${PLUGIN_NAME}] Configuring proxy: ${proxyPath} → ${targetUrl}`);
+      }
+
+      return {
+        server: {
+          proxy: {
+            [proxyPath]: proxyConfig,
+          },
+        },
+      };
     },
 
     /**
