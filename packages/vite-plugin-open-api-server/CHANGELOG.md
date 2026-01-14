@@ -1,3 +1,19 @@
+## [0.10.0] - 2026-01-14
+
+### Features
+
+- implement OpenAPI document enhancer with x-handler and x-seed injection (1b505cc)
+- implement registry builder with endpoint and schema tracking (e6f86e7)
+- add registry serializer for inspection endpoint (9a90594)
+
+
+### Other Changes
+
+- fix package.json trailing newline for biome format (3320d04)
+- sync changeset for feature/p2-03-document-enhancer (cd086de)
+
+
+
 ## [0.9.0] - 2026-01-14
 
 ### Features
