@@ -89,6 +89,91 @@ export default function seed(context) {
 > pnpm add -D @faker-js/faker
 > ```
 
+### Error Simulation
+
+Custom handlers can check query parameters to simulate error scenarios and response delays. This pattern enables frontend developers to test error handling without modifying backend services.
+
+> **Note:** Error simulation is implemented in your custom handler code, not as a built-in plugin feature. This gives you full control over the simulation behavior.
+
+#### Supported Parameters
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `simulateError` | HTTP error code to return | `?simulateError=404` |
+| `delay` | Response delay in milliseconds | `?delay=2000` |
+
+#### Supported Error Codes
+
+| Code | Description |
+|------|-------------|
+| `400` | Bad Request - Invalid input or validation error |
+| `401` | Unauthorized - Missing or invalid credentials |
+| `403` | Forbidden - Access denied |
+| `404` | Not Found - Resource does not exist |
+| `500` | Internal Server Error - Unexpected server failure |
+| `503` | Service Unavailable - Service temporarily unavailable |
+
+#### Example Handler with Error Simulation
+
+```typescript
+import type { HandlerContext, HandlerResponse } from '@websublime/vite-plugin-open-api-server';
+
+export default async function handler(
+  context: HandlerContext
+): Promise<HandlerResponse | null> {
+  // Simulate network delay
+  if (context.query.delay) {
+    const delayMs = parseInt(context.query.delay as string, 10);
+    if (!isNaN(delayMs) && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+
+  // Simulate error response
+  if (context.query.simulateError) {
+    const errorCode = parseInt(context.query.simulateError as string, 10);
+
+    switch (errorCode) {
+      case 400:
+        return { status: 400, body: { error: 'Bad Request', message: 'Invalid input' } };
+      case 401:
+        return { status: 401, body: { error: 'Unauthorized', message: 'Missing credentials' } };
+      case 403:
+        return { status: 403, body: { error: 'Forbidden', message: 'Access denied' } };
+      case 404:
+        return { status: 404, body: { error: 'Not Found', message: 'Resource not found' } };
+      case 500:
+        return { status: 500, body: { error: 'Internal Server Error', message: 'Something went wrong' } };
+      case 503:
+        return { status: 503, body: { error: 'Service Unavailable', message: 'Try again later' } };
+    }
+  }
+
+  // No simulation, use default mock response
+  return null;
+}
+```
+
+#### Usage Examples
+
+```typescript
+// Simulate 404 error
+fetch('/api/pet/999?simulateError=404')
+
+// Simulate slow network (3 second delay)
+fetch('/api/pets?delay=3000')
+
+// Combine error with delay (simulates slow failure)
+fetch('/api/pet/1?simulateError=500&delay=2000')
+```
+
+#### Best Practices
+
+- **Parse carefully**: Query params are `string | string[]`; always use `parseInt()` with validation
+- **Set reasonable limits**: Consider capping delays (e.g., max 10 seconds) to prevent hung requests
+- **Consistent error format**: Use a standard error response structure across all handlers
+- **Document for your team**: Add comments explaining available simulation options
+
 ## Features
 
 - 🚀 **Automatic Mock Server** - Powered by [@scalar/mock-server](https://github.com/scalar/scalar)
