@@ -1,3 +1,27 @@
+## [0.4.0] - 2026-01-14
+
+### Features
+
+- create plugin-options.ts with OpenApiServerPluginOptions (ec91466)
+- create registry.ts with OpenAPI registry structures (4a9a279)
+- create security.ts with normalized security scheme types (ebb43ec)
+- create handlers.ts with handler API types (cce16bd)
+- create seeds.ts with seed data generator types (3181d42)
+- create ipc-messages.ts with IPC protocol types (abbbb39)
+- export all public types from types/index.ts (ad2ed24)
+
+
+### Tests
+
+- add comprehensive type tests with vitest typecheck (42f7848)
+
+
+### Other Changes
+
+- update changeset (5c68e06)
+
+
+
 ## [0.3.0] - 2026-01-14
 
 ### Features
