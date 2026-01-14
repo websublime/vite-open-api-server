@@ -314,6 +314,205 @@ For APIs following [RFC 7807](https://tools.ietf.org/html/rfc7807), use this for
 - **Include error codes**: Machine-readable codes help frontend handle errors programmatically
 - **Use appropriate headers**: Set `WWW-Authenticate` for 401, `Content-Type` for RFC 7807
 
+### Security Schemes
+
+The mock server validates the **presence** of authentication credentials, not their validity. Any non-empty credential value is accepted in development mode. This simplifies local development while still testing that your frontend sends the correct authentication headers.
+
+#### Supported Authentication Types
+
+| Type | OpenAPI Type | Header/Location |
+|------|--------------|-----------------|
+| API Key | `apiKey` | Custom header, query param, or cookie |
+| Bearer Token | `http` (bearer) | `Authorization: Bearer <token>` |
+| Basic Auth | `http` (basic) | `Authorization: Basic <base64>` |
+| OAuth2 | `oauth2` | `Authorization: Bearer <token>` |
+| OpenID Connect | `openIdConnect` | `Authorization: Bearer <token>` |
+
+#### API Key Authentication
+
+When your OpenAPI spec defines an API key security scheme:
+
+```yaml
+components:
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+```
+
+**Usage:**
+
+```bash
+# Without API key (returns 401 Unauthorized)
+curl http://localhost:3456/pet/1
+# Response: {"error":"Unauthorized","message":"Authentication is required..."}
+
+# With API key (returns 200 OK)
+curl -H "api_key: any-value-here" http://localhost:3456/pet/1
+# Response: {"id":1,"name":"doggie","status":"available"}
+```
+
+```typescript
+// Frontend example
+const response = await fetch('/api/pet/1', {
+  headers: {
+    'api_key': 'my-development-key'
+  }
+});
+```
+
+#### Bearer Token Authentication
+
+For OAuth2 or HTTP Bearer authentication:
+
+```yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
+
+**Usage:**
+
+```bash
+# Without token (returns 401)
+curl http://localhost:3456/store/inventory
+
+# With Bearer token (returns 200)
+curl -H "Authorization: Bearer my-test-token" http://localhost:3456/store/inventory
+```
+
+```typescript
+// Frontend example with token
+const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+const response = await fetch('/api/store/inventory', {
+  headers: {
+    'Authorization': `Bearer ${token}`
+  }
+});
+```
+
+#### Basic Authentication
+
+For HTTP Basic authentication:
+
+```yaml
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+```
+
+**Usage:**
+
+```bash
+# With Basic auth (any credentials accepted)
+curl -H "Authorization: Basic dXNlcjpwYXNzd29yZA==" http://localhost:3456/user/john
+
+# Using curl's built-in Basic auth
+curl -u "user:password" http://localhost:3456/user/john
+```
+
+```typescript
+// Frontend example
+const credentials = btoa('username:password');
+const response = await fetch('/api/user/john', {
+  headers: {
+    'Authorization': `Basic ${credentials}`
+  }
+});
+```
+
+#### Multiple Security Schemes (OR Logic)
+
+When an endpoint accepts multiple security schemes, **any one** of them is sufficient:
+
+```yaml
+paths:
+  /pet/{petId}:
+    get:
+      security:
+        - api_key: []
+        - petstore_auth:
+            - read:pets
+```
+
+This means the request succeeds if **either** the `api_key` header **or** a Bearer token is provided:
+
+```bash
+# Option 1: Use API key
+curl -H "api_key: test123" http://localhost:3456/pet/1
+
+# Option 2: Use Bearer token (OAuth2)
+curl -H "Authorization: Bearer my-token" http://localhost:3456/pet/1
+
+# Both return 200 OK - either authentication method works
+```
+
+#### Security Context in Handlers
+
+Custom handlers receive security information via `context.security`:
+
+```typescript
+import type { HandlerContext, HandlerResponse } from '@websublime/vite-plugin-open-api-server';
+
+export default async function handler(
+  context: HandlerContext
+): Promise<HandlerResponse | null> {
+  const { security } = context;
+
+  // Check if authentication is required
+  if (security.requirements.length > 0 && !security.credentials) {
+    return {
+      status: 401,
+      body: { error: 'Unauthorized', message: 'Authentication required' }
+    };
+  }
+
+  // Access the matched scheme
+  if (security.scheme?.type === 'apiKey') {
+    console.log(`API key provided in ${security.scheme.in}: ${security.scheme.name}`);
+  }
+
+  // Check OAuth2 scopes
+  if (!security.scopes.includes('write:pets')) {
+    return {
+      status: 403,
+      body: { error: 'Forbidden', message: 'Insufficient permissions' }
+    };
+  }
+
+  // Proceed with authenticated request
+  return null; // Use default mock response
+}
+```
+
+**SecurityContext Properties:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `requirements` | `SecurityRequirement[]` | Security requirements from the spec |
+| `scheme` | `NormalizedSecurityScheme \| null` | Matched security scheme |
+| `credentials` | `string \| null` | Extracted credentials (API key, token, etc.) |
+| `scopes` | `string[]` | OAuth2/OIDC scopes from the request |
+
+#### Dev Mode Simplification
+
+In development mode, the mock server:
+
+- ✅ Validates that required credentials are **present** (non-empty)
+- ✅ Returns `401 Unauthorized` when credentials are missing
+- ✅ Accepts **any** non-empty credential value
+- ❌ Does **not** validate token signatures (JWT, OAuth2)
+- ❌ Does **not** check credential correctness
+- ❌ Does **not** verify OAuth2 scopes from tokens
+
+This approach lets you test that your frontend sends authentication correctly without setting up a real auth provider.
+
 ## Features
 
 - 🚀 **Automatic Mock Server** - Powered by [@scalar/mock-server](https://github.com/scalar/scalar)
