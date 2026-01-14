@@ -1,0 +1,13 @@
+{
+  "branch": "feature/p3-04-security-implementation",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-01-14T16:57:12.038995Z",
+  "updated_at": "2026-01-14T16:57:12.039683Z"
+}
