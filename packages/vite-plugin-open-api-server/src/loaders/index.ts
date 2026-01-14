@@ -12,3 +12,13 @@ export {
   type LoadHandlersResult,
   loadHandlers,
 } from './handler-loader.js';
+
+export {
+  capitalize,
+  extractSchemaName,
+  findMatchingSchema,
+  type LoadSeedsResult,
+  loadSeeds,
+  pluralize,
+  singularize,
+} from './seed-loader.js';
