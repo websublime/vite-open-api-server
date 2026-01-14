@@ -372,7 +372,7 @@ export function printErrorBanner(error: Error, specPath: string, logger: Logger)
   // Title line
   const title = `${BOLD}✗ Failed to start mock server${RESET}`;
   const titlePlain = '✗ Failed to start mock server';
-  const titlePadding = contentWidth - titlePlain.length - 1;
+  const titlePadding = Math.max(0, contentWidth - titlePlain.length - 1);
   lines.push(
     color(BOX_VERTICAL, RED) +
       ' ' +
@@ -398,17 +398,15 @@ export function printErrorBanner(error: Error, specPath: string, logger: Logger)
   // Empty line
   lines.push(color(BOX_VERTICAL, RED) + ' '.repeat(contentWidth) + color(BOX_VERTICAL, RED));
 
-  // Suggestion line (dim text)
+  // Suggestion line (dim text) - use padToWidth to handle long suggestions
   const suggestionPrefix = '   ';
-  const suggestionText = supportsColor() ? `${DIM}${suggestion}${RESET}` : suggestion;
-  const suggestionPlain = suggestion;
-  const suggestionPadding = contentWidth - suggestionPrefix.length - suggestionPlain.length;
+  const suggestionMaxWidth = contentWidth - suggestionPrefix.length;
+  const suggestionTruncated = padToWidth(suggestion, suggestionMaxWidth);
+  const suggestionText = supportsColor()
+    ? `${DIM}${suggestionTruncated}${RESET}`
+    : suggestionTruncated;
   lines.push(
-    color(BOX_VERTICAL, RED) +
-      suggestionPrefix +
-      suggestionText +
-      ' '.repeat(suggestionPadding) +
-      color(BOX_VERTICAL, RED),
+    color(BOX_VERTICAL, RED) + suggestionPrefix + suggestionText + color(BOX_VERTICAL, RED),
   );
 
   // Bottom border
