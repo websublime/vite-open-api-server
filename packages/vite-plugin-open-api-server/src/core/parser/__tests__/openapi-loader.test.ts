@@ -247,8 +247,10 @@ describe('OpenAPI Loader', () => {
       });
 
       it('should resolve paths relative to cwd', async () => {
-        // Test loading from a path that's relative to cwd
-        const relativePath = 'src/core/parser/__tests__/fixtures/valid-minimal.yaml';
+        // Test loading from a path that's relative to the fixtures directory
+        // Use path.relative to get a relative path from cwd to the fixture
+        const absoluteFixturePath = path.join(FIXTURES_DIR, 'valid-minimal.json');
+        const relativePath = path.relative(process.cwd(), absoluteFixturePath);
         const spec = await loadOpenApiSpec(relativePath);
 
         expect(spec).toBeDefined();
