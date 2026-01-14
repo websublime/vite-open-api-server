@@ -45,6 +45,7 @@
     "yaml": "^2.8.2"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
     "@types/node": "^25.0.3",
     "@vue/devtools-api": "^8.0.5",
     "openapi-types": "^12.1.3",
