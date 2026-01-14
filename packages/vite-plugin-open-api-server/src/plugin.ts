@@ -23,9 +23,17 @@
  */
 
 import type { ChildProcess } from 'node:child_process';
-import type { Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
+import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 
-import { printErrorBanner, printLoadingBanner } from './logging/index.js';
+import {
+  GREEN,
+  printErrorBanner,
+  printLoadingBanner,
+  RED,
+  RESET,
+  YELLOW,
+} from './logging/index.js';
+import type { LogMessage, OpenApiServerMessage } from './types/ipc-messages.js';
 import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
 
 /**
@@ -92,6 +100,91 @@ function createFallbackLogger() {
     hasWarned: false,
     hasErrorLogged: () => false,
   };
+}
+
+/**
+ * Applies color to a log message based on its level.
+ *
+ * Uses ANSI color codes for terminal output:
+ * - info: green
+ * - warn: yellow
+ * - error: red
+ * - debug: no color (dim could be added later)
+ *
+ * @param message - The log message
+ * @param level - The log level
+ * @returns Colorized message string
+ * @internal
+ */
+function colorizeLogMessage(message: string, level: LogMessage['level']): string {
+  switch (level) {
+    case 'info':
+      return `${GREEN}${message}${RESET}`;
+    case 'warn':
+      return `${YELLOW}${message}${RESET}`;
+    case 'error':
+      return `${RED}${message}${RESET}`;
+    case 'debug':
+      return message;
+    default:
+      return message;
+  }
+}
+
+/**
+ * Sets up IPC message handling for the mock server child process.
+ *
+ * Listens for messages from the child process and routes them appropriately:
+ * - 'log' messages are forwarded to Vite's logger with proper level and coloring
+ * - Other message types can be handled as needed
+ *
+ * @param process - The mock server child process
+ * @param logger - Vite's logger instance for output
+ * @param pluginName - Plugin name for log prefixing
+ * @internal
+ */
+export function setupIpcMessageHandler(
+  process: ChildProcess,
+  logger: Logger,
+  pluginName: string,
+): void {
+  process.on('message', (msg: unknown) => {
+    // Type guard for IPC messages
+    if (typeof msg !== 'object' || msg === null || !('type' in msg)) {
+      return;
+    }
+
+    const message = msg as OpenApiServerMessage;
+
+    switch (message.type) {
+      case 'log': {
+        const logMessage = message as LogMessage;
+        const colorizedMessage = colorizeLogMessage(logMessage.message, logMessage.level);
+        const prefix = `[${pluginName}]`;
+
+        // Route to appropriate logger method based on level
+        switch (logMessage.level) {
+          case 'error':
+            logger.error(`${prefix} ${colorizedMessage}`);
+            break;
+          case 'warn':
+            logger.warn(`${prefix} ${colorizedMessage}`);
+            break;
+          default:
+            // info, debug, and any other levels use info
+            logger.info(`${prefix} ${colorizedMessage}`);
+            break;
+        }
+        break;
+      }
+
+      // Other message types (ready, error, response, etc.) will be handled
+      // in Phase 4 when child process spawning is implemented
+      default:
+        // Silently ignore unhandled message types for now
+        break;
+    }
+  });
 }
 
 /**
