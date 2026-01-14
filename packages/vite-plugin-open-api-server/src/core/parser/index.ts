@@ -11,6 +11,8 @@
 export { OpenApiFileNotFoundError, OpenApiParseError, OpenApiValidationError } from './errors.js';
 // Public API exports
 export { clearCache, loadOpenApiSpec } from './openapi-loader.js';
+// Security normalizer
+export { normalizeSecuritySchemes } from './security-normalizer.js';
 
 // Types
 export type {
