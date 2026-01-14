@@ -1,3 +1,22 @@
+## [0.7.0] - 2026-01-14
+
+### Features
+
+- create logging/startup-banner.ts module (b8ece35)
+- integrate startup banners with plugin hooks (214a81b)
+
+
+### Tests
+
+- add banner visual verification script and fixes (f774f0b)
+
+
+### Other Changes
+
+- add changeset for startup banner feature (b596be8)
+
+
+
 ## [0.6.0] - 2026-01-14
 
 ### Features

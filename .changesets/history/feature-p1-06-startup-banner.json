@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p1-06-startup-banner",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T11:22:44.345172Z",
+    "updated_at": "2026-01-14T11:22:44.345928Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T11:38:00.084483260Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "b596be808cccb958b454de13da0335d0ee02cdc0",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.7.0"
+    }
+  }
+}
