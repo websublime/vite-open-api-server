@@ -1,3 +1,22 @@
+## [0.11.0] - 2026-01-14
+
+### Features
+
+- add /_openapiserver/registry inspection endpoint (a3b28af)
+
+
+### Tests
+
+- add registry endpoint integration tests (485190d)
+
+
+### Other Changes
+
+- sync changeset for feature/p2-07-registry-inspection-endpoint (85e18d0)
+- add changeset for registry inspection endpoint feature (9ed9ac0)
+
+
+
 ## [0.10.0] - 2026-01-14
 
 ### Features
