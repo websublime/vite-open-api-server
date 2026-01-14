@@ -1,0 +1,26 @@
+{
+  "changeset": {
+    "branch": "feature/p3-01-request-proxying",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "bce4d41e8060cfcf69dc71df89902ad8e23dbb44",
+      "65f2eaae37bca212faeb218616f151ccba31b588"
+    ],
+    "created_at": "2026-01-14T14:45:26.153012Z",
+    "updated_at": "2026-01-14T15:04:50.823058Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T15:07:19.676895785Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "2521cf390fcf84f81e7e4c068b909c4d193f9498",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.12.0"
+    }
+  }
+}

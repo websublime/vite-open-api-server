@@ -1,3 +1,21 @@
+## [0.12.0] - 2026-01-14
+
+### Features
+
+- implement Vite proxy configuration for mock server routing (c0fae58)
+
+
+### Tests
+
+- add API proxy test functionality to demonstrate request proxying (523dd9a)
+
+
+### Other Changes
+
+- sync changeset for feature/p3-01-request-proxying (2521cf3)
+
+
+
 ## [0.11.1] - 2026-01-14
 
 ### Features
