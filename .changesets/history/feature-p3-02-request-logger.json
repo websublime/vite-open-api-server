@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p3-02-request-logger",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T15:10:36.281864Z",
+    "updated_at": "2026-01-14T15:10:36.282649Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T15:33:38.031735278Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "244e7ac4e355bd5b0328e28fdaedcb89d575d41c",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.13.0"
+    }
+  }
+}

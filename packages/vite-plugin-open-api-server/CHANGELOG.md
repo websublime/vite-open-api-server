@@ -1,3 +1,12 @@
+## [0.13.0] - 2026-01-14
+
+### Features
+
+- add IPC log message handler in parent process (244e7ac)
+- add request logging middleware with IPC support (02263ae)
+
+
+
 ## [0.12.0] - 2026-01-14
 
 ### Features
