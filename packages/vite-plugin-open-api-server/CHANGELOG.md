@@ -1,3 +1,37 @@
+## [0.2.0] - 2026-01-14
+
+### Features
+
+- create parser directory structure (9b53244)
+
+
+### Bug Fixes
+
+- use path.relative for cross-environment cwd compatibility (d00250b)
+
+
+### Documentation
+
+- create comprehensive project documentation (162dca0)
+
+
+### Tests
+
+- create unit tests for OpenAPI parser (2778344)
+
+
+### Other Changes
+
+- sync changeset for feature/p1-01-openapi-parser (647816c)
+- sync changeset for feature/p1-01-openapi-parser (7f2e28b)
+- move completed changeset to history (957f8c3)
+- sync changeset for feature/p0-14-create-documentation (0fdd494)
+- sync changeset for feature/p0-14-create-documentation (ea6073a)
+- update changeset history (a6a12af)
+- update beads (2e75662)
+
+
+
 ## [0.1.1] - 2026-01-09
 
 ### Features
