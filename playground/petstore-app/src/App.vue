@@ -96,6 +96,87 @@ async function fetchPets(): Promise<void> {
     isLoading.value = false;
   }
 }
+
+/**
+ * Makes a request with error simulation query parameters.
+ * Used to test error handling in the frontend.
+ *
+ * @param endpoint - API endpoint path
+ * @param params - Query parameters for simulation
+ */
+async function fetchWithSimulation(
+  endpoint: string,
+  params: { simulateError?: number; delay?: number },
+): Promise<void> {
+  isLoading.value = true;
+  apiResponse.value = null;
+  apiError.value = null;
+
+  const queryParams = new URLSearchParams();
+  if (params.simulateError) {
+    queryParams.set('simulateError', params.simulateError.toString());
+  }
+  if (params.delay) {
+    queryParams.set('delay', params.delay.toString());
+  }
+
+  const url = `${endpoint}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+  lastRequestInfo.value = {
+    url,
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!response.ok) {
+      // Show the error response body for simulation testing
+      apiError.value = `HTTP ${response.status}: ${JSON.stringify(data, null, 2)}`;
+    } else {
+      apiResponse.value = JSON.stringify(data, null, 2);
+    }
+  } catch (error) {
+    apiError.value = error instanceof Error ? error.message : 'Unknown error occurred';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+/**
+ * Test 404 Not Found error simulation.
+ */
+function test404Error(): void {
+  fetchWithSimulation('/api/v3/pet/999', { simulateError: 404 });
+}
+
+/**
+ * Test 500 Internal Server Error simulation.
+ */
+function test500Error(): void {
+  fetchWithSimulation('/api/v3/pet', { simulateError: 500 });
+}
+
+/**
+ * Test 401 Unauthorized error simulation.
+ */
+function test401Error(): void {
+  fetchWithSimulation('/api/v3/pet/1', { simulateError: 401 });
+}
+
+/**
+ * Test slow response (3 second delay) simulation.
+ */
+function testSlowResponse(): void {
+  fetchWithSimulation('/api/v3/pet/1', { delay: 3000 });
+}
+
+/**
+ * Test combined error with delay (slow failure).
+ */
+function testSlowFailure(): void {
+  fetchWithSimulation('/api/v3/pet/1', { simulateError: 500, delay: 2000 });
+}
 </script>
 
 <template>
@@ -157,12 +238,49 @@ async function fetchPets(): Promise<void> {
 
         <div v-if="apiError" class="response-card error">
           <h3>❌ Error</h3>
-          <p>{{ apiError }}</p>
+          <pre class="error-pre">{{ apiError }}</pre>
           <p class="hint">
             <strong>Note:</strong> If you see a connection error, the mock server may not be running yet. The mock
             server is implemented in Phase 4. The proxy configuration is working correctly - Vite is attempting to
             forward requests to <code>http://localhost:3456</code>.
           </p>
+        </div>
+      </section>
+
+      <section class="simulation-card">
+        <h2>⚠️ Error Simulation</h2>
+        <p>
+          Test error handling by triggering simulated errors. These use query parameters (<code>simulateError</code>,
+          <code>delay</code>) to simulate various failure scenarios.
+        </p>
+
+        <div class="button-grid">
+          <button class="test-button error-btn" :disabled="isLoading" @click="test404Error()">
+            {{ isLoading ? "Loading..." : "Test 404 Not Found" }}
+          </button>
+          <button class="test-button error-btn" :disabled="isLoading" @click="test401Error()">
+            {{ isLoading ? "Loading..." : "Test 401 Unauthorized" }}
+          </button>
+          <button class="test-button error-btn" :disabled="isLoading" @click="test500Error()">
+            {{ isLoading ? "Loading..." : "Test 500 Server Error" }}
+          </button>
+          <button class="test-button delay-btn" :disabled="isLoading" @click="testSlowResponse()">
+            {{ isLoading ? "Loading..." : "Test Slow Response (3s)" }}
+          </button>
+          <button class="test-button combined-btn" :disabled="isLoading" @click="testSlowFailure()">
+            {{ isLoading ? "Loading..." : "Test Slow Failure (2s + 500)" }}
+          </button>
+        </div>
+
+        <div class="simulation-info">
+          <h4>How it works</h4>
+          <ul>
+            <li><code>?simulateError=404</code> - Returns a 404 Not Found response</li>
+            <li><code>?simulateError=401</code> - Returns a 401 Unauthorized response</li>
+            <li><code>?simulateError=500</code> - Returns a 500 Server Error response</li>
+            <li><code>?delay=3000</code> - Delays response by 3 seconds</li>
+            <li>Combine both: <code>?simulateError=500&delay=2000</code></li>
+          </ul>
         </div>
       </section>
     </main>
@@ -389,6 +507,82 @@ li {
   padding: 0.75rem;
   background: rgba(255, 255, 255, 0.5);
   border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.response-card .error-pre {
+  margin: 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  max-height: 300px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Error Simulation Section Styles */
+.simulation-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #dc3545;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.test-button.error-btn {
+  background: #dc3545;
+}
+
+.test-button.error-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.test-button.delay-btn {
+  background: #fd7e14;
+}
+
+.test-button.delay-btn:hover:not(:disabled) {
+  background: #e96b02;
+}
+
+.test-button.combined-btn {
+  background: #6f42c1;
+}
+
+.test-button.combined-btn:hover:not(:disabled) {
+  background: #5a32a3;
+}
+
+.simulation-info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.simulation-info h4 {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  color: #495057;
+}
+
+.simulation-info ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.simulation-info li {
+  margin: 0.35rem 0;
   font-size: 0.9rem;
 }
 </style>
