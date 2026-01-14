@@ -8,9 +8,11 @@
  *
  * ## How
  * The plugin implements Vite's plugin interface with lifecycle hooks:
+ * - `config`: Merges Vite config (proxy setup placeholder)
+ * - `configResolved`: Stores resolved Vite config reference
  * - `configureServer`: Sets up the mock server when Vite's dev server starts
  * - `buildStart`: Performs initialization tasks at build start
- * - `buildEnd`: Performs cleanup tasks at build end
+ * - `closeBundle`: Performs cleanup tasks when bundle closes
  *
  * ## Why
  * Vite plugins follow a specific interface pattern. By implementing these
@@ -20,10 +22,48 @@
  * @module
  */
 
-import type { Plugin, ViteDevServer } from 'vite';
+import type { ChildProcess } from 'node:child_process';
+import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 
-import type { OpenApiServerPluginOptions } from './types/index.js';
-import type { ResolvedPluginOptions } from './types/plugin-options.js';
+import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
+
+/**
+ * Internal plugin state managed in closure.
+ *
+ * This interface tracks all mutable state needed by the plugin
+ * across lifecycle hooks. State is initialized when the plugin
+ * factory is called and updated throughout the plugin lifecycle.
+ *
+ * @internal
+ */
+interface PluginState {
+  /** Resolved Vite configuration (set in configResolved) */
+  resolvedConfig: ResolvedConfig | null;
+  /** Vite dev server instance (set in configureServer) */
+  devServer: ViteDevServer | null;
+  /** Mock server child process (set in buildStart, Phase 4) */
+  mockServerProcess: ChildProcess | null;
+  /** Port the mock server is running on (set in buildStart, Phase 4) */
+  mockServerPort: number | null;
+  /** Whether mock server is ready to receive requests (set via IPC, Phase 4) */
+  isReady: boolean;
+}
+
+/**
+ * Creates initial plugin state with all values reset.
+ *
+ * @returns Fresh plugin state object
+ * @internal
+ */
+function createInitialState(): PluginState {
+  return {
+    resolvedConfig: null,
+    devServer: null,
+    mockServerProcess: null,
+    mockServerPort: null,
+    isReady: false,
+  };
+}
 
 /**
  * The unique name identifier for this Vite plugin.
@@ -36,14 +76,36 @@ import type { ResolvedPluginOptions } from './types/plugin-options.js';
 export const PLUGIN_NAME = 'vite-plugin-open-api-server';
 
 /**
+ * Default plugin options.
+ *
+ * These values are merged with user-provided options. Only optional
+ * properties have defaults; required properties must be provided.
+ *
+ * @internal
+ */
+const DEFAULT_OPTIONS = {
+  /** Port for mock server child process */
+  port: 3001,
+  /** Base path to proxy to mock server */
+  proxyPath: '/api',
+  /** Enable/disable plugin */
+  enabled: true,
+  /** Timeout (ms) to wait for mock server startup */
+  startupTimeout: 5000,
+  /** Enable verbose logging */
+  verbose: false,
+} as const;
+
+/**
  * Creates a Vite plugin instance for OpenAPI mock server integration.
  *
- * This function is the main entry point for the plugin. It accepts optional
+ * This function is the main entry point for the plugin. It accepts
  * configuration options and returns a Vite plugin object that integrates
  * with Vite's development server lifecycle.
  *
- * @param options - Optional configuration for the plugin behavior
+ * @param options - Configuration for the plugin behavior. `openApiPath` is required.
  * @returns A Vite plugin object implementing the required lifecycle hooks
+ * @throws {Error} When `openApiPath` is missing or not a string
  *
  * @example
  * ```typescript
@@ -73,22 +135,83 @@ export const PLUGIN_NAME = 'vite-plugin-open-api-server';
  * });
  * ```
  */
-export function openApiServerPlugin(options?: OpenApiServerPluginOptions): Plugin {
-  // Store resolved options for use in lifecycle hooks
+export function openApiServerPlugin(options: InputPluginOptions): Plugin {
+  // Validate required options (fail fast)
+  if (!options?.openApiPath) {
+    throw new Error(`[${PLUGIN_NAME}] Missing required option: openApiPath`);
+  }
+
+  if (typeof options.openApiPath !== 'string') {
+    throw new Error(`[${PLUGIN_NAME}] openApiPath must be a string`);
+  }
+
+  // Merge user options with defaults
   const resolvedOptions: ResolvedPluginOptions = {
-    port: 3456,
-    proxyPath: '/api',
-    enabled: true,
-    startupTimeout: 5000,
-    verbose: false,
+    ...DEFAULT_OPTIONS,
     ...options,
+    openApiPath: options.openApiPath, // Required, explicitly set
   };
+
+  // Plugin state (managed in closure)
+  const state = createInitialState();
 
   return {
     /**
      * Unique plugin name for identification.
      */
     name: PLUGIN_NAME,
+
+    /**
+     * Run before other plugins to set up proxy configuration.
+     */
+    enforce: 'pre',
+
+    /**
+     * Only run in development mode (serve), not in production builds.
+     */
+    apply: 'serve',
+
+    /**
+     * Modify Vite config before it's resolved.
+     * Used to add proxy configuration for mock server.
+     *
+     * @returns Partial Vite config to merge
+     */
+    config() {
+      if (resolvedOptions.verbose) {
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+        console.log(`[${PLUGIN_NAME}] config() called`);
+      }
+
+      // Phase 3: P3-01 - Add proxy configuration
+      // return {
+      //   server: {
+      //     proxy: {
+      //       [resolvedOptions.proxyPath]: {
+      //         target: `http://localhost:${resolvedOptions.port}`,
+      //         changeOrigin: true,
+      //         rewrite: (path) => path.replace(new RegExp(`^${resolvedOptions.proxyPath}`), ''),
+      //       },
+      //     },
+      //   },
+      // };
+
+      return {};
+    },
+
+    /**
+     * Store resolved Vite config for later use.
+     *
+     * @param config - The resolved Vite configuration
+     */
+    configResolved(config: ResolvedConfig) {
+      state.resolvedConfig = config;
+
+      if (resolvedOptions.verbose) {
+        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+        console.log(`[${PLUGIN_NAME}] configResolved() - root: ${config.root}`);
+      }
+    },
 
     /**
      * Configures the Vite development server.
@@ -100,59 +223,71 @@ export function openApiServerPlugin(options?: OpenApiServerPluginOptions): Plugi
      * - Registering file watchers for hot-reload
      *
      * @param server - The Vite development server instance
-     *
-     * @remarks
-     * Implementation will be added in Phase 1 (P1-04: Implement Basic Vite Plugin Skeleton).
-     * This stub ensures the plugin structure is valid and can be loaded by Vite.
      */
-    configureServer(_server: ViteDevServer): void {
+    configureServer(server: ViteDevServer): void {
+      state.devServer = server;
+
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] Configuring server with options:`, resolvedOptions);
+        console.log(`[${PLUGIN_NAME}] configureServer() called`);
       }
-      // Implementation in Phase 1: P1-04
+
+      // Phase 3: P3-02 - Register request interception middleware
+      // server.middlewares.use((req, res, next) => {
+      //   // Intercept requests matching proxyPath
+      //   // Forward to mock server child process via IPC
+      // });
     },
 
     /**
      * Called at the start of the build process.
      *
      * This hook is invoked when Vite starts building the project.
-     * It can be used for:
-     * - Validating OpenAPI specifications
-     * - Pre-processing handler files
-     * - Setting up build-time assets
-     *
-     * @remarks
-     * Implementation will be added in Phase 1 (P1-04: Implement Basic Vite Plugin Skeleton).
-     * This stub ensures the plugin structure is valid and can be loaded by Vite.
+     * It triggers mock server startup in development mode.
      */
-    buildStart(): void {
+    async buildStart(): Promise<void> {
+      if (!resolvedOptions.enabled) {
+        if (resolvedOptions.verbose) {
+          // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+          console.log(`[${PLUGIN_NAME}] Plugin disabled via options`);
+        }
+        return;
+      }
+
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] Build starting...`);
+        console.log(`[${PLUGIN_NAME}] buildStart() - Mock server start triggered`);
       }
-      // Implementation in Phase 1: P1-04
+
+      // Phase 4: P4-01 - Spawn child process
+      // mockServerProcess = spawn('node', ['./dist/mock-server.mjs'], { ... });
+      // mockServerProcess.on('message', (msg: OpenApiServerMessage) => { ... });
+      // Wait for ReadyMessage with timeout
     },
 
     /**
-     * Called at the end of the build process.
+     * Called when the bundle is closed.
      *
-     * This hook is invoked when Vite finishes building the project.
-     * It can be used for:
-     * - Cleaning up temporary files
-     * - Generating build reports
-     * - Stopping any running processes
-     *
-     * @remarks
-     * Implementation will be added in Phase 1 (P1-04: Implement Basic Vite Plugin Skeleton).
-     * This stub ensures the plugin structure is valid and can be loaded by Vite.
+     * This hook is invoked when Vite finishes and closes.
+     * It triggers graceful shutdown of the mock server.
      */
-    buildEnd(): void {
+    async closeBundle(): Promise<void> {
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] Build ended.`);
+        console.log(`[${PLUGIN_NAME}] closeBundle() - Mock server shutdown triggered`);
       }
-      // Implementation in Phase 1: P1-04
+
+      // Phase 4: P4-03 - Graceful shutdown
+      // if (mockServerProcess) {
+      //   mockServerProcess.send({ type: 'shutdown' });
+      //   await waitForExit(mockServerProcess, 5000);
+      //   mockServerProcess = null;
+      // }
+
+      // Reset state
+      state.mockServerProcess = null;
+      state.mockServerPort = null;
+      state.isReady = false;
     },
   };
 }
