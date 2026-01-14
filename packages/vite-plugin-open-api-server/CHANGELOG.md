@@ -1,3 +1,22 @@
+## [0.3.0] - 2026-01-14
+
+### Features
+
+- implement security scheme normalizer (70a1133)
+- integrate security normalizer into OpenAPI loading flow (084b50a)
+
+
+### Tests
+
+- add comprehensive unit tests for security-normalizer (e0d167e)
+
+
+### Other Changes
+
+- add changeset for security-normalizer feature (de7cd92)
+
+
+
 ## [0.2.0] - 2026-01-14
 
 ### Features

@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p1-02-security-normalizer",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T10:05:01.316539Z",
+    "updated_at": "2026-01-14T10:05:01.317179Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T10:16:27.824701586Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "de7cd928009f2a06ddce4b7c160adc14dcdb41a9",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.3.0"
+    }
+  }
+}
