@@ -58,13 +58,17 @@ const pathPatternCache = new Map<string, RegExp>();
  * pathToRegex("/users/{userId}/orders/{orderId}") → /^\/users\/([^\/]+)\/orders\/([^\/]+)$/
  */
 function pathToRegex(pathTemplate: string): RegExp {
-  // Escape special regex characters except for path parameters
-  const escaped = pathTemplate
-    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-    // Replace {param} with a capture group that matches any non-slash characters
-    .replace(/\{[^}]+\}/g, '([^/]+)');
+  // First, replace {param} with a placeholder that won't be affected by escaping
+  const PARAM_PLACEHOLDER = '\x00PARAM\x00';
+  const withPlaceholders = pathTemplate.replace(/\{[^}]+\}/g, PARAM_PLACEHOLDER);
 
-  return new RegExp(`^${escaped}$`);
+  // Escape special regex characters
+  const escaped = withPlaceholders.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+
+  // Replace placeholders with capture groups that match any non-slash characters
+  const pattern = escaped.replace(new RegExp(PARAM_PLACEHOLDER, 'g'), '([^/]+)');
+
+  return new RegExp(`^${pattern}$`);
 }
 
 /**
