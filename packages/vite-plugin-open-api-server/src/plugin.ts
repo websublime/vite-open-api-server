@@ -23,6 +23,7 @@
 import type { Plugin, ViteDevServer } from 'vite';
 
 import type { OpenApiServerPluginOptions } from './types/index.js';
+import type { ResolvedPluginOptions } from './types/plugin-options.js';
 
 /**
  * The unique name identifier for this Vite plugin.
@@ -74,9 +75,11 @@ export const PLUGIN_NAME = 'vite-plugin-open-api-server';
  */
 export function openApiServerPlugin(options?: OpenApiServerPluginOptions): Plugin {
   // Store resolved options for use in lifecycle hooks
-  const resolvedOptions: OpenApiServerPluginOptions = {
+  const resolvedOptions: ResolvedPluginOptions = {
     port: 3456,
     proxyPath: '/api',
+    enabled: true,
+    startupTimeout: 5000,
     verbose: false,
     ...options,
   };

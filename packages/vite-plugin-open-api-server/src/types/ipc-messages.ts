@@ -415,10 +415,7 @@ export type OpenApiServerMessage =
 /**
  * Messages that can be sent from parent to child process.
  */
-export type ParentToChildMessage =
-  | RequestMessage
-  | ShutdownMessage
-  | ReloadMessage;
+export type ParentToChildMessage = RequestMessage | ShutdownMessage | ReloadMessage;
 
 /**
  * Messages that can be sent from child to parent process.
