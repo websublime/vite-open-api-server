@@ -1,0 +1,16 @@
+{
+  "branch": "feature/p1-04-vite-plugin-skeleton",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [
+    "a1fbc07df8d3272e252fb388d300e76d9c5147e2",
+    "64b1e616f6d8b8efd1687e1dfbce4083140ed32e"
+  ],
+  "created_at": "2026-01-14T10:50:56.774580Z",
+  "updated_at": "2026-01-14T10:58:48.439786Z"
+}
