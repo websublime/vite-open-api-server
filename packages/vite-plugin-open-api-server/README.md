@@ -223,12 +223,96 @@ if (context.query.delay) {
 }
 ```
 
+#### Error Response Bodies
+
+Use a consistent error response format across all handlers. The recommended structure includes:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `error` | `string` | Short error type (e.g., "Not Found", "Bad Request") |
+| `message` | `string` | Human-readable description of the error |
+| `code` | `string` | Machine-readable error code (e.g., "NOT_FOUND", "VALIDATION_ERROR") |
+| `details` | `array` | Optional field-level errors for validation failures |
+
+**Standard Error Response Examples:**
+
+```typescript
+// 400 Bad Request - Validation Error
+{
+  status: 400,
+  body: {
+    error: 'Bad Request',
+    message: 'Invalid pet data: name is required',
+    code: 'VALIDATION_ERROR',
+    details: [
+      { field: 'name', message: 'Name is required' },
+      { field: 'photoUrls', message: 'At least one photo URL is required' }
+    ]
+  }
+}
+
+// 401 Unauthorized
+{
+  status: 401,
+  body: {
+    error: 'Unauthorized',
+    message: 'Authentication required',
+    code: 'AUTH_REQUIRED'
+  },
+  headers: {
+    'WWW-Authenticate': 'Bearer realm="api"'
+  }
+}
+
+// 404 Not Found
+{
+  status: 404,
+  body: {
+    error: 'Not Found',
+    message: 'Pet with ID 999 not found',
+    code: 'PET_NOT_FOUND'
+  }
+}
+
+// 500 Internal Server Error
+{
+  status: 500,
+  body: {
+    error: 'Internal Server Error',
+    message: 'An unexpected error occurred',
+    code: 'INTERNAL_ERROR'
+  }
+}
+```
+
+**RFC 7807 Problem Details (Optional)**
+
+For APIs following [RFC 7807](https://tools.ietf.org/html/rfc7807), use this format:
+
+```typescript
+{
+  status: 404,
+  body: {
+    type: 'https://api.example.com/problems/pet-not-found',
+    title: 'Pet Not Found',
+    status: 404,
+    detail: 'Pet with ID 999 does not exist in the database',
+    instance: '/pet/999'
+  },
+  headers: {
+    'Content-Type': 'application/problem+json'
+  }
+}
+```
+
 #### Best Practices
 
 - **Parse carefully**: Query params are `string | string[]`; always use `parseInt()` with validation
 - **Set reasonable limits**: Consider capping delays (e.g., max 10 seconds) to prevent hung requests
 - **Consistent error format**: Use a standard error response structure across all handlers
 - **Document for your team**: Add comments explaining available simulation options
+- **Include error codes**: Machine-readable codes help frontend handle errors programmatically
+- **Use appropriate headers**: Set `WWW-Authenticate` for 401, `Content-Type` for RFC 7807
 
 ## Features
 
