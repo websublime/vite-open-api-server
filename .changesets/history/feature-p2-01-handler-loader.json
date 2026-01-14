@@ -1,0 +1,26 @@
+{
+  "changeset": {
+    "branch": "feature/p2-01-handler-loader",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "007c977cddc66f8a96fe5e3ee082b844ddaedf61",
+      "26104cf2f67086818e854b2bdbd5950a4baffb99"
+    ],
+    "created_at": "2026-01-14T11:43:21.981888Z",
+    "updated_at": "2026-01-14T11:55:00.852180Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T12:06:16.570442385Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "5be15d9ecd5fff2e46996f837a4fc3255363e66b",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.8.0"
+    }
+  }
+}

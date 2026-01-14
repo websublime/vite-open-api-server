@@ -1,3 +1,22 @@
+## [0.8.0] - 2026-01-14
+
+### Features
+
+- create handler-loader.ts module skeleton (72db5d1)
+
+
+### Tests
+
+- add comprehensive unit tests for handler-loader (c2f2eed)
+
+
+### Other Changes
+
+- fix lint errors in test fixtures and scripts (5be15d9)
+- sync changeset for feature/p2-01-handler-loader (0244ddf)
+
+
+
 ## [0.7.0] - 2026-01-14
 
 ### Features
