@@ -1,3 +1,28 @@
+## [0.13.1] - 2026-01-14
+
+### Features
+
+- create example error simulation handler (e2b9421)
+- update add-pet handler with error simulation (264b2bd)
+- update get-pet-by-id handler with error simulation (d01c61a)
+- add error simulation test UI to playground (01c3f9c)
+
+
+### Documentation
+
+- add error simulation pattern documentation (3ae84bf)
+- add delay simulation patterns and timeout testing (a59d1db)
+- document error response body format (75a97fd)
+
+
+### Other Changes
+
+- sync changeset for feature/p3-03-error-simulation (573d6a4)
+- add trailing newline to package.json (c1920ac)
+- add changeset for error simulation feature (6b016c2)
+
+
+
 ## [0.13.0] - 2026-01-14
 
 ### Features
