@@ -174,8 +174,8 @@ export type InputPluginOptions = Partial<OpenApiServerPluginOptions>;
  * @internal
  */
 export interface ResolvedPluginOptions {
-  /** Path to OpenAPI spec file (may be undefined before validation). */
-  openApiPath?: string;
+  /** Path to OpenAPI spec file (required, validated at plugin creation). */
+  openApiPath: string;
 
   /** Port for mock server. Default: 3001 */
   port: number;

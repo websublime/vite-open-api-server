@@ -25,6 +25,7 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Plugin, ResolvedConfig, ViteDevServer } from 'vite';
 
+import { printErrorBanner, printLoadingBanner } from './logging/index.js';
 import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
 
 /**
@@ -47,6 +48,8 @@ interface PluginState {
   mockServerPort: number | null;
   /** Whether mock server is ready to receive requests (set via IPC, Phase 4) */
   isReady: boolean;
+  /** Timestamp when loading started (for timing banner) */
+  startTime: number | null;
 }
 
 /**
@@ -62,6 +65,32 @@ function createInitialState(): PluginState {
     mockServerProcess: null,
     mockServerPort: null,
     isReady: false,
+    startTime: null,
+  };
+}
+
+/**
+ * Creates a fallback logger for use when Vite's logger is not available.
+ *
+ * This is used in buildStart() before configResolved() has been called,
+ * or as a safety fallback if the resolved config is somehow unavailable.
+ *
+ * @returns A logger compatible with Vite's Logger interface
+ * @internal
+ */
+function createFallbackLogger() {
+  return {
+    // biome-ignore lint/suspicious/noConsole: Fallback logger requires console for output
+    info: (msg: string) => console.log(msg),
+    // biome-ignore lint/suspicious/noConsole: Fallback logger requires console for output
+    error: (msg: string) => console.error(msg),
+    // biome-ignore lint/suspicious/noConsole: Fallback logger requires console for output
+    warn: (msg: string) => console.warn(msg),
+    // biome-ignore lint/suspicious/noConsole: Fallback logger requires console for output
+    warnOnce: (msg: string) => console.warn(msg),
+    clearScreen: () => {},
+    hasWarned: false,
+    hasErrorLogged: () => false,
   };
 }
 
@@ -244,6 +273,7 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
      *
      * This hook is invoked when Vite starts building the project.
      * It triggers mock server startup in development mode.
+     * Displays loading banner and handles success/error banners.
      */
     async buildStart(): Promise<void> {
       if (!resolvedOptions.enabled) {
@@ -254,6 +284,15 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
         return;
       }
 
+      // Get logger from resolved config (fallback to console-based logger)
+      const logger = state.resolvedConfig?.logger ?? createFallbackLogger();
+
+      // Record start time for timing banner
+      state.startTime = performance.now();
+
+      // Print loading banner
+      printLoadingBanner(resolvedOptions.openApiPath, logger);
+
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] buildStart() - Mock server start triggered`);
@@ -263,6 +302,23 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       // mockServerProcess = spawn('node', ['./dist/mock-server.mjs'], { ... });
       // mockServerProcess.on('message', (msg: OpenApiServerMessage) => { ... });
       // Wait for ReadyMessage with timeout
+      //
+      // Phase 4: When ready IPC message is received, call:
+      // import { printSuccessBanner } from "./logging/index.js";
+      // printSuccessBanner(
+      //   resolvedOptions.port,
+      //   endpointCount,  // From ready message
+      //   resolvedOptions.openApiPath,
+      //   state.startTime!,
+      //   logger,
+      //   methodCounts    // Optional, from ready message
+      // );
+      //
+      // Phase 4: On error, call:
+      // printErrorBanner(error, resolvedOptions.openApiPath, logger);
+
+      // Placeholder: printErrorBanner is imported and ready for Phase 4 error handling
+      void printErrorBanner;
     },
 
     /**
@@ -288,6 +344,7 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       state.mockServerProcess = null;
       state.mockServerPort = null;
       state.isReady = false;
+      state.startTime = null;
     },
   };
 }
