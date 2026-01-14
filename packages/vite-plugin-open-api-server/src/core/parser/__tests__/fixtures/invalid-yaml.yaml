@@ -1,0 +1,12 @@
+# This file contains invalid YAML syntax for testing parse error handling
+openapi: 3.0.3
+info:
+  title: Invalid YAML Test
+  version: 1.0.0
+  description: This YAML has invalid syntax
+    - missing colon here
+  indentation:
+wrong: this line has wrong indentation
+  nested:
+    - item1
+   - item2 with wrong indent
