@@ -1,0 +1,13 @@
+# Invalid OpenAPI Schema - Missing required fields
+# This file is intentionally invalid for testing validation errors
+
+openapi: 3.0.4
+# Missing required 'info' field
+
+paths:
+  /test:
+    get:
+      summary: Test endpoint
+      responses:
+        '200':
+          description: Success
