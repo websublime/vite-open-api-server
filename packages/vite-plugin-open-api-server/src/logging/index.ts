@@ -6,7 +6,7 @@
  * @module
  */
 
-export { printRegistryTable } from './registry-display.js';
+export { printRegistryTable, printSecuritySchemes } from './registry-display.js';
 export {
   BOLD,
   CYAN,
