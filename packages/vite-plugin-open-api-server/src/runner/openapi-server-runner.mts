@@ -39,8 +39,10 @@
 import { type ServerType, serve } from '@hono/node-server';
 import { createMockServer } from '@scalar/mock-server';
 import { Hono } from 'hono';
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 import { loadOpenApiSpec } from '../core/parser/index.js';
+import { buildRegistry, serializeRegistry } from '../registry/index.js';
 import type { OpenApiServerMessage } from '../types/ipc-messages.js';
 
 /**
@@ -196,6 +198,33 @@ async function main(): Promise<void> {
     );
   }
 
+  // Build endpoint registry for inspection endpoint
+  // We create a simple logger adapter since we're in a child process without Vite
+  const consoleLogger = {
+    info: (msg: string) => config.verbose && console.log(msg),
+    warn: (msg: string) => console.warn(msg),
+    error: (msg: string) => console.error(msg),
+    warnOnce: (msg: string) => console.warn(msg),
+    clearScreen: () => {},
+    hasWarned: false,
+    hasErrorLogged: () => false,
+  };
+
+  // Cast spec to OpenAPIV3_1.Document for registry functions
+  // The types are structurally compatible but differ in some edge cases (e.g., enum tuples)
+  const specAsOpenAPI = spec as unknown as OpenAPIV3_1.Document;
+
+  const { registry } = buildRegistry(
+    specAsOpenAPI,
+    consoleLogger as Parameters<typeof buildRegistry>[1],
+  );
+
+  if (config.verbose) {
+    console.log(
+      `[mock-server] Built registry: ${registry.endpoints.size} endpoints, ${registry.schemas.size} schemas, ${registry.securitySchemes.size} security schemes`,
+    );
+  }
+
   // Create Hono app with logging middleware
   const app = new Hono();
 
@@ -221,6 +250,27 @@ async function main(): Promise<void> {
     });
   }
 
+  /**
+   * Registry Inspection Endpoint
+   *
+   * GET /_openapiserver/registry
+   *
+   * Returns the complete endpoint registry as JSON for debugging and introspection.
+   * This endpoint allows developers to inspect which endpoints are mocked,
+   * which have custom handlers, schema definitions, and statistics.
+   *
+   * @returns JSON response with registry metadata, endpoints, schemas, security schemes, and statistics
+   */
+  app.get('/_openapiserver/registry', (c) => {
+    const serialized = serializeRegistry(registry, {
+      spec: specAsOpenAPI,
+      port: config.port,
+      version: '1.0.0',
+    });
+
+    return c.json(serialized, 200);
+  });
+
   // Create Scalar mock server (returns a Hono app with all routes configured)
   const mockServer = await createMockServer({
     document: spec,
@@ -237,6 +287,7 @@ async function main(): Promise<void> {
   });
 
   console.log(`[mock-server] Server listening on http://localhost:${config.port}`);
+  console.log(`[mock-server] Special endpoints: /_openapiserver/registry (inspection)`);
 
   // Send ready IPC message to parent process
   sendIpcMessage({
