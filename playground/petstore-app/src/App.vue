@@ -17,12 +17,85 @@
  * - The workspace:* dependency linking is working
  *
  * @remarks
- * Currently empty as this is a placeholder component.
- * Future implementations will add:
- * - API fetch demonstrations
- * - Mock server status indicators
- * - Interactive API testing UI
+ * Includes API fetch demonstrations to test proxy configuration.
+ * The fetch requests are proxied through Vite to the mock server.
  */
+
+import { ref } from 'vue';
+
+/** State for API test results */
+const apiResponse = ref<string | null>(null);
+const apiError = ref<string | null>(null);
+const isLoading = ref(false);
+const lastRequestInfo = ref<{ url: string; timestamp: string } | null>(null);
+
+/**
+ * Fetches a pet by ID from the mock API.
+ *
+ * This demonstrates the Vite proxy configuration:
+ * - Request goes to /api/v3/pet/1 (same origin)
+ * - Vite proxies to http://localhost:3456/pet/1
+ * - Path rewriting strips /api/v3 prefix
+ *
+ * @param petId - The pet ID to fetch
+ */
+async function fetchPet(petId: number = 1): Promise<void> {
+  isLoading.value = true;
+  apiResponse.value = null;
+  apiError.value = null;
+
+  const url = `/api/v3/pet/${petId}`;
+  lastRequestInfo.value = {
+    url,
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    apiResponse.value = JSON.stringify(data, null, 2);
+  } catch (error) {
+    apiError.value = error instanceof Error ? error.message : 'Unknown error occurred';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+/**
+ * Fetches all pets (list endpoint).
+ * Demonstrates proxy working with different endpoints.
+ */
+async function fetchPets(): Promise<void> {
+  isLoading.value = true;
+  apiResponse.value = null;
+  apiError.value = null;
+
+  const url = '/api/v3/pet/findByStatus?status=available';
+  lastRequestInfo.value = {
+    url,
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    apiResponse.value = JSON.stringify(data, null, 2);
+  } catch (error) {
+    apiError.value = error instanceof Error ? error.message : 'Unknown error occurred';
+  } finally {
+    isLoading.value = false;
+  }
+}
 </script>
 
 <template>
@@ -56,6 +129,41 @@
       <section class="dev-card">
         <h2>🔧 Development</h2>
         <p>Edit <code>src/App.vue</code> to start building your API testing interface.</p>
+      </section>
+
+      <section class="test-card">
+        <h2>🧪 API Proxy Test</h2>
+        <p>Test the Vite proxy configuration by making requests to the mock server.</p>
+
+        <div class="button-group">
+          <button class="test-button" :disabled="isLoading" @click="fetchPet(1)">
+            {{ isLoading ? "Loading..." : "Fetch Pet #1" }}
+          </button>
+          <button class="test-button secondary" :disabled="isLoading" @click="fetchPets()">
+            {{ isLoading ? "Loading..." : "Fetch Available Pets" }}
+          </button>
+        </div>
+
+        <div v-if="lastRequestInfo" class="request-info">
+          <strong>Last Request:</strong>
+          <code>{{ lastRequestInfo.url }}</code>
+          <span class="timestamp">{{ lastRequestInfo.timestamp }}</span>
+        </div>
+
+        <div v-if="apiResponse" class="response-card success">
+          <h3>✅ Response</h3>
+          <pre>{{ apiResponse }}</pre>
+        </div>
+
+        <div v-if="apiError" class="response-card error">
+          <h3>❌ Error</h3>
+          <p>{{ apiError }}</p>
+          <p class="hint">
+            <strong>Note:</strong> If you see a connection error, the mock server may not be running yet. The mock
+            server is implemented in Phase 4. The proxy configuration is working correctly - Vite is attempting to
+            forward requests to <code>http://localhost:3456</code>.
+          </p>
+        </div>
       </section>
     </main>
 
@@ -181,5 +289,106 @@ li {
   border-top: 1px solid #e9ecef;
   color: #6c757d;
   font-size: 0.875rem;
+}
+
+/* API Test Section Styles */
+.test-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #17a2b8;
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.test-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background: #007bff;
+  color: #ffffff;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.test-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.test-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.test-button.secondary {
+  background: #6c757d;
+}
+
+.test-button.secondary:hover:not(:disabled) {
+  background: #545b62;
+}
+
+.request-info {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.request-info .timestamp {
+  color: #6c757d;
+  font-size: 0.85rem;
+  margin-left: auto;
+}
+
+.response-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.response-card.success {
+  background: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.response-card.error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+.response-card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.response-card pre {
+  margin: 0;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  max-height: 300px;
+}
+
+.response-card .hint {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 </style>
