@@ -41,7 +41,25 @@
  * @packageDocumentation
  */
 
+export type { MethodCounts } from './logging/index.js';
+
+// Logging utilities for console banners
+export {
+  // Color constants for custom formatting
+  BOLD,
+  CYAN,
+  DIM,
+  formatMethodCounts,
+  GREEN,
+  printErrorBanner,
+  printLoadingBanner,
+  printSuccessBanner,
+  RED,
+  RESET,
+  YELLOW,
+} from './logging/index.js';
 export { openApiServerPlugin, openApiServerPlugin as default } from './plugin.js';
+
 export type {
   HandlerCodeGenerator,
   HandlerContext,
