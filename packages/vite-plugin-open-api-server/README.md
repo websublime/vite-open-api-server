@@ -167,6 +167,62 @@ fetch('/api/pets?delay=3000')
 fetch('/api/pet/1?simulateError=500&delay=2000')
 ```
 
+#### Delay Simulation Patterns
+
+The `delay` parameter enables testing of loading states, timeouts, and slow network conditions:
+
+```typescript
+// Basic delay pattern
+if (context.query.delay) {
+  const delayMs = parseInt(context.query.delay as string, 10);
+  if (!isNaN(delayMs) && delayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+}
+```
+
+**Common Use Cases:**
+
+| Scenario | Example | Purpose |
+|----------|---------|---------|
+| Loading spinner | `?delay=1000` | Verify loading UI displays correctly |
+| Timeout testing | `?delay=31000` | Test client-side timeout handling (e.g., 30s limit) |
+| Slow network | `?delay=5000` | Simulate poor connection quality |
+| Race condition | `?delay=100` | Test concurrent request handling |
+
+**Testing Network Timeouts:**
+
+```typescript
+// Frontend code with timeout handling
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+try {
+  const response = await fetch('/api/pets?delay=10000', {
+    signal: controller.signal,
+  });
+  // Handle success
+} catch (error) {
+  if (error.name === 'AbortError') {
+    // Handle timeout - show retry option
+  }
+} finally {
+  clearTimeout(timeoutId);
+}
+```
+
+**Handler with Capped Delay:**
+
+```typescript
+const MAX_DELAY_MS = 10000; // 10 second cap
+
+if (context.query.delay) {
+  const requestedDelay = parseInt(context.query.delay as string, 10);
+  const actualDelay = Math.min(Math.max(0, requestedDelay), MAX_DELAY_MS);
+  await new Promise((resolve) => setTimeout(resolve, actualDelay));
+}
+```
+
 #### Best Practices
 
 - **Parse carefully**: Query params are `string | string[]`; always use `parseInt()` with validation
