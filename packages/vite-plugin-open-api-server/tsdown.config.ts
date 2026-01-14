@@ -10,7 +10,9 @@
  *
  * ## How
  * - Uses `defineConfig` for type-safe configuration
- * - Single entry point (`src/index.ts`) matching package.json exports
+ * - Two entry points:
+ *   - `src/index.ts`: Main plugin entry matching package.json exports
+ *   - `src/runner/openapi-server-runner.mts`: Standalone mock server executable
  * - ESM-only format matching `"type": "module"` in package.json
  * - Generates `.d.mts` declaration files for TypeScript consumers
  * - Produces source maps for debugging production builds
@@ -22,6 +24,7 @@
  * - **Source maps**: Allows debugging original TypeScript in production
  * - **External deps**: Prevents version conflicts and bundle bloat
  * - **Clean builds**: Removes stale artifacts from previous builds
+ * - **Runner entry**: Separate executable for child process mock server
  *
  * @see https://github.com/nicepkg/tsdown - tsdown documentation
  */
@@ -29,10 +32,12 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   /**
-   * Entry point for the bundle.
-   * Single entry matching package.json exports configuration.
+   * Entry points for the bundle.
+   * - `src/index.ts`: Main plugin entry matching package.json exports
+   * - `src/runner/openapi-server-runner.mts`: Standalone mock server runner
+   *   compiled to `dist/runner/openapi-server-runner.mjs` for child process execution
    */
-  entry: ['src/index.ts'],
+  entry: ['src/index.ts', 'src/runner/openapi-server-runner.mts'],
 
   /**
    * Output format.
