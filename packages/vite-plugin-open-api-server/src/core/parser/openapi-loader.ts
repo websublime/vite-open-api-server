@@ -14,6 +14,7 @@ import path from 'node:path';
 import { dereference, validate } from '@scalar/openapi-parser';
 import { parse as parseYaml } from 'yaml';
 
+import { normalizeSecuritySchemes } from './security-normalizer';
 import type { OpenApiDocument } from './types';
 
 /**
@@ -297,7 +298,8 @@ async function cacheSpec(absolutePath: string, spec: OpenApiDocument): Promise<v
  * 4. Detects format (YAML or JSON) and parses accordingly
  * 5. Validates the spec against the OpenAPI schema
  * 6. Dereferences all $ref references
- * 7. Caches the result for future calls
+ * 7. Normalizes security schemes (auto-generates missing definitions)
+ * 8. Caches the result for future calls
  *
  * @param openApiPath - Path to the OpenAPI specification file (relative or absolute)
  * @returns A promise that resolves to the parsed and dereferenced OpenAPI document
@@ -331,7 +333,10 @@ export async function loadOpenApiSpec(openApiPath: string): Promise<OpenApiDocum
 
   // Validate and dereference
   await validateSpec(parsedObject, absolutePath);
-  const spec = await dereferenceSpec(parsedObject);
+  const dereferencedSpec = await dereferenceSpec(parsedObject);
+
+  // Normalize security schemes (auto-generate missing definitions)
+  const spec = normalizeSecuritySchemes(dereferencedSpec);
 
   // Cache the result
   await cacheSpec(absolutePath, spec);
