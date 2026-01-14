@@ -2,5 +2,17 @@
   "extends": "//",
   "files": {
     "includes": ["**", "!node_modules", "!dist"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["src/runner/**/*.mts", "src/runner/**/*.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ]
 }
