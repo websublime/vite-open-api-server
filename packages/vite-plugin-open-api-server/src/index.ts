@@ -41,10 +41,19 @@
  * @packageDocumentation
  */
 
-export { openApiServerPlugin } from './plugin.js';
+export { openApiServerPlugin, openApiServerPlugin as default } from './plugin.js';
 export type {
+  HandlerCodeGenerator,
   HandlerContext,
+  HandlerFileExports,
+  HandlerResponse,
+  NormalizedSecurityScheme,
   OpenApiEndpointRegistry,
   OpenApiServerPluginOptions,
+  SecurityContext,
+  SecurityRequirement,
+  SeedCodeGenerator,
   SeedContext,
+  SeedData,
+  SeedFileExports,
 } from './types/index.js';
