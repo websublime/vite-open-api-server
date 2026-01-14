@@ -21,8 +21,17 @@ export default defineConfig({
     /**
      * Test file patterns to include.
      * Matches files ending in .test.ts, .spec.ts, .test.tsx, .spec.tsx, etc.
+     * Also includes .test-d.ts files for type-level testing.
      */
-    include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
+    include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)', '**/*.test-d.ts'],
+
+    /**
+     * Enable type checking for .test-d.ts files.
+     */
+    typecheck: {
+      enabled: true,
+      include: ['**/*.test-d.ts'],
+    },
 
     /**
      * Directories and patterns to exclude from test discovery.
