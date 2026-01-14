@@ -1,3 +1,11 @@
+## [0.11.1] - 2026-01-14
+
+### Features
+
+- add formatted registry table display for startup (2b7ed32)
+
+
+
 ## [0.11.0] - 2026-01-14
 
 ### Features

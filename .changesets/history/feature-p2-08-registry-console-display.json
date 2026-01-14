@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p2-08-registry-console-display",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T14:27:50.716805Z",
+    "updated_at": "2026-01-14T14:27:50.717735Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T14:38:45.782328043Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "2b7ed32a7ebae0fb048952a24980207232174e33",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.11.1"
+    }
+  }
+}
