@@ -118,6 +118,34 @@ import type {
 } from '@websublime/vite-plugin-open-api-server';
 ```
 
+## API Reference
+
+### Types
+
+| Type | Description |
+|------|-------------|
+| `OpenApiServerPluginOptions` | Plugin configuration options |
+| `HandlerContext` | Context object passed to custom handlers |
+| `SeedContext` | Context object passed to seed functions |
+| `OpenApiEndpointRegistry` | Registry of all parsed endpoints |
+
+### Handler Context Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `params` | `Record<string, string>` | Path parameters (e.g., `{ petId: '123' }`) |
+| `query` | `Record<string, string>` | Query string parameters |
+| `operation` | `object` | OpenAPI operation definition |
+| `seeds` | `Record<string, unknown>` | Loaded seed data |
+| `request` | `Request` | Original request object |
+
+### Seed Context Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `faker` | `Faker \| undefined` | Faker.js instance (if installed) |
+| `operationId` | `string` | OpenAPI operation ID |
+
 ## License
 
 [MIT](../../LICENSE)

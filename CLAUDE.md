@@ -8,13 +8,68 @@ See AGENTS.md for workflow details.
 
 ## Project Overview
 
-The `vite-plugin-open-api-server` is a Vite plugin that integrates the Scalar Mock Server into the development workflow. It automatically spawns a mock API server based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
+The `@websublime/vite-plugin-open-api-server` is a Vite plugin that integrates the Scalar Mock Server into the development workflow. It automatically spawns a mock API server based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
 
-The canonical upstream is https://codeberg.org/ctietze/beads.el
+### Key Capabilities
 
-## Beads Version Compatibility
+- Parse OpenAPI 3.x specifications (YAML/JSON)
+- Generate realistic mock responses based on schema
+- Support custom request handlers for endpoint customization
+- Provide seed data support with optional Faker.js integration
+- Hot reload handlers and seeds on file changes
+- Proxy API requests through Vite's dev server
 
-Tested with **beads CLI 0.46.0**. Version info maintained in `.claude/skills/beads-compat/references/version-info.md`.
+## Repository Structure
+
+```
+vite-open-api-server/
+├── packages/
+│   └── vite-plugin-open-api-server/    # Main plugin (published to npm)
+│       ├── src/
+│       │   ├── core/                   # OpenAPI parsing, path resolution
+│       │   ├── handlers/               # Handler loading and management
+│       │   ├── mock/                   # Mock server integration
+│       │   ├── registry/               # Endpoint registry
+│       │   ├── types/                  # TypeScript type definitions
+│       │   └── utils/                  # Utility functions
+│       └── tsdown.config.ts            # Build configuration
+├── playground/
+│   └── petstore-app/                   # Vue 3 test application
+├── history/                            # Planning and architecture docs
+├── .github/workflows/                  # CI/CD workflows
+├── .changesets/                        # Pending version changesets
+└── biome.json, tsconfig.json, etc.     # Configuration files
+```
+
+## Technology Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **pnpm** | Package manager with workspace support |
+| **TypeScript 5.9+** | Language (strict mode enabled) |
+| **Vite 6+** | Development server and build tool |
+| **tsdown** | Plugin bundler (outputs ESM + CJS) |
+| **Vitest** | Testing framework |
+| **Biome** | Linting and formatting |
+| **Vue 3** | Playground application framework |
+| **workspace-tools** | Version management and changesets |
+
+## Development Commands
+
+```bash
+pnpm install        # Install dependencies
+pnpm dev            # Watch mode for plugin
+pnpm build          # Build plugin
+pnpm test           # Run tests
+pnpm lint           # Check with Biome
+pnpm typecheck      # TypeScript validation
+pnpm playground     # Run playground app
+pnpm changeset      # Create changeset
+```
+
+## Beads Version Compatibility (bd)
+
+Tested with **beads CLI 0.47.1**. Version info maintained in `.claude/skills/beads-compat/references/version-info.md`.
 
 - Changelog: https://github.com/steveyegge/beads/blob/main/CHANGELOG.md
 - Run `/beads-compat` to check installed version
