@@ -6,6 +6,7 @@
  * @module
  */
 
+export { printRegistryTable } from './registry-display.js';
 export {
   BOLD,
   CYAN,

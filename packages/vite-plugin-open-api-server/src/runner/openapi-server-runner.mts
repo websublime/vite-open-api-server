@@ -42,6 +42,7 @@ import { Hono } from 'hono';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
 import { loadOpenApiSpec } from '../core/parser/index.js';
+import { printRegistryTable } from '../logging/index.js';
 import { buildRegistry, serializeRegistry } from '../registry/index.js';
 import type { OpenApiServerMessage } from '../types/ipc-messages.js';
 
@@ -224,6 +225,9 @@ async function main(): Promise<void> {
       `[mock-server] Built registry: ${registry.endpoints.size} endpoints, ${registry.schemas.size} schemas, ${registry.securitySchemes.size} security schemes`,
     );
   }
+
+  // Print formatted registry table to console
+  printRegistryTable(registry, consoleLogger as Parameters<typeof printRegistryTable>[1]);
 
   // Create Hono app with logging middleware
   const app = new Hono();

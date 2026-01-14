@@ -23,7 +23,7 @@ import type { OpenAPIV3_1 } from 'openapi-types';
 import type { Logger } from 'vite';
 
 import type {
-  OpenApiEndpointEntry,
+  EndpointRegistryEntry,
   OpenApiEndpointRegistry,
   OpenApiSecuritySchemeEntry,
   OpenApiServerSchemaEntry,
@@ -156,11 +156,22 @@ function extractEndpoints(spec: OpenAPIV3_1.Document, registry: OpenApiEndpointR
         continue;
       }
 
-      const entry = createEndpointEntry(path, method, operation, pathParameters);
+      // Check for x-handler and x-seed extensions
+      const hasHandler = hasExtension(operation, 'x-handler');
+      const hasSeed = hasExtension(operation, 'x-seed');
+
+      const entry = createEndpointEntry(
+        path,
+        method,
+        operation,
+        pathParameters,
+        hasHandler,
+        hasSeed,
+      );
       const key = generateEndpointKey(method, path);
       registry.endpoints.set(key, entry);
 
-      if (hasExtension(operation, 'x-handler')) {
+      if (hasHandler) {
         handlerCount++;
       }
     }
@@ -223,13 +234,23 @@ function extractSecuritySchemes(
 
 /**
  * Create an endpoint entry from an OpenAPI operation.
+ *
+ * @param path - URL path template
+ * @param method - HTTP method
+ * @param operation - OpenAPI operation object
+ * @param pathParameters - Parameters defined at path level
+ * @param hasHandler - Whether the operation has a custom handler (x-handler)
+ * @param hasSeed - Whether the operation has seed data (x-seed)
+ * @returns Endpoint registry entry with handler/seed status
  */
 function createEndpointEntry(
   path: string,
   method: string,
   operation: OpenAPIV3_1.OperationObject,
   pathParameters: OpenAPIV3_1.ParameterObject[],
-): OpenApiEndpointEntry {
+  hasHandler: boolean,
+  hasSeed: boolean,
+): EndpointRegistryEntry {
   // Merge path-level parameters with operation parameters
   // Operation parameters override path parameters with the same name
   const operationParameters = (operation.parameters || []) as OpenAPIV3_1.ParameterObject[];
@@ -252,6 +273,8 @@ function createEndpointEntry(
     responses,
     security: operation.security,
     tags: operation.tags,
+    hasHandler,
+    hasSeed,
   };
 }
 

@@ -50,8 +50,9 @@ export interface OpenApiEndpointRegistry {
    * Map of endpoint keys to endpoint entries.
    *
    * Keys follow the format: `{METHOD} {path}` (e.g., 'GET /pets/{petId}').
+   * Entries include handler/seed status for display and routing purposes.
    */
-  endpoints: Map<string, OpenApiEndpointEntry>;
+  endpoints: Map<string, EndpointRegistryEntry>;
 
   /**
    * Map of schema names to schema entries.
