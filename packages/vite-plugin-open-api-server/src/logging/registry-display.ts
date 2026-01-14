@@ -4,12 +4,13 @@
  * ## What
  * This module provides formatted console output for the endpoint registry.
  * It displays a table of all mocked endpoints with their handler status
- * on mock server startup.
+ * and security schemes on mock server startup.
  *
  * ## How
  * Calculates column widths based on longest values, formats each endpoint
  * as a table row with proper alignment, and adds color coding for visual
  * clarity. Custom handlers are indicated with a green checkmark.
+ * Security schemes are formatted with type-specific details.
  *
  * ## Why
  * Visual feedback about which endpoints have custom handlers vs default
@@ -21,8 +22,8 @@
 
 import type { Logger } from 'vite';
 
-import type { OpenApiEndpointRegistry } from '../types/registry.js';
-import { CYAN, DIM, GREEN, RESET } from './startup-banner.js';
+import type { OpenApiEndpointRegistry, OpenApiSecuritySchemeEntry } from '../types/registry.js';
+import { BOLD, CYAN, DIM, GREEN, RESET, YELLOW } from './startup-banner.js';
 
 // =============================================================================
 // Helper Functions
@@ -249,6 +250,11 @@ function extractDisplayEndpoints(registry: OpenApiEndpointRegistry): DisplayEndp
  * ```
  */
 export function printRegistryTable(registry: OpenApiEndpointRegistry, logger: Logger): void {
+  // Print security schemes first (if any)
+  if (registry.securitySchemes.size > 0) {
+    printSecuritySchemes(registry, logger);
+  }
+
   // Handle empty registry
   if (registry.endpoints.size === 0) {
     logger.warn('[registry] No endpoints to display');
@@ -275,4 +281,134 @@ export function printRegistryTable(registry: OpenApiEndpointRegistry, logger: Lo
   const table = ['', header, separator, ...rows, '', summary, ''].join('\n');
 
   logger.info(table);
+}
+
+// =============================================================================
+// Security Schemes Display
+// =============================================================================
+
+/**
+ * Format a security scheme entry for display.
+ *
+ * @param entry - Security scheme entry from registry
+ * @returns Formatted description string
+ */
+function formatSecurityScheme(entry: OpenApiSecuritySchemeEntry): string {
+  switch (entry.type) {
+    case 'apiKey':
+      return `apiKey in ${entry.in} (${entry.apiKeyName})`;
+
+    case 'http':
+      if (entry.scheme === 'bearer') {
+        const format = entry.bearerFormat ? ` [${entry.bearerFormat}]` : '';
+        return `HTTP Bearer${format}`;
+      }
+      return `HTTP ${entry.scheme}`;
+
+    case 'oauth2': {
+      const flows = entry.flows ? Object.keys(entry.flows) : [];
+      return `OAuth2 (${flows.join(', ')})`;
+    }
+
+    case 'openIdConnect':
+      return `OpenID Connect`;
+
+    default:
+      return entry.type;
+  }
+}
+
+/**
+ * Generate usage example for a security scheme.
+ *
+ * @param entry - Security scheme entry from registry
+ * @returns Usage hint string
+ */
+function getSecuritySchemeUsage(entry: OpenApiSecuritySchemeEntry): string {
+  switch (entry.type) {
+    case 'apiKey':
+      if (entry.in === 'header') {
+        return `${entry.apiKeyName}: YOUR_API_KEY`;
+      }
+      if (entry.in === 'query') {
+        return `?${entry.apiKeyName}=YOUR_API_KEY`;
+      }
+      return `Cookie: ${entry.apiKeyName}=YOUR_API_KEY`;
+
+    case 'http':
+      if (entry.scheme === 'bearer') {
+        return 'Authorization: Bearer YOUR_TOKEN';
+      }
+      if (entry.scheme === 'basic') {
+        return 'Authorization: Basic BASE64_CREDENTIALS';
+      }
+      return `Authorization: ${entry.scheme} CREDENTIALS`;
+
+    case 'oauth2':
+      return 'Authorization: Bearer YOUR_ACCESS_TOKEN';
+
+    case 'openIdConnect':
+      return 'Authorization: Bearer YOUR_OIDC_TOKEN';
+
+    default:
+      return '';
+  }
+}
+
+/**
+ * Print configured security schemes to console.
+ *
+ * Displays all security schemes defined in the OpenAPI spec with their
+ * types, locations (for apiKey), and usage examples. This helps developers
+ * understand what authentication is required to access secured endpoints.
+ *
+ * @param registry - OpenAPI endpoint registry
+ * @param logger - Vite logger instance
+ *
+ * @example
+ * ```typescript
+ * printSecuritySchemes(registry, logger);
+ *
+ * // Output:
+ * // Authentication:
+ * //
+ * // ✅ api_key
+ * //    apiKey in header (api_key)
+ * //    api_key: YOUR_API_KEY
+ * //
+ * // ✅ petstore_auth
+ * //    OAuth2 (implicit)
+ * //    Authorization: Bearer YOUR_ACCESS_TOKEN
+ * ```
+ */
+export function printSecuritySchemes(registry: OpenApiEndpointRegistry, logger: Logger): void {
+  if (registry.securitySchemes.size === 0) {
+    return;
+  }
+
+  const lines: string[] = [''];
+
+  // Header
+  lines.push(supportsColor() ? `${BOLD}${YELLOW}Authentication:${RESET}` : 'Authentication:');
+  lines.push('');
+
+  // Format each security scheme
+  for (const [name, entry] of registry.securitySchemes) {
+    // Scheme name with checkmark
+    lines.push(color(`✅ ${name}`, GREEN));
+
+    // Scheme type and details
+    const description = formatSecurityScheme(entry);
+    lines.push(color(`   ${description}`, DIM));
+
+    // Usage example
+    const usage = getSecuritySchemeUsage(entry);
+    if (usage) {
+      lines.push(color(`   ${usage}`, DIM));
+    }
+
+    lines.push('');
+  }
+
+  logger.info(lines.join('\n'));
 }
