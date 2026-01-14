@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p1-05-mock-server-integration",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T11:06:15.862446Z",
+    "updated_at": "2026-01-14T11:06:15.863109Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-14T11:18:54.093434807Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "3013c0dc4be289d19933e8f39af0341057354de4",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.6.0"
+    }
+  }
+}

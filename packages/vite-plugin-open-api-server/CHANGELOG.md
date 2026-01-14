@@ -1,3 +1,11 @@
+## [0.6.0] - 2026-01-14
+
+### Features
+
+- implement mock server with Scalar and Hono integration (3013c0d)
+
+
+
 ## [0.5.0] - 2026-01-14
 
 ### Features

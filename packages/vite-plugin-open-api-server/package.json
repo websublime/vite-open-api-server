@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-server",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Vite plugin for OpenAPI-based mock server with Scalar integration. Enables frontend developers to work independently of backend services during local development, with realistic mock data and customizable response logic.",
   "keywords": [
     "vite",
@@ -31,29 +31,29 @@
     "directory": "packages/vite-plugin-open-api-server"
   },
   "scripts": {
-    "test": "vitest run",
-    "prepublishOnly": "pnpm run build",
     "test:watch": "vitest",
+    "build": "tsdown",
     "dev": "tsdown --watch",
-    "build": "tsdown"
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@hono/node-server": "^1.19.7",
-    "@scalar/mock-server": "^0.8.9",
+    "hono": "^4.11.4",
+    "yaml": "^2.8.2",
     "@scalar/openapi-parser": "^0.23.11",
     "chokidar": "^5.0.0",
-    "hono": "^4.11.4",
-    "yaml": "^2.8.2"
+    "@hono/node-server": "^1.19.7",
+    "@scalar/mock-server": "^0.8.9"
   },
   "devDependencies": {
-    "@faker-js/faker": "^10.2.0",
-    "@types/node": "^25.0.3",
-    "@vue/devtools-api": "^8.0.5",
-    "openapi-types": "^12.1.3",
-    "tsdown": "^0.19.0-beta.5",
     "typescript": "^5.9.3",
+    "vitest": "^4.0.16",
+    "tsdown": "^0.19.0-beta.5",
     "vite": "^7.3.1",
-    "vitest": "^4.0.16"
+    "openapi-types": "^12.1.3",
+    "@faker-js/faker": "^10.2.0",
+    "@vue/devtools-api": "^8.0.5",
+    "@types/node": "^25.0.3"
   },
   "peerDependencies": {
     "vite": "^6.0.0 || ^7.0.0"
