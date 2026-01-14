@@ -1,3 +1,17 @@
+## [0.9.0] - 2026-01-14
+
+### Features
+
+- implement seed file loader with schema validation (da7eec0)
+
+
+### Other Changes
+
+- add trailing newline to package.json (2121173)
+- sync changeset for feature/p2-02-seed-loader (60050e9)
+
+
+
 ## [0.8.0] - 2026-01-14
 
 ### Features
