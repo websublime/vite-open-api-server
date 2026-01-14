@@ -45,6 +45,7 @@ import { loadOpenApiSpec } from '../core/parser/index.js';
 import { printRegistryTable } from '../logging/index.js';
 import { buildRegistry, serializeRegistry } from '../registry/index.js';
 import type { OpenApiServerMessage } from '../types/ipc-messages.js';
+import { createRequestLogger } from './request-logger.mjs';
 
 /**
  * Configuration object parsed from environment variables.
@@ -232,27 +233,16 @@ async function main(): Promise<void> {
   // Create Hono app with logging middleware
   const app = new Hono();
 
-  // Add request logging middleware (before Scalar routes)
-  if (config.verbose) {
-    app.use('*', async (c, next) => {
-      const start = Date.now();
-      const method = c.req.method;
-      const path = c.req.path;
-      const query = c.req.query();
-      const queryString =
-        Object.keys(query).length > 0 ? `?${new URLSearchParams(query).toString()}` : '';
-
-      await next();
-
-      const duration = Date.now() - start;
-      const status = c.res.status;
-      const timestamp = new Date().toISOString();
-
-      console.log(
-        `[mock-server] ${timestamp} ${method} ${path}${queryString} - ${status} (${duration}ms)`,
-      );
-    });
-  }
+  // Add request logging middleware (runs before all routes)
+  // Logs all requests with emoji indicators, operationId, timing, and status
+  // Sends logs to parent process via IPC for display in Vite console
+  app.use(
+    '*',
+    createRequestLogger({
+      registry,
+      verbose: config.verbose,
+    }),
+  );
 
   /**
    * Registry Inspection Endpoint
