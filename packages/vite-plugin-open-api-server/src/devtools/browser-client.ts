@@ -34,6 +34,7 @@
 import { setupDevToolsPlugin } from '@vue/devtools-api';
 import type { App, Plugin } from 'vue';
 import { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
+import { installFetchInterceptor } from './fetch-interceptor.js';
 import { registerTimelineLayer } from './request-timeline.js';
 
 // ============================================================================
@@ -988,6 +989,11 @@ export function createOpenApiDevTools(
 
       // Register inspector immediately (shows "Loading..." state)
       registerDevToolsInspector(app, proxyPath, verbose);
+
+      // Install fetch interceptor to log requests to timeline
+      installFetchInterceptor({ proxyPath, verbose });
+      log('Fetch interceptor installed', verbose);
+
       log('OpenAPI DevTools plugin installed', verbose);
 
       // Fetch registry in background after a delay to give mock server time to start

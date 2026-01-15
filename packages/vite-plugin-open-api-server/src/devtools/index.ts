@@ -53,6 +53,14 @@ export {
   GLOBAL_STATE_KEY,
   registerOpenApiDevTools,
 } from './browser-client.js';
+// Fetch interceptor for request logging
+export type { FetchInterceptorConfig } from './fetch-interceptor.js';
+export {
+  getInterceptorProxyPath,
+  installFetchInterceptor,
+  isFetchInterceptorActive,
+  uninstallFetchInterceptor,
+} from './fetch-interceptor.js';
 // Timeline types and functions
 export type { TimelineRequestEvent } from './request-timeline.js';
 export {
