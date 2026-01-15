@@ -70,7 +70,10 @@ declare interface Headers {
   get(name: string): string | null;
   has(name: string): boolean;
   set(name: string, value: string): void;
-  forEach(callbackfn: (value: string, key: string, parent: Headers) => void, thisArg?: unknown): void;
+  forEach(
+    callbackfn: (value: string, key: string, parent: Headers) => void,
+    thisArg?: unknown,
+  ): void;
 }
 
 /**
@@ -122,7 +125,13 @@ declare interface RequestInit {
 /**
  * BodyInit type
  */
-declare type BodyInit = Blob | BufferSource | FormData | URLSearchParams | ReadableStream<Uint8Array> | string;
+declare type BodyInit =
+  | Blob
+  | BufferSource
+  | FormData
+  | URLSearchParams
+  | ReadableStream<Uint8Array>
+  | string;
 
 /**
  * Global fetch function
