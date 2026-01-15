@@ -85,9 +85,22 @@ describe('Hot Reload Handler', () => {
 
   describe('clearModuleCache', () => {
     let mockLogger: ReturnType<typeof createMockLogger>;
+    let originalRequire: unknown;
 
     beforeEach(() => {
       mockLogger = createMockLogger();
+      // Store original require to restore after each test
+      originalRequire = (globalThis as Record<string, unknown>).require;
+    });
+
+    afterEach(() => {
+      // Always restore globalThis.require to prevent test pollution
+      const globalThisRecord = globalThis as Record<string, unknown>;
+      if (originalRequire === undefined) {
+        delete globalThisRecord.require;
+      } else {
+        globalThisRecord.require = originalRequire;
+      }
     });
 
     it('should not throw when require.cache is not available', () => {
@@ -98,21 +111,19 @@ describe('Hot Reload Handler', () => {
 
     it('should log when verbose is enabled and cache is cleared', () => {
       // Create a mock require.cache
-      const originalGlobalThis = globalThis as Record<string, unknown>;
+      const globalThisRecord = globalThis as Record<string, unknown>;
       const mockRequireCache: Record<string, unknown> = {};
       const testPath = path.normalize(path.resolve('/test/file.ts'));
       mockRequireCache[testPath] = { id: testPath };
 
-      originalGlobalThis.require = { cache: mockRequireCache };
+      globalThisRecord.require = { cache: mockRequireCache };
 
       clearModuleCache('/test/file.ts', mockLogger, true);
 
       expect(mockLogger.info).toHaveBeenCalledWith(
         expect.stringContaining('Cleared require.cache'),
       );
-
-      // Cleanup
-      delete originalGlobalThis.require;
+      // Cleanup handled by afterEach
     });
 
     it('should not log when verbose is disabled', () => {
