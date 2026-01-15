@@ -25,8 +25,13 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 
-import type { FileChangeEvent, FileWatcher } from './hot-reload/index.js';
-import { createFileWatcher } from './hot-reload/index.js';
+import type {
+  FileChangeEvent,
+  FileWatcher,
+  HotReloadContext,
+  HotReloadState,
+} from './hot-reload/index.js';
+import { createFileWatcher, createHotReloadState, handleFileChange } from './hot-reload/index.js';
 import { printErrorBanner, printLoadingBanner, printSuccessBanner } from './logging/index.js';
 import {
   attachIpcHandler,
@@ -64,6 +69,8 @@ interface PluginState {
   ipcCleanup: (() => void) | null;
   /** File watcher for hot reload (set in configureServer) */
   fileWatcher: FileWatcher | null;
+  /** Hot reload state for managing reload lock and pending changes */
+  hotReloadState: HotReloadState;
 }
 
 /**
@@ -82,6 +89,7 @@ function createInitialState(): PluginState {
     startTime: null,
     ipcCleanup: null,
     fileWatcher: null,
+    hotReloadState: createHotReloadState(),
   };
 }
 
@@ -179,16 +187,31 @@ function setupFileWatcher(state: PluginState, options: ResolvedPluginOptions): v
 
   state.fileWatcher = createFileWatcher();
 
-  // Listen for file change events
-  state.fileWatcher.on('change', (event: FileChangeEvent) => {
-    if (options.verbose) {
-      // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-      console.log(`[${PLUGIN_NAME}] File changed: ${event.path} (${event.type})`);
-    }
+  // Get logger (fallback to console-based logger if not available)
+  const getLogger = (): Logger => state.resolvedConfig?.logger ?? createFallbackLogger();
 
-    // TODO: Trigger hot reload logic (P5-02)
-    // This will be implemented in the next task to reload
-    // handlers/seeds and update the mock server
+  // Listen for file change events and trigger hot reload
+  state.fileWatcher.on('change', (event: FileChangeEvent) => {
+    const logger = getLogger();
+
+    // Build hot reload context
+    const context: HotReloadContext = {
+      mockServerProcess: state.mockServerProcess,
+      options,
+      logger,
+      onProcessUpdate: (process) => {
+        state.mockServerProcess = process;
+      },
+      onReadyStateUpdate: (isReady, port) => {
+        state.isReady = isReady;
+        state.mockServerPort = port;
+      },
+    };
+
+    // Handle the file change with hot reload
+    handleFileChange(event, context, state.hotReloadState).catch((err) => {
+      logger.error(`[${PLUGIN_NAME}] Hot reload error: ${err.message}`);
+    });
   });
 
   // Listen for error events to prevent unhandled exceptions
