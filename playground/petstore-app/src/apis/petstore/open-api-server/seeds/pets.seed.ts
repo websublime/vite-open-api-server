@@ -19,48 +19,62 @@
  *
  * @module seeds/pets
  * @see {@link https://github.com/websublime/vite-open-api-server} Plugin documentation
- *
- * @example
- * ```typescript
- * // Example implementation (Phase 2)
- * export default async function seed(context: SeedContext) {
- *   const faker = context.faker;
- *
- *   return Array.from({ length: 10 }, (_, index) => ({
- *     id: index + 1,
- *     name: faker.animal.petName(),
- *     category: {
- *       id: faker.number.int({ min: 1, max: 5 }),
- *       name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish']),
- *     },
- *     photoUrls: [faker.image.url()],
- *     tags: [{ id: 1, name: faker.word.adjective() }],
- *     status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
- *   }));
- * }
- * ```
  */
 
 import type { SeedContext } from '@websublime/vite-plugin-open-api-server';
 
 /**
- * Placeholder seed generator for Pet entities.
+ * Pet seed data generator.
  *
- * Currently returns an empty array indicating no seed data should be generated.
- * This seed will be implemented in Phase 2 (P2-02: Seed Loader).
+ * Generates a collection of sample pets with realistic data for testing
+ * and development purposes.
  *
- * @param _context - The seed context containing faker instance and schema utilities
- * @returns An empty array (no seed data), or an array of Pet objects
- *
- * @remarks
- * Implementation planned for Phase 2:
- * - Generate 10-20 sample pets
- * - Use faker for realistic names and images
- * - Include all pet statuses (available, pending, sold)
- * - Associate with categories and tags
+ * @param context - The seed context containing faker instance and schema utilities
+ * @returns An array of Pet objects
  */
-export default async function seed(_context: SeedContext): Promise<unknown[]> {
-  // TODO: Implement seed data generation in Phase 2
-  // Returning empty array means no initial seed data
-  return [];
+export default async function seed(context: SeedContext): Promise<unknown[]> {
+  const { faker } = context;
+
+  // Categories for pets
+  const categories = [
+    { id: 1, name: 'Dogs' },
+    { id: 2, name: 'Cats' },
+    { id: 3, name: 'Birds' },
+    { id: 4, name: 'Fish' },
+    { id: 5, name: 'Reptiles' },
+  ];
+
+  // Sample tags
+  const tagOptions = [
+    { id: 1, name: 'friendly' },
+    { id: 2, name: 'playful' },
+    { id: 3, name: 'trained' },
+    { id: 4, name: 'vaccinated' },
+    { id: 5, name: 'neutered' },
+    { id: 6, name: 'young' },
+    { id: 7, name: 'senior' },
+    { id: 8, name: 'rescue' },
+  ];
+
+  // Pet statuses
+  const statuses = ['available', 'pending', 'sold'] as const;
+
+  // Generate 15 sample pets
+  return Array.from({ length: 15 }, (_, index) => {
+    const category = faker.helpers.arrayElement(categories);
+    const numTags = faker.number.int({ min: 1, max: 3 });
+    const tags = faker.helpers.arrayElements(tagOptions, numTags);
+
+    return {
+      id: index + 1,
+      name: faker.animal.petName(),
+      category: category,
+      photoUrls: [
+        faker.image.urlLoremFlickr({ category: 'animals' }),
+        faker.image.urlLoremFlickr({ category: 'animals' }),
+      ],
+      tags: tags,
+      status: faker.helpers.arrayElement(statuses),
+    };
+  });
 }

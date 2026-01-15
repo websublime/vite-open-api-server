@@ -306,7 +306,6 @@ function getStatusText(status: number): string {
  */
 export function addTimelineRequestEvent(event: TimelineRequestEvent): void {
   if (!timelineApi) {
-    // DevTools not available, silently skip
     return;
   }
 
