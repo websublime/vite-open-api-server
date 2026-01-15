@@ -20,6 +20,7 @@
  * @module main
  */
 
+import { createOpenApiDevTools } from '@websublime/vite-plugin-open-api-server/devtools';
 import { createApp } from 'vue';
 import App from './App.vue';
 
@@ -30,4 +31,16 @@ import App from './App.vue';
  * The application is mounted to the `#app` element defined in `index.html`.
  * This element serves as the root container for the entire Vue component tree.
  */
-createApp(App).mount('#app');
+const app = createApp(App);
+
+// Install OpenAPI DevTools plugin (only in development)
+if (import.meta.env.DEV) {
+  app.use(
+    createOpenApiDevTools({
+      proxyPath: '/api/v3',
+      verbose: true,
+    }),
+  );
+}
+
+app.mount('#app');

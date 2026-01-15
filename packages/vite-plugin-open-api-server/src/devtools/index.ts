@@ -5,39 +5,46 @@
  * This module exports the Vue DevTools integration for the OpenAPI mock server.
  *
  * ## How
- * Re-exports all public APIs from the devtools-plugin module for use by
- * consumers who want to integrate with Vue DevTools.
+ * Re-exports the main plugin factory and types for consumers who want
+ * to integrate with Vue DevTools following the Pinia pattern.
  *
  * ## Why
- * Provides a clean public API surface for DevTools integration while keeping
- * internal implementation details in separate files.
+ * Provides a clean public API surface for DevTools integration where users
+ * install the plugin via `app.use()` for automatic registration.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from 'vue'
+ * import { createOpenApiDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+ * import App from './App.vue'
+ *
+ * const app = createApp(App)
+ *
+ * // Install the DevTools plugin (only in development)
+ * if (import.meta.env.DEV) {
+ *   app.use(createOpenApiDevTools({ proxyPath: '/api/v3' }))
+ * }
+ *
+ * app.mount('#app')
+ * ```
  *
  * @module
  */
 
-export type { ClientScriptOptions } from './client-script.js';
-// Client script generation
-export { generateClientScript, generateClientScriptTag } from './client-script.js';
 // Types
 export type {
-  OpenApiServerGlobalState,
-  RequestLogEntry,
-  SetupDevToolsOptions,
-} from './devtools-plugin.js';
-// Main setup function and utilities
+  EndpointData,
+  GlobalState,
+  OpenApiDevToolsOptions,
+  RegistryData,
+} from './browser-client.js';
+// Main plugin factory for Vue DevTools integration
+// Legacy API (deprecated - use createOpenApiDevTools instead)
 // Constants
 export {
-  buildInspectorState,
-  buildInspectorTree,
-  checkDevToolsSupport,
-  clearRequestLog,
+  createOpenApiDevTools,
   DEVTOOLS_INSPECTOR_ID,
-  DEVTOOLS_INSPECTOR_LABEL,
   DEVTOOLS_PLUGIN_ID,
-  DEVTOOLS_PLUGIN_LABEL,
   GLOBAL_STATE_KEY,
-  getGlobalState,
-  logRequest,
-  setupOpenApiDevTools,
-  updateGlobalState,
-} from './devtools-plugin.js';
+  registerOpenApiDevTools,
+} from './browser-client.js';

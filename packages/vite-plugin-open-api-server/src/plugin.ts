@@ -24,7 +24,6 @@
 
 import type { ChildProcess } from 'node:child_process';
 import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
-import { generateClientScriptTag } from './devtools/index.js';
 import type {
   FileChangeEvent,
   FileWatcher,
@@ -624,54 +623,6 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       state.isReady = false;
       state.startTime = null;
       state.fileWatcher = null;
-    },
-
-    /**
-     * Transforms the index HTML to inject the DevTools client script.
-     *
-     * This hook injects a client-side script that enables Vue DevTools
-     * integration for the OpenAPI mock server. The script:
-     * - Checks for Vue DevTools availability
-     * - Fetches the endpoint registry from the mock server
-     * - Registers the custom DevTools inspector
-     *
-     * @param html - The original HTML content
-     * @returns Transformed HTML with DevTools script injected
-     */
-    transformIndexHtml(html: string) {
-      if (!resolvedOptions.enabled) {
-        return html;
-      }
-
-      // Only inject in development mode
-      if (state.resolvedConfig?.mode !== 'development') {
-        return html;
-      }
-
-      if (resolvedOptions.verbose) {
-        // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] transformIndexHtml() - Injecting DevTools client script`);
-      }
-
-      // Generate the client script tag
-      const scriptTag = generateClientScriptTag({
-        proxyPath: resolvedOptions.proxyPath,
-        version: '0.16.0', // TODO: Read from package.json
-        verbose: resolvedOptions.verbose,
-      });
-
-      // Inject the script before the closing </head> tag
-      // If no </head> tag, inject before </body>
-      if (html.includes('</head>')) {
-        return html.replace('</head>', `${scriptTag}\n</head>`);
-      }
-
-      if (html.includes('</body>')) {
-        return html.replace('</body>', `${scriptTag}\n</body>`);
-      }
-
-      // Fallback: append to the end
-      return html + scriptTag;
     },
   };
 }

@@ -37,7 +37,7 @@ export default defineConfig({
    * - `src/runner/openapi-server-runner.mts`: Standalone mock server runner
    *   compiled to `dist/runner/openapi-server-runner.mjs` for child process execution
    */
-  entry: ['src/index.ts', 'src/runner/openapi-server-runner.mts'],
+  entry: ['src/index.ts', 'src/runner/openapi-server-runner.mts', 'src/devtools/index.ts'],
 
   /**
    * Output format.
@@ -79,5 +79,5 @@ export default defineConfig({
    * - Unnecessary bundle size increase
    * - Duplicate code in final application
    */
-  external: ['vite', '@faker-js/faker'],
+  external: ['vite', '@faker-js/faker', 'vue'],
 });

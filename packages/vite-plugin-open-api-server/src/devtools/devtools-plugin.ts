@@ -628,12 +628,3 @@ export async function setupOpenApiDevTools(options: SetupDevToolsOptions): Promi
     },
   );
 }
-
-/**
- * Type augmentation for global window object
- */
-declare global {
-  interface Window {
-    [GLOBAL_STATE_KEY]?: OpenApiServerGlobalState;
-  }
-}
