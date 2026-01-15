@@ -34,6 +34,7 @@
 import { setupDevToolsPlugin } from '@vue/devtools-api';
 import type { App, Plugin } from 'vue';
 import { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
+import { registerTimelineLayer } from './request-timeline.js';
 
 // ============================================================================
 // Constants
@@ -807,6 +808,10 @@ function registerDevToolsInspector(app: App, proxyPath: string, verbose: boolean
       devToolsApi = api;
 
       log('DevTools plugin callback invoked', verbose);
+
+      // Register the timeline layer for request tracking
+      registerTimelineLayer(api);
+      log('Timeline layer registered', verbose);
 
       // Add custom inspector for endpoints
       api.addInspector({
