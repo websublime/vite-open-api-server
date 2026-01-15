@@ -25,6 +25,8 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 
+import type { FileChangeEvent, FileWatcher } from './hot-reload/index.js';
+import { createFileWatcher } from './hot-reload/index.js';
 import { printErrorBanner, printLoadingBanner, printSuccessBanner } from './logging/index.js';
 import {
   attachIpcHandler,
@@ -60,6 +62,8 @@ interface PluginState {
   startTime: number | null;
   /** Cleanup function for IPC handler (to prevent memory leaks) */
   ipcCleanup: (() => void) | null;
+  /** File watcher for hot reload (set in configureServer) */
+  fileWatcher: FileWatcher | null;
 }
 
 /**
@@ -77,6 +81,7 @@ function createInitialState(): PluginState {
     isReady: false,
     startTime: null,
     ipcCleanup: null,
+    fileWatcher: null,
   };
 }
 
@@ -141,6 +146,61 @@ function cleanupFailedProcess(state: PluginState): void {
   if (state.ipcCleanup) {
     state.ipcCleanup();
     state.ipcCleanup = null;
+  }
+}
+
+/**
+ * Sets up the file watcher for hot reload functionality.
+ *
+ * Creates and configures a file watcher to monitor handler and seed directories
+ * for changes, emitting events that can trigger hot reload.
+ *
+ * @param state - Plugin state to store the watcher reference
+ * @param options - Resolved plugin options
+ * @internal
+ */
+function setupFileWatcher(state: PluginState, options: ResolvedPluginOptions): void {
+  const watchDirs: string[] = [];
+
+  // Add handlers directory if configured
+  if (options.handlersDir) {
+    watchDirs.push(options.handlersDir);
+  }
+
+  // Add seeds directory if configured
+  if (options.seedsDir) {
+    watchDirs.push(options.seedsDir);
+  }
+
+  // Only create watcher if there are directories to watch
+  if (watchDirs.length === 0) {
+    return;
+  }
+
+  state.fileWatcher = createFileWatcher();
+
+  // Listen for file change events
+  state.fileWatcher.on('change', (event: FileChangeEvent) => {
+    if (options.verbose) {
+      // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+      console.log(`[${PLUGIN_NAME}] File changed: ${event.path} (${event.type})`);
+    }
+
+    // TODO: Trigger hot reload logic (P5-02)
+    // This will be implemented in the next task to reload
+    // handlers/seeds and update the mock server
+  });
+
+  // Start watching the directories
+  state.fileWatcher.start({
+    watchDirs,
+    debounceMs: 100,
+    verbose: options.verbose,
+  });
+
+  if (options.verbose) {
+    // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+    console.log(`[${PLUGIN_NAME}] File watcher started for: ${watchDirs.join(', ')}`);
   }
 }
 
@@ -385,6 +445,11 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] configureServer() called`);
       }
+
+      // Set up file watcher for hot reload (only if plugin is enabled)
+      if (resolvedOptions.enabled) {
+        setupFileWatcher(state, resolvedOptions);
+      }
     },
 
     /**
@@ -485,6 +550,17 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
         console.log(`[${PLUGIN_NAME}] closeBundle() - Shutting down mock server...`);
       }
 
+      // Clean up file watcher to prevent memory leaks
+      if (state.fileWatcher) {
+        await state.fileWatcher.stop();
+        state.fileWatcher = null;
+
+        if (resolvedOptions.verbose) {
+          // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+          console.log(`[${PLUGIN_NAME}] File watcher stopped`);
+        }
+      }
+
       // Clean up IPC handler to prevent memory leaks
       if (state.ipcCleanup) {
         state.ipcCleanup();
@@ -509,6 +585,7 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       state.mockServerPort = null;
       state.isReady = false;
       state.startTime = null;
+      state.fileWatcher = null;
     },
   };
 }
