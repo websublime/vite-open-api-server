@@ -249,17 +249,44 @@ export async function shutdownMockServer(
 
   return new Promise<void>((resolve) => {
     let resolved = false;
+    let sigtermTimer: NodeJS.Timeout | undefined;
+    let forceKillTimer: NodeJS.Timeout | undefined;
 
-    // Cleanup function to ensure we only resolve once
+    /**
+     * Cleanup function to clear all timers, remove listeners, and resolve once.
+     */
     const cleanup = () => {
-      if (!resolved) {
-        resolved = true;
-        resolve();
+      if (resolved) {
+        return;
       }
+      resolved = true;
+
+      // Clear timers
+      if (sigtermTimer) {
+        clearTimeout(sigtermTimer);
+        sigtermTimer = undefined;
+      }
+      if (forceKillTimer) {
+        clearTimeout(forceKillTimer);
+        forceKillTimer = undefined;
+      }
+
+      // Remove exit listener to prevent memory leaks
+      child.removeListener('exit', exitHandler);
+
+      resolve();
+    };
+
+    /**
+     * Named exit handler for proper cleanup.
+     */
+    const exitHandler = () => {
+      logger.info(`${LOG_PREFIX} Mock server stopped`);
+      cleanup();
     };
 
     // Set up force kill timer (last resort)
-    const forceKillTimer = setTimeout(() => {
+    forceKillTimer = setTimeout(() => {
       if (child.exitCode === null && child.signalCode === null) {
         logger.warn(`${LOG_PREFIX} Force killing mock server (SIGKILL)`);
         child.kill('SIGKILL');
@@ -268,7 +295,7 @@ export async function shutdownMockServer(
     }, gracefulTimeout + forceTimeout);
 
     // Set up SIGTERM timer (escalation after graceful timeout)
-    const sigtermTimer = setTimeout(() => {
+    sigtermTimer = setTimeout(() => {
       if (child.exitCode === null && child.signalCode === null) {
         logger.warn(`${LOG_PREFIX} Sending SIGTERM to mock server`);
         child.kill('SIGTERM');
@@ -276,12 +303,7 @@ export async function shutdownMockServer(
     }, gracefulTimeout);
 
     // Listen for exit event to clean up timers
-    child.once('exit', () => {
-      clearTimeout(sigtermTimer);
-      clearTimeout(forceKillTimer);
-      logger.info(`${LOG_PREFIX} Mock server stopped`);
-      cleanup();
-    });
+    child.once('exit', exitHandler);
 
     // Try graceful shutdown via IPC first
     if (child.connected && child.send) {
