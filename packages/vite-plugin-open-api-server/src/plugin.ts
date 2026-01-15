@@ -191,6 +191,22 @@ function setupFileWatcher(state: PluginState, options: ResolvedPluginOptions): v
     // handlers/seeds and update the mock server
   });
 
+  // Listen for error events to prevent unhandled exceptions
+  state.fileWatcher.on('error', (error: Error) => {
+    if (options.verbose) {
+      // biome-ignore lint/suspicious/noConsole: Intentional error logging for debugging
+      console.error(`[${PLUGIN_NAME}] File watcher error: ${error.message}`);
+    }
+
+    // Safely clean up the watcher on error
+    if (state.fileWatcher) {
+      state.fileWatcher.stop().catch(() => {
+        // Ignore cleanup errors
+      });
+      state.fileWatcher = null;
+    }
+  });
+
   // Start watching the directories
   state.fileWatcher.start({
     watchDirs,
@@ -553,7 +569,6 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       // Clean up file watcher to prevent memory leaks
       if (state.fileWatcher) {
         await state.fileWatcher.stop();
-        state.fileWatcher = null;
 
         if (resolvedOptions.verbose) {
           // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
