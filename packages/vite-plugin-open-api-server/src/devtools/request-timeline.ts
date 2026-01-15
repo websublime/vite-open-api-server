@@ -325,46 +325,65 @@ export function addTimelineRequestEvent(event: TimelineRequestEvent): void {
   const subtitle = `${statusText} • ${formatDuration(event.duration)}${handlerBadge}${seedBadge}${errorBadge}`;
 
   // Build detailed data for the expanded view
-  const data: Record<string, unknown> = {
-    // Request info
+  // Organized in logical groups for better DevTools visualization
+  const data: Record<string, unknown> = {};
+
+  // === Request Section ===
+  data['📤 Request'] = {
     method: event.method,
     path: event.path,
     url: event.url,
     operationId: event.operationId ?? 'unknown',
+  };
 
-    // Response info
+  // Add request headers if present
+  if (event.requestHeaders && Object.keys(event.requestHeaders).length > 0) {
+    data['📤 Request Headers'] = event.requestHeaders;
+  }
+
+  // Add request body if present
+  if (event.requestBody !== undefined) {
+    data['📤 Request Body'] = event.requestBody;
+  }
+
+  // === Response Section ===
+  data['📥 Response'] = {
     status: event.status,
-    duration: `${event.duration}ms`,
+    statusText: getStatusText(event.status),
+    duration: formatDuration(event.duration),
+  };
 
-    // Handler info
+  // Add response headers if present
+  if (event.responseHeaders && Object.keys(event.responseHeaders).length > 0) {
+    data['📥 Response Headers'] = event.responseHeaders;
+  }
+
+  // Add response body if present (preview for large responses)
+  if (event.responseBody !== undefined) {
+    data['📥 Response Body'] = event.responseBody;
+  }
+
+  // === Error Section (if applicable) ===
+  if (event.error) {
+    data['❌ Error'] = {
+      message: event.error,
+      status: event.status,
+    };
+  }
+
+  // === Mock Server Info ===
+  data['🔧 Mock Server'] = {
     usedHandler: event.usedHandler,
     usedSeed: event.usedSeed,
+    source: event.usedHandler ? 'Custom Handler' : event.usedSeed ? 'Seed Data' : 'Auto-generated',
+  };
 
-    // Timing
+  // === Timing Section ===
+  data['⏱️ Timing'] = {
+    duration: `${event.duration.toFixed(2)}ms`,
     startTime: new Date(event.startTime).toISOString(),
     endTime: new Date(event.endTime).toISOString(),
   };
-
-  // Add optional fields if present
-  if (event.requestHeaders && Object.keys(event.requestHeaders).length > 0) {
-    data.requestHeaders = event.requestHeaders;
-  }
-
-  if (event.requestBody !== undefined) {
-    data.requestBody = event.requestBody;
-  }
-
-  if (event.responseHeaders && Object.keys(event.responseHeaders).length > 0) {
-    data.responseHeaders = event.responseHeaders;
-  }
-
-  if (event.responseBody !== undefined) {
-    data.responseBody = event.responseBody;
-  }
-
-  if (event.error) {
-    data.error = event.error;
-  }
 
   // Add the timeline event
   timelineApi.addTimelineEvent({
