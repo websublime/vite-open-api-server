@@ -1,3 +1,36 @@
+## [0.14.0] - 2026-01-15
+
+### Features
+
+- implement process manager with fork, IPC, and graceful shutdown (787cf24)
+- implement IPC message handler with type-safe dispatch (628a5c2)
+- implement startup coordinator with ready-wait and timeout handling (09ecc0d)
+- integrate process management into plugin lifecycle hooks (5e78e20)
+
+
+### Bug Fixes
+
+- correct runner path resolution for bundled output (a02c312)
+
+
+### Code Refactoring
+
+- address code review feedback (2a74c3e)
+- address second round of code review feedback (dbd647a)
+- add payload validation for critical IPC message types (f6491ab)
+
+
+### Other Changes
+
+- sync changeset for feature/phase-4-process-management (f36f19d)
+- fix lint errors and add changeset (a99cff0)
+- sync changeset for feature/phase-4-process-management (b8f8439)
+- sync changeset for feature/phase-4-process-management (528a3e6)
+- sync changeset for feature/phase-4-process-management (e39db9c)
+- sync changeset for feature/phase-4-process-management (2111f78)
+
+
+
 ## [0.13.2] - 2026-01-15
 
 ### Features
