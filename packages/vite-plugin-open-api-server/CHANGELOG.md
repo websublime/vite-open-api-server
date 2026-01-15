@@ -1,3 +1,31 @@
+## [0.16.0] - 2026-01-15
+
+### Features
+
+- implement handleFileChange function and hot reload module (a821e77)
+- integrate hot reload handler with file watcher (aa66bce)
+
+
+### Bug Fixes
+
+- use correct async assertion .resolves.toBeUndefined() (3c954e3)
+- add afterEach hook to restore globalThis.require in clearModuleCache tests (e7b3006)
+
+
+### Tests
+
+- add comprehensive unit tests for hot reload handler (57a38c0)
+
+
+### Other Changes
+
+- format package.json (cfda611)
+- add changeset for hot reload feature (ac3914d)
+- sync changeset for feature/p5-02-hot-reload (eb211fb)
+- sync changeset for feature/p5-02-hot-reload (a4d46dc)
+
+
+
 ## [0.15.0] - 2026-01-15
 
 ### Features
