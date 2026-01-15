@@ -15,6 +15,9 @@
  * @module
  */
 
+export type { ClientScriptOptions } from './client-script.js';
+// Client script generation
+export { generateClientScript, generateClientScriptTag } from './client-script.js';
 // Types
 export type {
   OpenApiServerGlobalState,
