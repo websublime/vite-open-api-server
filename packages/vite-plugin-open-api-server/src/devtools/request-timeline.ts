@@ -233,6 +233,54 @@ function formatDuration(ms: number): string {
 }
 
 /**
+ * Gets a human-readable status text for an HTTP status code.
+ *
+ * @param status - HTTP status code
+ * @returns Status text (e.g., "200 OK", "404 Not Found")
+ */
+function getStatusText(status: number): string {
+  const statusTexts: Record<number, string> = {
+    // 2xx Success
+    200: 'OK',
+    201: 'Created',
+    202: 'Accepted',
+    204: 'No Content',
+    // 3xx Redirection
+    301: 'Moved',
+    302: 'Found',
+    304: 'Not Modified',
+    // 4xx Client Errors
+    400: 'Bad Request',
+    401: 'Unauthorized',
+    403: 'Forbidden',
+    404: 'Not Found',
+    405: 'Method Not Allowed',
+    409: 'Conflict',
+    422: 'Unprocessable',
+    429: 'Too Many Requests',
+    // 5xx Server Errors
+    500: 'Server Error',
+    501: 'Not Implemented',
+    502: 'Bad Gateway',
+    503: 'Service Unavailable',
+    504: 'Gateway Timeout',
+  };
+
+  const text = statusTexts[status];
+  if (text) {
+    return `${status} ${text}`;
+  }
+
+  // Fallback based on status range
+  if (status >= 500) return `${status} Error`;
+  if (status >= 400) return `${status} Error`;
+  if (status >= 300) return `${status} Redirect`;
+  if (status >= 200) return `${status} OK`;
+  if (status === 0) return 'Network Error';
+  return `${status}`;
+}
+
+/**
  * Adds a request event to the timeline.
  *
  * This should be called when a request to the mock server completes,
@@ -270,10 +318,11 @@ export function addTimelineRequestEvent(event: TimelineRequestEvent): void {
   const title = `${event.method} ${event.path}`;
 
   // Build the subtitle: "200 OK • 45ms • handler"
-  const statusText = event.status >= 400 ? `${event.status} Error` : `${event.status}`;
+  const statusText = getStatusText(event.status);
   const handlerBadge = event.usedHandler ? ' • handler' : '';
   const seedBadge = event.usedSeed && !event.usedHandler ? ' • seed' : '';
-  const subtitle = `${statusText} • ${formatDuration(event.duration)}${handlerBadge}${seedBadge}`;
+  const errorBadge = event.error ? ' • error' : '';
+  const subtitle = `${statusText} • ${formatDuration(event.duration)}${handlerBadge}${seedBadge}${errorBadge}`;
 
   // Build detailed data for the expanded view
   const data: Record<string, unknown> = {
