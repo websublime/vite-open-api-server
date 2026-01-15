@@ -19,6 +19,8 @@
  * @module
  */
 
+import type { GlobalState } from './browser-client.js';
+import { GLOBAL_STATE_KEY } from './devtools-plugin.js';
 import { addTimelineRequestEvent, isTimelineReady } from './request-timeline.js';
 
 // ============================================================================
@@ -60,6 +62,41 @@ const state: InterceptorState = {
   proxyPath: '/api',
   verbose: false,
 };
+
+/**
+ * Gets the global state object if available.
+ *
+ * @returns The global state or null if not initialized
+ */
+function getGlobalStateIfAvailable(): GlobalState | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic window property access
+  return (window as any)[GLOBAL_STATE_KEY] ?? null;
+}
+
+/**
+ * Logs a request to the GlobalState requestLog.
+ *
+ * @param entry - The request log entry (without id)
+ */
+function logToGlobalState(entry: {
+  method: string;
+  path: string;
+  operationId: string | null;
+  status: number;
+  duration: number;
+  timestamp: Date;
+  usedHandler: boolean;
+  usedSeed: boolean;
+  error?: string;
+}): void {
+  const globalState = getGlobalStateIfAvailable();
+  if (globalState) {
+    globalState.logRequest(entry);
+  }
+}
 
 // ============================================================================
 // Helpers
@@ -311,6 +348,18 @@ function createInterceptedFetch(): typeof fetch {
         log(`Logged ${method} ${path} - ${response.status} (${duration.toFixed(0)}ms)`);
       }
 
+      // Also log to GlobalState.requestLog to keep them synchronized
+      logToGlobalState({
+        method,
+        path,
+        operationId: operationInfo.operationId,
+        status: response.status,
+        duration,
+        timestamp: new Date(timestamp),
+        usedHandler: operationInfo.usedHandler,
+        usedSeed: operationInfo.usedSeed,
+      });
+
       return response;
     } catch (error) {
       // Request failed (network error, etc.)
@@ -337,6 +386,19 @@ function createInterceptedFetch(): typeof fetch {
 
         log(`Logged error for ${method} ${path}: ${error}`);
       }
+
+      // Also log error to GlobalState.requestLog
+      logToGlobalState({
+        method,
+        path,
+        operationId: null,
+        status: 0,
+        duration,
+        timestamp: new Date(timestamp),
+        usedHandler: false,
+        usedSeed: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       // Re-throw the error
       throw error;
