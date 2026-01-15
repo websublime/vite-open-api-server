@@ -46,3 +46,106 @@ declare interface ImportMeta {
     [key: string]: unknown;
   };
 }
+
+// ============================================================================
+// Fetch API Types for Browser Compatibility
+// ============================================================================
+
+/**
+ * RequestInfo type for fetch API
+ */
+declare type RequestInfo = Request | string;
+
+/**
+ * HeadersInit type for fetch API
+ */
+declare type HeadersInit = Headers | string[][] | Record<string, string>;
+
+/**
+ * Headers interface for fetch API
+ */
+declare interface Headers {
+  append(name: string, value: string): void;
+  delete(name: string): void;
+  get(name: string): string | null;
+  has(name: string): boolean;
+  set(name: string, value: string): void;
+  forEach(callbackfn: (value: string, key: string, parent: Headers) => void, thisArg?: unknown): void;
+}
+
+/**
+ * Request interface for fetch API
+ */
+declare interface Request {
+  readonly url: string;
+  readonly method: string;
+  readonly headers: Headers;
+  readonly body: ReadableStream<Uint8Array> | null;
+  clone(): Request;
+}
+
+/**
+ * Response interface for fetch API
+ */
+declare interface Response {
+  readonly ok: boolean;
+  readonly status: number;
+  readonly statusText: string;
+  readonly headers: Headers;
+  readonly body: ReadableStream<Uint8Array> | null;
+  readonly url: string;
+  clone(): Response;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  blob(): Promise<Blob>;
+}
+
+/**
+ * RequestInit interface for fetch options
+ */
+declare interface RequestInit {
+  method?: string;
+  headers?: HeadersInit;
+  body?: BodyInit | null;
+  mode?: RequestMode;
+  credentials?: RequestCredentials;
+  cache?: RequestCache;
+  redirect?: RequestRedirect;
+  referrer?: string;
+  referrerPolicy?: ReferrerPolicy;
+  integrity?: string;
+  keepalive?: boolean;
+  signal?: AbortSignal | null;
+}
+
+/**
+ * BodyInit type
+ */
+declare type BodyInit = Blob | BufferSource | FormData | URLSearchParams | ReadableStream<Uint8Array> | string;
+
+/**
+ * Global fetch function
+ */
+declare function fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+
+/**
+ * Performance API for timing
+ */
+declare const performance: {
+  now(): number;
+};
+
+/**
+ * Augment Window with location
+ */
+declare interface Window {
+  location: {
+    origin: string;
+    href: string;
+    pathname: string;
+    search: string;
+    hash: string;
+  };
+  fetch: typeof fetch;
+}
