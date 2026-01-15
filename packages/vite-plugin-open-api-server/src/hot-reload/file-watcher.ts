@@ -67,8 +67,8 @@ export class FileWatcher extends EventEmitter {
   /** Debounce timeout handle */
   private debounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  /** Pending events to batch */
-  private pendingEvents: FileChangeEvent[] = [];
+  /** Pending events to batch, keyed by path to deduplicate */
+  private pendingEvents: Map<string, FileChangeEvent> = new Map();
 
   /**
    * Starts watching the specified directories for file changes.
@@ -111,20 +111,21 @@ export class FileWatcher extends EventEmitter {
 
     // Create debounced emit function
     const debouncedEmit = (event: FileChangeEvent) => {
-      this.pendingEvents.push(event);
+      // Store event by path, keeping the latest event for each path
+      this.pendingEvents.set(event.path, event);
 
       // Clear existing timeout
       if (this.debounceTimeout) {
         clearTimeout(this.debounceTimeout);
       }
 
-      // Set new timeout to emit batched events
+      // Set new timeout to emit deduplicated events
       this.debounceTimeout = setTimeout(() => {
-        const events = [...this.pendingEvents];
-        this.pendingEvents = [];
+        const events = Array.from(this.pendingEvents.values());
+        this.pendingEvents.clear();
         this.debounceTimeout = null;
 
-        // Emit each event
+        // Emit each deduplicated event (one per unique path)
         for (const evt of events) {
           if (verbose) {
             // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
@@ -173,7 +174,7 @@ export class FileWatcher extends EventEmitter {
     }
 
     // Clear pending events
-    this.pendingEvents = [];
+    this.pendingEvents.clear();
 
     // Close the chokidar watcher
     if (this.watcher) {
