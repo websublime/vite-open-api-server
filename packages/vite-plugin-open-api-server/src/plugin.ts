@@ -155,9 +155,11 @@ function createIpcCallbacks(state: PluginState) {
       state.isReady = true;
     },
     onError: () => {
+      state.mockServerPort = null;
       state.isReady = false;
     },
     onShutdown: () => {
+      state.mockServerPort = null;
       state.isReady = false;
     },
   };
@@ -443,9 +445,9 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
           state.startTime,
         );
 
-        // Update state with ready info
-        state.mockServerPort = readyMessage.port;
-        state.isReady = true;
+        // Note: state.mockServerPort and state.isReady are already updated
+        // by the onReady callback in createIpcCallbacks when the ready message
+        // is processed by the IPC handler.
 
         // Print success banner with port, endpoint count, and timing
         printSuccessBanner(
