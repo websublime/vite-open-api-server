@@ -53,3 +53,12 @@ export {
   GLOBAL_STATE_KEY,
   registerOpenApiDevTools,
 } from './browser-client.js';
+// Timeline types and functions
+export type { TimelineRequestEvent } from './request-timeline.js';
+export {
+  addTimelineRequestEvent,
+  isTimelineReady,
+  TIMELINE_LAYER_COLOR,
+  TIMELINE_LAYER_ID,
+  TIMELINE_LAYER_LABEL,
+} from './request-timeline.js';
