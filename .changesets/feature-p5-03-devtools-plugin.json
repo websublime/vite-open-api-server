@@ -1,0 +1,13 @@
+{
+  "branch": "feature/p5-03-devtools-plugin",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-01-15T11:19:07.072682Z",
+  "updated_at": "2026-01-15T11:19:07.073734Z"
+}
