@@ -1,0 +1,23 @@
+{
+  "changeset": {
+    "branch": "feature/p3-04-security-implementation",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [],
+    "created_at": "2026-01-14T16:57:12.038995Z",
+    "updated_at": "2026-01-14T16:57:12.039683Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-15T00:08:39.981054562Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "ae0a222968b6d0b7ac4b174b25af9a350ecb008d",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.13.2"
+    }
+  }
+}

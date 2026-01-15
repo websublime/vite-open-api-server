@@ -1,3 +1,22 @@
+## [0.13.2] - 2026-01-15
+
+### Features
+
+- update delete-pet handler to demonstrate SecurityContext access (ae0a222)
+- add security scheme logging on startup (315986d)
+
+
+### Bug Fixes
+
+- fix pathToRegex to handle OpenAPI path parameters correctly (69e58a2)
+
+
+### Documentation
+
+- add Security Schemes documentation to README (dc69cc3)
+
+
+
 ## [0.13.1] - 2026-01-14
 
 ### Features
