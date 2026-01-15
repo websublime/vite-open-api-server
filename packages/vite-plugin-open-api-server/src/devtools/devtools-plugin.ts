@@ -243,9 +243,9 @@ export function logRequest(entry: RequestLogEntry): void {
 
   state.requestLog.unshift(entry);
 
-  // Trim log if it exceeds max entries
-  if (state.requestLog.length > state.maxLogEntries) {
-    state.requestLog = state.requestLog.slice(0, state.maxLogEntries);
+  // Trim log if it exceeds max entries (use pop to avoid array allocation)
+  while (state.requestLog.length > state.maxLogEntries) {
+    state.requestLog.pop();
   }
 }
 
@@ -527,21 +527,10 @@ function buildEndpointState(
 export async function setupOpenApiDevTools(options: SetupDevToolsOptions): Promise<void> {
   const { app, registry, handlers, version } = options;
 
-  // Check environment support
+  // Check environment support - early return if not supported
   const support = checkDevToolsSupport();
   if (!support.isSupported) {
-    if (!support.isDev) {
-      // Silent in production
-      return;
-    }
-    if (!support.isBrowser) {
-      // Silent skip in non-browser environments (SSR)
-      return;
-    }
-    if (!support.hasDevToolsHook) {
-      // Silent skip when DevTools not installed
-      return;
-    }
+    // Silent skip in all unsupported environments (production, SSR, no DevTools)
     return;
   }
 
@@ -549,7 +538,18 @@ export async function setupOpenApiDevTools(options: SetupDevToolsOptions): Promi
   updateGlobalState(registry, handlers, version);
 
   // Dynamically import devtools-api to avoid issues in non-browser environments
-  const { setupDevToolsPlugin } = await import('@vue/devtools-api');
+  let setupDevToolsPlugin: typeof import('@vue/devtools-api').setupDevToolsPlugin;
+  try {
+    const devtoolsApi = await import('@vue/devtools-api');
+    setupDevToolsPlugin = devtoolsApi.setupDevToolsPlugin;
+  } catch (error) {
+    // biome-ignore lint/suspicious/noConsole: Intentional warning when DevTools API is unavailable
+    console.warn(
+      '[OpenAPI Server] Failed to load @vue/devtools-api. DevTools integration will be disabled.',
+      error instanceof Error ? error.message : error,
+    );
+    return;
+  }
 
   // Register the DevTools plugin
   setupDevToolsPlugin(

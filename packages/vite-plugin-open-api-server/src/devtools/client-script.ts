@@ -19,7 +19,7 @@
  * @internal
  */
 
-import { DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
+import { GLOBAL_STATE_KEY } from './devtools-plugin.js';
 
 /**
  * Options for generating the client script
@@ -48,6 +48,11 @@ export interface ClientScriptOptions {
 export function generateClientScript(options: ClientScriptOptions): string {
   const { proxyPath, version, verbose = false } = options;
 
+  // Escape values for safe interpolation into JavaScript string literals
+  const safeProxyPath = JSON.stringify(proxyPath);
+  const safeVersion = JSON.stringify(version);
+  const safeGlobalStateKey = JSON.stringify(GLOBAL_STATE_KEY);
+
   // The script that will be injected into the browser
   // This is written as a template string to be inlined
   return `
@@ -55,10 +60,9 @@ export function generateClientScript(options: ClientScriptOptions): string {
   'use strict';
 
   // Constants
-  var GLOBAL_STATE_KEY = '${GLOBAL_STATE_KEY}';
-  var PLUGIN_ID = '${DEVTOOLS_PLUGIN_ID}';
-  var PROXY_PATH = '${proxyPath}';
-  var VERSION = '${version}';
+  var GLOBAL_STATE_KEY = ${safeGlobalStateKey};
+  var PROXY_PATH = ${safeProxyPath};
+  var VERSION = ${safeVersion};
   var VERBOSE = ${verbose};
 
   function log(message) {
@@ -180,9 +184,13 @@ export function generateClientScript(options: ClientScriptOptions): string {
       log('Waiting for Vue app to be mounted...');
 
       var originalEmit = hook.emit;
+      var initCalled = false;
       hook.emit = function(event) {
-        if (event === 'app:init' || event === 'init') {
+        if ((event === 'app:init' || event === 'init') && !initCalled) {
+          initCalled = true;
           log('Vue app initialized, setting up DevTools');
+          // Restore original emit before calling initDevTools
+          hook.emit = originalEmit;
           setTimeout(initDevTools, 100);
         }
         if (originalEmit) {

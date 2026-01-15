@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { generateClientScript, generateClientScriptTag } from '../client-script.js';
-import { DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from '../devtools-plugin.js';
+import { GLOBAL_STATE_KEY } from '../devtools-plugin.js';
 
 describe('generateClientScript', () => {
   const defaultOptions = {
@@ -27,25 +27,29 @@ describe('generateClientScript', () => {
   it('should include GLOBAL_STATE_KEY constant', () => {
     const script = generateClientScript(defaultOptions);
 
-    expect(script).toContain(`var GLOBAL_STATE_KEY = '${GLOBAL_STATE_KEY}'`);
+    // Value is now JSON.stringify'd for safe interpolation
+    expect(script).toContain(`var GLOBAL_STATE_KEY = ${JSON.stringify(GLOBAL_STATE_KEY)}`);
   });
 
-  it('should include PLUGIN_ID constant', () => {
+  it('should not include PLUGIN_ID constant (removed as unused)', () => {
     const script = generateClientScript(defaultOptions);
 
-    expect(script).toContain(`var PLUGIN_ID = '${DEVTOOLS_PLUGIN_ID}'`);
+    // PLUGIN_ID was removed as it was unused in the generated script
+    expect(script).not.toContain('var PLUGIN_ID');
   });
 
   it('should include proxyPath', () => {
     const script = generateClientScript(defaultOptions);
 
-    expect(script).toContain(`var PROXY_PATH = '${defaultOptions.proxyPath}'`);
+    // Values are now JSON.stringify'd for safe interpolation
+    expect(script).toContain(`var PROXY_PATH = ${JSON.stringify(defaultOptions.proxyPath)}`);
   });
 
   it('should include version', () => {
     const script = generateClientScript(defaultOptions);
 
-    expect(script).toContain(`var VERSION = '${defaultOptions.version}'`);
+    // Values are now JSON.stringify'd for safe interpolation
+    expect(script).toContain(`var VERSION = ${JSON.stringify(defaultOptions.version)}`);
   });
 
   it('should set VERBOSE to false by default', () => {
@@ -115,8 +119,19 @@ describe('generateClientScript', () => {
       version: '2.0.0',
     });
 
-    expect(script).toContain("var PROXY_PATH = '/api/v3'");
-    expect(script).toContain("var VERSION = '2.0.0'");
+    // Values are now JSON.stringify'd for safe interpolation
+    expect(script).toContain('var PROXY_PATH = "/api/v3"');
+    expect(script).toContain('var VERSION = "2.0.0"');
+  });
+
+  it('should safely escape values with special characters', () => {
+    const script = generateClientScript({
+      proxyPath: '/api"with\'quotes',
+      version: '1.0.0',
+    });
+
+    // JSON.stringify escapes quotes properly
+    expect(script).toContain('var PROXY_PATH = "/api\\"with\'quotes"');
   });
 
   it('should be wrapped in IIFE', () => {

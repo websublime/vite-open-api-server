@@ -20,7 +20,6 @@
  * @module main
  */
 
-import { createOpenApiDevTools } from '@websublime/vite-plugin-open-api-server/devtools';
 import { createApp } from 'vue';
 import App from './App.vue';
 
@@ -34,13 +33,17 @@ import App from './App.vue';
 const app = createApp(App);
 
 // Install OpenAPI DevTools plugin (only in development)
+// Using dynamic import to enable tree-shaking in production builds
 if (import.meta.env.DEV) {
-  app.use(
-    createOpenApiDevTools({
-      proxyPath: '/api/v3',
-      verbose: true,
-    }),
-  );
+  import('@websublime/vite-plugin-open-api-server/devtools').then(({ createOpenApiDevTools }) => {
+    app.use(
+      createOpenApiDevTools({
+        proxyPath: '/api/v3',
+        verbose: true,
+      }),
+    );
+    app.mount('#app');
+  });
+} else {
+  app.mount('#app');
 }
-
-app.mount('#app');
