@@ -39,20 +39,19 @@ const LOG_PREFIX = '[process-manager]';
  * Resolves the path to the mock server runner script.
  *
  * The runner is compiled to dist/runner/openapi-server-runner.mjs
- * and needs to be resolved relative to this module's location.
+ * and needs to be resolved relative to the bundled output location.
  *
  * @returns Absolute path to the runner script
  * @internal
  */
 function resolveRunnerPath(): string {
-  // Get the directory of this module
+  // Get the directory of the bundled output (dist/index.mjs)
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-  // In development (src), the runner is at ../runner/openapi-server-runner.mts
-  // In production (dist), it's at ../runner/openapi-server-runner.mjs
-  // Since this file will be compiled to dist/process/process-manager.mjs,
-  // the runner will be at ../runner/openapi-server-runner.mjs
-  return path.resolve(__dirname, '../runner/openapi-server-runner.mjs');
+  // The bundler (tsdown) creates a single dist/index.mjs file that includes
+  // all process management code. The runner is a separate entry point at
+  // dist/runner/openapi-server-runner.mjs. So relative to dist/, it's ./runner/
+  return path.resolve(__dirname, './runner/openapi-server-runner.mjs');
 }
 
 /**
