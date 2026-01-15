@@ -97,7 +97,7 @@ function buildChildEnvironment(options: ResolvedPluginOptions): NodeJS.ProcessEn
  *
  * @example
  * ```typescript
- * const process = await spawnMockServer(resolvedOptions, logger);
+ * const process = spawnMockServer(resolvedOptions, logger);
  * if (process) {
  *   // Mock server is starting
  *   process.on('message', handleIpcMessage);
@@ -106,10 +106,10 @@ function buildChildEnvironment(options: ResolvedPluginOptions): NodeJS.ProcessEn
  * }
  * ```
  */
-export async function spawnMockServer(
+export function spawnMockServer(
   options: ResolvedPluginOptions,
   logger: Logger,
-): Promise<ChildProcess | null> {
+): ChildProcess | null {
   const runnerPath = resolveRunnerPath();
   const env = buildChildEnvironment(options);
 

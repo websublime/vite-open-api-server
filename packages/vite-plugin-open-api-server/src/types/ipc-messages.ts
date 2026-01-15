@@ -426,3 +426,34 @@ export type ChildToParentMessage =
   | ResponseMessage
   | LogMessage
   | ReloadedMessage;
+
+/**
+ * Validates that a value is a valid IPC message structure.
+ *
+ * Checks that the value is:
+ * - An object (not null)
+ * - Has a 'type' property that is a string
+ *
+ * This utility is shared across IPC handling modules to avoid duplication.
+ *
+ * @param message - The value to validate
+ * @returns True if the value is a valid IPC message structure
+ *
+ * @example
+ * ```typescript
+ * if (isValidIpcMessage(message)) {
+ *   // TypeScript now knows message has a 'type' string property
+ *   switch (message.type) {
+ *     case 'ready': // ...
+ *   }
+ * }
+ * ```
+ */
+export function isValidIpcMessage(message: unknown): message is { type: string } {
+  return (
+    typeof message === 'object' &&
+    message !== null &&
+    'type' in message &&
+    typeof (message as Record<string, unknown>).type === 'string'
+  );
+}
