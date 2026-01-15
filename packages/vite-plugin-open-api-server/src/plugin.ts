@@ -11,8 +11,8 @@
  * - `config`: Merges Vite config (proxy setup placeholder)
  * - `configResolved`: Stores resolved Vite config reference
  * - `configureServer`: Sets up the mock server when Vite's dev server starts
- * - `buildStart`: Performs initialization tasks at build start
- * - `closeBundle`: Performs cleanup tasks when bundle closes
+ * - `buildStart`: Spawns mock server child process and waits for ready
+ * - `closeBundle`: Gracefully shuts down the mock server
  *
  * ## Why
  * Vite plugins follow a specific interface pattern. By implementing these
@@ -25,15 +25,15 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 
+import { printErrorBanner, printLoadingBanner, printSuccessBanner } from './logging/index.js';
 import {
-  GREEN,
-  printErrorBanner,
-  printLoadingBanner,
-  RED,
-  RESET,
-  YELLOW,
-} from './logging/index.js';
-import type { LogMessage, OpenApiServerMessage } from './types/ipc-messages.js';
+  attachIpcHandler,
+  coordinateStartup,
+  StartupError,
+  StartupTimeoutError,
+  shutdownMockServer,
+  spawnMockServer,
+} from './process/index.js';
 import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
 
 /**
@@ -50,14 +50,16 @@ interface PluginState {
   resolvedConfig: ResolvedConfig | null;
   /** Vite dev server instance (set in configureServer) */
   devServer: ViteDevServer | null;
-  /** Mock server child process (set in buildStart, Phase 4) */
+  /** Mock server child process (set in buildStart) */
   mockServerProcess: ChildProcess | null;
-  /** Port the mock server is running on (set in buildStart, Phase 4) */
+  /** Port the mock server is running on (set via IPC ready message) */
   mockServerPort: number | null;
-  /** Whether mock server is ready to receive requests (set via IPC, Phase 4) */
+  /** Whether mock server is ready to receive requests (set via IPC) */
   isReady: boolean;
   /** Timestamp when loading started (for timing banner) */
   startTime: number | null;
+  /** Cleanup function for IPC handler (to prevent memory leaks) */
+  ipcCleanup: (() => void) | null;
 }
 
 /**
@@ -74,6 +76,7 @@ function createInitialState(): PluginState {
     mockServerPort: null,
     isReady: false,
     startTime: null,
+    ipcCleanup: null,
   };
 }
 
@@ -86,7 +89,7 @@ function createInitialState(): PluginState {
  * @returns A logger compatible with Vite's Logger interface
  * @internal
  */
-function createFallbackLogger() {
+function createFallbackLogger(): Logger {
   return {
     // biome-ignore lint/suspicious/noConsole: Fallback logger requires console for output
     info: (msg: string) => console.log(msg),
@@ -103,88 +106,62 @@ function createFallbackLogger() {
 }
 
 /**
- * Applies color to a log message based on its level.
- *
- * Uses ANSI color codes for terminal output:
- * - info: green
- * - warn: yellow
- * - error: red
- * - debug: no color (dim could be added later)
- *
- * @param message - The log message
- * @param level - The log level
- * @returns Colorized message string
+ * Logs startup errors with appropriate messages based on error type.
  * @internal
  */
-function colorizeLogMessage(message: string, level: LogMessage['level']): string {
-  switch (level) {
-    case 'info':
-      return `${GREEN}${message}${RESET}`;
-    case 'warn':
-      return `${YELLOW}${message}${RESET}`;
-    case 'error':
-      return `${RED}${message}${RESET}`;
-    case 'debug':
-      return message;
-    default:
-      return message;
+function logStartupError(error: unknown, logger: Logger): void {
+  const err = error as Error;
+
+  if (error instanceof StartupTimeoutError) {
+    logger.error(`[${PLUGIN_NAME}] Mock server startup timed out after ${error.timeout}ms`);
+    logger.error(`[${PLUGIN_NAME}] Try increasing startupTimeout option for large specs`);
+  } else if (error instanceof StartupError) {
+    logger.error(`[${PLUGIN_NAME}] Mock server startup failed: ${err.message}`);
+    if (error.childStack) {
+      logger.error(error.childStack);
+    }
+  } else {
+    logger.error(`[${PLUGIN_NAME}] Mock server error: ${err.message}`);
   }
 }
 
 /**
- * Sets up IPC message handling for the mock server child process.
- *
- * Listens for messages from the child process and routes them appropriately:
- * - 'log' messages are forwarded to Vite's logger with proper level and coloring
- * - Other message types can be handled as needed
- *
- * @param process - The mock server child process
- * @param logger - Vite's logger instance for output
- * @param pluginName - Plugin name for log prefixing
+ * Cleans up failed mock server state.
  * @internal
  */
-export function setupIpcMessageHandler(
-  process: ChildProcess,
-  logger: Logger,
-  pluginName: string,
-): void {
-  process.on('message', (msg: unknown) => {
-    // Type guard for IPC messages
-    if (typeof msg !== 'object' || msg === null || !('type' in msg)) {
-      return;
+function cleanupFailedProcess(state: PluginState): void {
+  if (state.mockServerProcess) {
+    try {
+      state.mockServerProcess.kill();
+    } catch {
+      // Ignore kill errors
     }
+    state.mockServerProcess = null;
+  }
 
-    const message = msg as OpenApiServerMessage;
+  if (state.ipcCleanup) {
+    state.ipcCleanup();
+    state.ipcCleanup = null;
+  }
+}
 
-    switch (message.type) {
-      case 'log': {
-        const logMessage = message as LogMessage;
-        const colorizedMessage = colorizeLogMessage(logMessage.message, logMessage.level);
-        const prefix = `[${pluginName}]`;
-
-        // Route to appropriate logger method based on level
-        switch (logMessage.level) {
-          case 'error':
-            logger.error(`${prefix} ${colorizedMessage}`);
-            break;
-          case 'warn':
-            logger.warn(`${prefix} ${colorizedMessage}`);
-            break;
-          default:
-            // info, debug, and any other levels use info
-            logger.info(`${prefix} ${colorizedMessage}`);
-            break;
-        }
-        break;
-      }
-
-      // Other message types (ready, error, response, etc.) will be handled
-      // in Phase 4 when child process spawning is implemented
-      default:
-        // Silently ignore unhandled message types for now
-        break;
-    }
-  });
+/**
+ * Creates IPC handler callbacks for updating plugin state.
+ * @internal
+ */
+function createIpcCallbacks(state: PluginState) {
+  return {
+    onReady: (msg: { port: number }) => {
+      state.mockServerPort = msg.port;
+      state.isReady = true;
+    },
+    onError: () => {
+      state.isReady = false;
+    },
+    onShutdown: () => {
+      state.isReady = false;
+    },
+  };
 }
 
 /**
@@ -403,20 +380,14 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
         console.log(`[${PLUGIN_NAME}] configureServer() called`);
       }
-
-      // Phase 3: P3-02 - Register request interception middleware
-      // server.middlewares.use((req, res, next) => {
-      //   // Intercept requests matching proxyPath
-      //   // Forward to mock server child process via IPC
-      // });
     },
 
     /**
      * Called at the start of the build process.
      *
      * This hook is invoked when Vite starts building the project.
-     * It triggers mock server startup in development mode.
-     * Displays loading banner and handles success/error banners.
+     * It spawns the mock server child process and waits for it to be ready.
+     * Displays loading banner on start, success banner on ready, error banner on failure.
      */
     async buildStart(): Promise<void> {
       if (!resolvedOptions.enabled) {
@@ -438,50 +409,95 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
 
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] buildStart() - Mock server start triggered`);
+        console.log(`[${PLUGIN_NAME}] buildStart() - Spawning mock server...`);
       }
 
-      // Phase 4: P4-01 - Spawn child process
-      // mockServerProcess = spawn('node', ['./dist/mock-server.mjs'], { ... });
-      // mockServerProcess.on('message', (msg: OpenApiServerMessage) => { ... });
-      // Wait for ReadyMessage with timeout
-      //
-      // Phase 4: When ready IPC message is received, call:
-      // import { printSuccessBanner } from "./logging/index.js";
-      // printSuccessBanner(
-      //   resolvedOptions.port,
-      //   endpointCount,  // From ready message
-      //   resolvedOptions.openApiPath,
-      //   state.startTime!,
-      //   logger,
-      //   methodCounts    // Optional, from ready message
-      // );
-      //
-      // Phase 4: On error, call:
-      // printErrorBanner(error, resolvedOptions.openApiPath, logger);
+      // Spawn the mock server child process
+      const childProcess = await spawnMockServer(resolvedOptions, logger);
 
-      // Placeholder: printErrorBanner is imported and ready for Phase 4 error handling
-      void printErrorBanner;
+      if (!childProcess) {
+        // spawnMockServer returns null on failure (already logged the error)
+        logger.warn(`[${PLUGIN_NAME}] Mock server failed to start, continuing without it`);
+        return;
+      }
+
+      // Store the child process reference
+      state.mockServerProcess = childProcess;
+
+      // Attach IPC message handler for ongoing communication
+      state.ipcCleanup = attachIpcHandler(childProcess, {
+        logger,
+        pluginName: PLUGIN_NAME,
+        verbose: resolvedOptions.verbose,
+        callbacks: createIpcCallbacks(state),
+      });
+
+      // Wait for the mock server to be ready with timeout
+      try {
+        const { readyMessage, startupTime } = await coordinateStartup(
+          childProcess,
+          { timeout: resolvedOptions.startupTimeout },
+          state.startTime,
+        );
+
+        // Update state with ready info
+        state.mockServerPort = readyMessage.port;
+        state.isReady = true;
+
+        // Print success banner with port, endpoint count, and timing
+        printSuccessBanner(
+          readyMessage.port,
+          readyMessage.endpointCount,
+          resolvedOptions.openApiPath,
+          state.startTime,
+          logger,
+        );
+
+        if (resolvedOptions.verbose) {
+          // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
+          console.log(`[${PLUGIN_NAME}] Mock server ready in ${startupTime.toFixed(0)}ms`);
+        }
+      } catch (error) {
+        logStartupError(error, logger);
+        printErrorBanner(error as Error, resolvedOptions.openApiPath, logger);
+        cleanupFailedProcess(state);
+        logger.warn(`[${PLUGIN_NAME}] Continuing without mock server`);
+      }
     },
 
     /**
      * Called when the bundle is closed.
      *
      * This hook is invoked when Vite finishes and closes.
-     * It triggers graceful shutdown of the mock server.
+     * It gracefully shuts down the mock server child process.
      */
     async closeBundle(): Promise<void> {
+      // Get logger from resolved config (fallback to console-based logger)
+      const logger = state.resolvedConfig?.logger ?? createFallbackLogger();
+
       if (resolvedOptions.verbose) {
         // biome-ignore lint/suspicious/noConsole: Intentional verbose logging for debugging
-        console.log(`[${PLUGIN_NAME}] closeBundle() - Mock server shutdown triggered`);
+        console.log(`[${PLUGIN_NAME}] closeBundle() - Shutting down mock server...`);
       }
 
-      // Phase 4: P4-03 - Graceful shutdown
-      // if (mockServerProcess) {
-      //   mockServerProcess.send({ type: 'shutdown' });
-      //   await waitForExit(mockServerProcess, 5000);
-      //   mockServerProcess = null;
-      // }
+      // Clean up IPC handler to prevent memory leaks
+      if (state.ipcCleanup) {
+        state.ipcCleanup();
+        state.ipcCleanup = null;
+      }
+
+      // Gracefully shutdown the mock server if running
+      if (state.mockServerProcess) {
+        try {
+          await shutdownMockServer(state.mockServerProcess, logger, {
+            gracefulTimeout: 5000,
+            forceTimeout: 2000,
+          });
+        } catch (error) {
+          const err = error as Error;
+          logger.warn(`[${PLUGIN_NAME}] Error during mock server shutdown: ${err.message}`);
+        }
+      }
 
       // Reset state
       state.mockServerProcess = null;
