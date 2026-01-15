@@ -26,9 +26,11 @@ import type { Logger } from 'vite';
 import { GREEN, RED, RESET, YELLOW } from '../logging/index.js';
 import {
   type ErrorMessage,
+  isValidErrorMessage,
   isValidIpcMessage,
+  isValidLogMessage,
+  isValidReadyMessage,
   type LogMessage,
-  type OpenApiServerMessage,
   type ReadyMessage,
   type ReloadedMessage,
   type ResponseMessage,
@@ -118,7 +120,15 @@ function colorizeLogMessage(message: string, level: LogMessage['level']): string
  * Handles 'ready' messages from the child process.
  * @internal
  */
-function handleReadyMessage(message: ReadyMessage, ctx: HandlerContext): void {
+function handleReadyMessage(message: { type: string }, ctx: HandlerContext): void {
+  // Validate message has required fields
+  if (!isValidReadyMessage(message)) {
+    ctx.logger.warn(
+      `${ctx.prefix} ${LOG_PREFIX} Received malformed ready message (missing port or endpointCount)`,
+    );
+    return;
+  }
+
   if (ctx.verbose) {
     ctx.logger.info(
       `${ctx.prefix} ${LOG_PREFIX} Mock server ready on port ${message.port} with ${message.endpointCount} endpoints`,
@@ -131,7 +141,15 @@ function handleReadyMessage(message: ReadyMessage, ctx: HandlerContext): void {
  * Handles 'error' messages from the child process.
  * @internal
  */
-function handleErrorMessage(message: ErrorMessage, ctx: HandlerContext): void {
+function handleErrorMessage(message: { type: string }, ctx: HandlerContext): void {
+  // Validate message has required fields
+  if (!isValidErrorMessage(message)) {
+    ctx.logger.warn(
+      `${ctx.prefix} ${LOG_PREFIX} Received malformed error message (missing message field)`,
+    );
+    return;
+  }
+
   ctx.logger.error(`${ctx.prefix} ${LOG_PREFIX} Mock server error: ${message.message}`);
   if (message.stack) {
     ctx.logger.error(message.stack);
@@ -143,7 +161,15 @@ function handleErrorMessage(message: ErrorMessage, ctx: HandlerContext): void {
  * Handles 'log' messages from the child process.
  * @internal
  */
-function handleLogMessage(message: LogMessage, ctx: HandlerContext): void {
+function handleLogMessage(message: { type: string }, ctx: HandlerContext): void {
+  // Validate message has required fields
+  if (!isValidLogMessage(message)) {
+    ctx.logger.warn(
+      `${ctx.prefix} ${LOG_PREFIX} Received malformed log message (missing level or message field)`,
+    );
+    return;
+  }
+
   // Filter debug logs unless verbose mode is enabled
   if (!ctx.verbose && message.level === 'debug') {
     return;
@@ -217,9 +243,14 @@ function handleUnknownMessage(type: string, ctx: HandlerContext): void {
 
 /**
  * Dispatches an IPC message to the appropriate handler.
+ *
+ * Note: Critical message types (ready, error, log) are validated by their
+ * respective handlers to ensure required fields are present. This provides
+ * defense-in-depth for IPC from trusted child processes.
+ *
  * @internal
  */
-function dispatchMessage(ipcMessage: OpenApiServerMessage, ctx: HandlerContext): void {
+function dispatchMessage(ipcMessage: { type: string }, ctx: HandlerContext): void {
   switch (ipcMessage.type) {
     case 'ready':
       handleReadyMessage(ipcMessage, ctx);
@@ -231,13 +262,13 @@ function dispatchMessage(ipcMessage: OpenApiServerMessage, ctx: HandlerContext):
       handleLogMessage(ipcMessage, ctx);
       break;
     case 'shutdown':
-      handleShutdownMessage(ipcMessage, ctx);
+      handleShutdownMessage(ipcMessage as ShutdownMessage, ctx);
       break;
     case 'reloaded':
-      handleReloadedMessage(ipcMessage, ctx);
+      handleReloadedMessage(ipcMessage as ReloadedMessage, ctx);
       break;
     case 'response':
-      handleResponseMessage(ipcMessage, ctx);
+      handleResponseMessage(ipcMessage as ResponseMessage, ctx);
       break;
     case 'request':
     case 'reload':
@@ -296,7 +327,9 @@ export function createIpcHandler(options: IpcHandlerOptions): (message: unknown)
     }
 
     try {
-      dispatchMessage(message as OpenApiServerMessage, ctx);
+      // Pass validated message to dispatcher - individual handlers validate
+      // their specific payload requirements for defense-in-depth
+      dispatchMessage(message, ctx);
     } catch (error) {
       const err = error as Error;
       logger.error(`${prefix} ${LOG_PREFIX} Error handling IPC message: ${err.message}`);
