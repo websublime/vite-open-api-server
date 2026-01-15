@@ -1,0 +1,738 @@
+/**
+ * DevTools Browser Client - Vue Plugin
+ *
+ * ## What
+ * This module provides a Vue plugin for automatic Vue DevTools integration
+ * with the OpenAPI mock server. Following the Pinia pattern, users install
+ * the plugin via `app.use()` and DevTools registration happens automatically.
+ *
+ * ## How
+ * The plugin is created with `createOpenApiDevTools()` and installed via Vue's
+ * plugin system. During installation, it:
+ * 1. Waits for the mock server to be ready (with retry logic)
+ * 2. Fetches the endpoint registry
+ * 3. Registers the custom DevTools inspector
+ *
+ * ## Usage
+ * ```ts
+ * import { createApp } from 'vue'
+ * import { createOpenApiDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+ * import App from './App.vue'
+ *
+ * const app = createApp(App)
+ *
+ * if (import.meta.env.DEV) {
+ *   app.use(createOpenApiDevTools({ proxyPath: '/api/v3' }))
+ * }
+ *
+ * app.mount('#app')
+ * ```
+ *
+ * @module
+ */
+
+import { setupDevToolsPlugin } from '@vue/devtools-api';
+import type { App, Plugin } from 'vue';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const DEVTOOLS_PLUGIN_ID = 'vite-openapi-server';
+const DEVTOOLS_PLUGIN_LABEL = 'OpenAPI Server';
+const DEVTOOLS_INSPECTOR_ID = 'openapi-endpoints';
+const DEVTOOLS_INSPECTOR_LABEL = 'Endpoints';
+const GLOBAL_STATE_KEY = '__VITE_OPENAPI_SERVER__';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface EndpointData {
+  operationId: string;
+  method: string;
+  path: string;
+  summary?: string;
+  description?: string;
+  tags?: string[];
+  parameters?: unknown[];
+  requestBody?: unknown;
+  responses?: Record<string, unknown>;
+  security?: unknown[];
+  hasHandler?: boolean;
+  hasSeed?: boolean;
+}
+
+interface RegistryData {
+  endpoints: Map<string, EndpointData>;
+  schemas: Map<string, unknown>;
+  securitySchemes: Map<string, unknown>;
+}
+
+interface GlobalState {
+  registry: RegistryData | null;
+  handlers: Map<string, boolean>;
+  requestLog: unknown[];
+  maxLogEntries: number;
+  version: string;
+}
+
+/**
+ * Options for creating the OpenAPI DevTools plugin
+ */
+export interface OpenApiDevToolsOptions {
+  /**
+   * Base path for the mock server API proxy (e.g., '/api/v3')
+   * This is used to fetch the registry from the mock server.
+   * @default '/api'
+   */
+  proxyPath?: string;
+
+  /**
+   * Enable verbose logging to console
+   * @default false
+   */
+  verbose?: boolean;
+
+  /**
+   * Maximum number of retry attempts to fetch the registry
+   * @default 10
+   */
+  maxRetries?: number;
+
+  /**
+   * Delay between retry attempts in milliseconds
+   * @default 500
+   */
+  retryDelay?: number;
+}
+
+// Extend window type
+declare global {
+  interface Window {
+    [GLOBAL_STATE_KEY]?: GlobalState;
+  }
+}
+
+// ============================================================================
+// Badge Colors
+// ============================================================================
+
+const BADGE_COLORS = {
+  HANDLER: {
+    text: 0xffffff,
+    background: 0x10b981, // Green
+  },
+  SEED: {
+    text: 0xffffff,
+    background: 0x8b5cf6, // Purple
+  },
+  DEFAULT: {
+    text: 0x6b7280,
+    background: 0xf3f4f6,
+  },
+  GET: {
+    text: 0xffffff,
+    background: 0x3b82f6, // Blue
+  },
+  POST: {
+    text: 0xffffff,
+    background: 0x22c55e, // Green
+  },
+  PUT: {
+    text: 0xffffff,
+    background: 0xf59e0b, // Orange
+  },
+  PATCH: {
+    text: 0xffffff,
+    background: 0xeab308, // Yellow
+  },
+  DELETE: {
+    text: 0xffffff,
+    background: 0xef4444, // Red
+  },
+} as const;
+
+// ============================================================================
+// Utilities
+// ============================================================================
+
+function getMethodColor(method: string): { text: number; background: number } {
+  const upperMethod = method.toUpperCase() as keyof typeof BADGE_COLORS;
+  return BADGE_COLORS[upperMethod] || BADGE_COLORS.DEFAULT;
+}
+
+function log(message: string, verbose: boolean): void {
+  if (verbose) {
+    // biome-ignore lint/suspicious/noConsole: Intentional debug logging
+    console.log('[OpenAPI DevTools]', message);
+  }
+}
+
+function warn(message: string): void {
+  // biome-ignore lint/suspicious/noConsole: Intentional warning
+  console.warn('[OpenAPI DevTools]', message);
+}
+
+/**
+ * Sleep for a given number of milliseconds
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ============================================================================
+// Global State Management
+// ============================================================================
+
+function getGlobalState(): GlobalState {
+  if (typeof window === 'undefined') {
+    return {
+      registry: null,
+      handlers: new Map(),
+      requestLog: [],
+      maxLogEntries: 100,
+      version: '0.0.0',
+    };
+  }
+
+  if (!window[GLOBAL_STATE_KEY]) {
+    window[GLOBAL_STATE_KEY] = {
+      registry: null,
+      handlers: new Map(),
+      requestLog: [],
+      maxLogEntries: 100,
+      version: '0.0.0',
+    };
+  }
+  return window[GLOBAL_STATE_KEY];
+}
+
+// ============================================================================
+// Registry Fetching with Retry
+// ============================================================================
+
+interface RegistryResponse {
+  endpoints?: Array<EndpointData>;
+  schemas?: Array<{ name: string; schema: unknown }>;
+  securitySchemes?: Array<{ name: string; [key: string]: unknown }>;
+}
+
+async function fetchRegistryWithRetry(
+  proxyPath: string,
+  verbose: boolean,
+  maxRetries: number,
+  retryDelay: number,
+): Promise<RegistryData | null> {
+  const registryUrl = `${proxyPath}/_openapiserver/registry`;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    log(`Fetching registry (attempt ${attempt}/${maxRetries}) from: ${registryUrl}`, verbose);
+
+    try {
+      const response = await fetch(registryUrl);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = (await response.json()) as RegistryResponse;
+      log('Registry fetched successfully', verbose);
+
+      // Convert endpoints array to Map
+      const endpoints = new Map<string, EndpointData>();
+      if (data.endpoints && Array.isArray(data.endpoints)) {
+        for (const ep of data.endpoints) {
+          endpoints.set(ep.operationId, ep);
+        }
+      }
+
+      // Convert schemas array to Map
+      const schemas = new Map<string, unknown>();
+      if (data.schemas && Array.isArray(data.schemas)) {
+        for (const schema of data.schemas) {
+          schemas.set(schema.name, schema);
+        }
+      }
+
+      // Convert security schemes to Map
+      const securitySchemes = new Map<string, unknown>();
+      if (data.securitySchemes && Array.isArray(data.securitySchemes)) {
+        for (const scheme of data.securitySchemes) {
+          securitySchemes.set(scheme.name, scheme);
+        }
+      }
+
+      return { endpoints, schemas, securitySchemes };
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries;
+      const errorMsg = error instanceof Error ? error.message : String(error);
+
+      if (isLastAttempt) {
+        warn(`Failed to fetch registry after ${maxRetries} attempts: ${errorMsg}`);
+        return null;
+      }
+
+      log(`Fetch failed (${errorMsg}), retrying in ${retryDelay}ms...`, verbose);
+      await sleep(retryDelay);
+    }
+  }
+
+  return null;
+}
+
+// ============================================================================
+// Inspector Tree Building
+// ============================================================================
+
+interface TreeNode {
+  id: string;
+  label: string;
+  children?: TreeNode[];
+  tags?: Array<{
+    label: string;
+    textColor: number;
+    backgroundColor: number;
+    tooltip?: string;
+  }>;
+}
+
+function buildInspectorTree(registry: RegistryData, filter?: string): TreeNode[] {
+  const endpoints = Array.from(registry.endpoints.values());
+
+  // Filter endpoints if search is active
+  const filteredEndpoints = filter
+    ? endpoints.filter(
+        (ep) =>
+          ep.path.toLowerCase().includes(filter.toLowerCase()) ||
+          ep.operationId.toLowerCase().includes(filter.toLowerCase()) ||
+          ep.method.toLowerCase().includes(filter.toLowerCase()),
+      )
+    : endpoints;
+
+  // Group by tag
+  const groupedByTag = new Map<string, EndpointData[]>();
+  for (const endpoint of filteredEndpoints) {
+    const tag = endpoint.tags?.[0] || 'default';
+    const existing = groupedByTag.get(tag) || [];
+    existing.push(endpoint);
+    groupedByTag.set(tag, existing);
+  }
+
+  // Build tree nodes
+  const tagNodes: TreeNode[] = Array.from(groupedByTag.entries()).map(([tag, tagEndpoints]) => ({
+    id: `tag:${tag}`,
+    label: `${tag} (${tagEndpoints.length})`,
+    children: tagEndpoints.map((ep) => {
+      const methodColor = getMethodColor(ep.method);
+      const tags: TreeNode['tags'] = [
+        {
+          label: ep.method.toUpperCase(),
+          textColor: methodColor.text,
+          backgroundColor: methodColor.background,
+        },
+      ];
+
+      if (ep.hasHandler) {
+        tags.push({
+          label: 'Handler',
+          textColor: BADGE_COLORS.HANDLER.text,
+          backgroundColor: BADGE_COLORS.HANDLER.background,
+          tooltip: 'Has custom handler',
+        });
+      }
+
+      if (ep.hasSeed) {
+        tags.push({
+          label: 'Seed',
+          textColor: BADGE_COLORS.SEED.text,
+          backgroundColor: BADGE_COLORS.SEED.background,
+          tooltip: 'Has seed data',
+        });
+      }
+
+      return {
+        id: `endpoint:${ep.operationId}`,
+        label: ep.path,
+        tags,
+      };
+    }),
+    tags: [
+      {
+        label: `${tagEndpoints.length}`,
+        textColor: BADGE_COLORS.DEFAULT.text,
+        backgroundColor: BADGE_COLORS.DEFAULT.background,
+      },
+    ],
+  }));
+
+  return [
+    {
+      id: 'root',
+      label: `Endpoints (${filteredEndpoints.length})`,
+      children: tagNodes,
+    },
+  ];
+}
+
+// ============================================================================
+// Inspector State Building
+// ============================================================================
+
+interface StateItem {
+  key: string;
+  value: unknown;
+}
+
+interface InspectorState {
+  [category: string]: StateItem[];
+}
+
+function buildInspectorState(registry: RegistryData, nodeId: string): InspectorState {
+  // Root node
+  if (nodeId === 'root') {
+    return {
+      'Registry Info': [
+        { key: 'Total Endpoints', value: registry.endpoints.size },
+        { key: 'Total Schemas', value: registry.schemas.size },
+        { key: 'Security Schemes', value: registry.securitySchemes.size },
+      ],
+    };
+  }
+
+  // Tag node
+  if (nodeId.startsWith('tag:')) {
+    const tag = nodeId.replace('tag:', '');
+    const tagEndpoints = Array.from(registry.endpoints.values()).filter(
+      (ep) => (ep.tags?.[0] || 'default') === tag,
+    );
+
+    return {
+      'Tag Info': [
+        { key: 'Tag Name', value: tag },
+        { key: 'Endpoints', value: tagEndpoints.length },
+        {
+          key: 'Methods',
+          value: [...new Set(tagEndpoints.map((ep) => ep.method.toUpperCase()))].join(', '),
+        },
+      ],
+      Endpoints: tagEndpoints.map((ep) => ({
+        key: ep.operationId,
+        value: `${ep.method.toUpperCase()} ${ep.path}`,
+      })),
+    };
+  }
+
+  // Endpoint node
+  if (nodeId.startsWith('endpoint:')) {
+    const operationId = nodeId.replace('endpoint:', '');
+    const endpoint = registry.endpoints.get(operationId);
+
+    if (!endpoint) {
+      return {
+        Error: [{ key: 'Message', value: 'Endpoint not found' }],
+      };
+    }
+
+    return buildEndpointState(endpoint);
+  }
+
+  return {
+    Info: [{ key: 'Node', value: nodeId }],
+  };
+}
+
+function buildEndpointState(endpoint: EndpointData): InspectorState {
+  const result: InspectorState = {
+    'Endpoint Info': [
+      { key: 'Operation ID', value: endpoint.operationId },
+      { key: 'Method', value: endpoint.method.toUpperCase() },
+      { key: 'Path', value: endpoint.path },
+      { key: 'Summary', value: endpoint.summary || '(none)' },
+      { key: 'Description', value: endpoint.description || '(none)' },
+      { key: 'Tags', value: endpoint.tags?.join(', ') || '(none)' },
+    ],
+  };
+
+  // Parameters
+  if (endpoint.parameters && endpoint.parameters.length > 0) {
+    result.Parameters = endpoint.parameters.map((param: unknown) => {
+      const p = param as { name?: string; in?: string; required?: boolean; schema?: unknown };
+      return {
+        key: `${p.name} (${p.in})`,
+        value: { required: p.required ?? false, schema: p.schema },
+      };
+    });
+  }
+
+  // Request body
+  if (endpoint.requestBody) {
+    const body = endpoint.requestBody as { content?: Record<string, { schema?: unknown }> };
+    const content = body.content || {};
+    const contentTypes = Object.keys(content);
+
+    result['Request Body'] = [{ key: 'Content Types', value: contentTypes.join(', ') || '(none)' }];
+
+    // Add schema for JSON content
+    const jsonContent = content['application/json'];
+    if (jsonContent?.schema) {
+      result['Request Body'].push({ key: 'Schema', value: jsonContent.schema });
+    }
+  }
+
+  // Responses
+  if (endpoint.responses) {
+    result.Responses = Object.entries(endpoint.responses).map(([status, response]) => {
+      const r = response as { description?: string; content?: unknown };
+      return {
+        key: status,
+        value: { description: r.description, content: r.content },
+      };
+    });
+  }
+
+  // Security
+  if (endpoint.security && endpoint.security.length > 0) {
+    result.Security = endpoint.security.map((sec: unknown, index: number) => ({
+      key: `Requirement ${index + 1}`,
+      value: sec,
+    }));
+  }
+
+  // Handler/Seed status
+  result.Status = [
+    { key: 'Has Handler', value: endpoint.hasHandler ?? false },
+    { key: 'Has Seed', value: endpoint.hasSeed ?? false },
+  ];
+
+  return result;
+}
+
+// ============================================================================
+// DevTools Registration
+// ============================================================================
+
+// Store API reference for updating tree after background fetch
+// Using a simple interface to avoid import issues with @vue/devtools-api types
+interface DevToolsApiRef {
+  sendInspectorTree(inspectorId: string): void;
+  sendInspectorState(inspectorId: string): void;
+}
+let devToolsApi: DevToolsApiRef | null = null;
+
+function registerDevToolsInspector(app: App, proxyPath: string, verbose: boolean): void {
+  // Register with Vue DevTools immediately (before fetch)
+  setupDevToolsPlugin(
+    {
+      id: DEVTOOLS_PLUGIN_ID,
+      label: DEVTOOLS_PLUGIN_LABEL,
+      app,
+      packageName: '@websublime/vite-plugin-open-api-server',
+      homepage: 'https://github.com/websublime/vite-open-api-server',
+      logo: 'https://raw.githubusercontent.com/websublime/vite-open-api-server/main/docs/logo.svg',
+      enableEarlyProxy: true,
+    },
+    (api) => {
+      // Store API reference for later updates
+      devToolsApi = api;
+
+      log('DevTools plugin callback invoked', verbose);
+
+      // Add custom inspector for endpoints
+      api.addInspector({
+        id: DEVTOOLS_INSPECTOR_ID,
+        label: DEVTOOLS_INSPECTOR_LABEL,
+        icon: 'api',
+        treeFilterPlaceholder: 'Search endpoints...',
+        noSelectionText: 'Select an endpoint to view details',
+        actions: [
+          {
+            icon: 'refresh',
+            tooltip: 'Refresh endpoint registry',
+            action: () => {
+              log('Refreshing registry...', verbose);
+              fetchRegistryWithRetry(proxyPath, verbose, 5, 1000).then((newRegistry) => {
+                if (newRegistry) {
+                  updateRegistryState(newRegistry);
+                  api.sendInspectorTree(DEVTOOLS_INSPECTOR_ID);
+                  api.sendInspectorState(DEVTOOLS_INSPECTOR_ID);
+                  log('Registry refreshed', verbose);
+                }
+              });
+            },
+          },
+        ],
+      });
+
+      // Handle tree requests
+      api.on.getInspectorTree((payload) => {
+        if (payload.inspectorId !== DEVTOOLS_INSPECTOR_ID) {
+          return;
+        }
+
+        const currentState = getGlobalState();
+        if (!currentState.registry) {
+          payload.rootNodes = [
+            {
+              id: 'no-registry',
+              label: 'Loading registry...',
+              tags: [
+                {
+                  label: 'Connecting to mock server...',
+                  textColor: 0x000000,
+                  backgroundColor: 0xfef3c7,
+                },
+              ],
+            },
+          ];
+          return;
+        }
+
+        payload.rootNodes = buildInspectorTree(currentState.registry, payload.filter);
+      });
+
+      // Handle state requests
+      api.on.getInspectorState((payload) => {
+        if (payload.inspectorId !== DEVTOOLS_INSPECTOR_ID) {
+          return;
+        }
+
+        const currentState = getGlobalState();
+        if (!currentState.registry) {
+          payload.state = {
+            Info: [{ key: 'Status', value: 'Connecting to mock server...' }],
+          };
+          return;
+        }
+
+        payload.state = buildInspectorState(currentState.registry, payload.nodeId);
+      });
+
+      log('DevTools inspector registered successfully', verbose);
+    },
+  );
+}
+
+/**
+ * Updates the global state with registry data
+ */
+function updateRegistryState(registry: RegistryData): void {
+  const state = getGlobalState();
+  state.registry = registry;
+  for (const [opId, endpoint] of registry.endpoints) {
+    state.handlers.set(opId, endpoint.hasHandler ?? false);
+  }
+}
+
+/**
+ * Fetches registry in background and updates DevTools when ready
+ */
+function fetchRegistryInBackground(
+  proxyPath: string,
+  verbose: boolean,
+  maxRetries: number,
+  retryDelay: number,
+  initialDelay: number,
+): void {
+  // Wait for initial delay to give mock server time to start
+  setTimeout(() => {
+    log('Starting background registry fetch...', verbose);
+
+    fetchRegistryWithRetry(proxyPath, verbose, maxRetries, retryDelay).then((registry) => {
+      if (registry) {
+        log(`Registry loaded with ${registry.endpoints.size} endpoints`, verbose);
+        updateRegistryState(registry);
+
+        // Update DevTools tree if API is available
+        if (devToolsApi) {
+          devToolsApi.sendInspectorTree(DEVTOOLS_INSPECTOR_ID);
+          devToolsApi.sendInspectorState(DEVTOOLS_INSPECTOR_ID);
+        }
+      } else {
+        log('Could not fetch registry, use Refresh button when server is ready', verbose);
+      }
+    });
+  }, initialDelay);
+}
+
+// ============================================================================
+// Vue Plugin Factory
+// ============================================================================
+
+/**
+ * Creates a Vue plugin for OpenAPI DevTools integration.
+ *
+ * This plugin automatically registers a custom Vue DevTools inspector that
+ * displays all API endpoints from your OpenAPI spec, along with their
+ * handlers and seed data status.
+ *
+ * The plugin registers the inspector immediately for instant visibility,
+ * then fetches the registry in the background with retry logic, making it
+ * resilient to startup timing issues when the mock server is still starting.
+ *
+ * @example
+ * ```ts
+ * import { createApp } from 'vue'
+ * import { createOpenApiDevTools } from '@websublime/vite-plugin-open-api-server/devtools'
+ * import App from './App.vue'
+ *
+ * const app = createApp(App)
+ *
+ * // Install the DevTools plugin (only in development)
+ * if (import.meta.env.DEV) {
+ *   app.use(createOpenApiDevTools({ proxyPath: '/api/v3' }))
+ * }
+ *
+ * app.mount('#app')
+ * ```
+ *
+ * @param options - Configuration options for the DevTools plugin
+ * @returns A Vue plugin that can be installed via `app.use()`
+ */
+export function createOpenApiDevTools(
+  options: OpenApiDevToolsOptions = {},
+): Plugin & { install: (app: App) => void } {
+  const { proxyPath = '/api', verbose = false, maxRetries = 15, retryDelay = 1000 } = options;
+
+  return {
+    install(app: App) {
+      // Only run in development mode
+      if (typeof import.meta !== 'undefined' && import.meta.env && !import.meta.env.DEV) {
+        return;
+      }
+
+      // Only run in browser environment
+      if (typeof window === 'undefined') {
+        return;
+      }
+
+      log('Installing OpenAPI DevTools plugin...', verbose);
+
+      // Register inspector immediately (shows "Loading..." state)
+      registerDevToolsInspector(app, proxyPath, verbose);
+      log('OpenAPI DevTools plugin installed', verbose);
+
+      // Fetch registry in background after a delay to give mock server time to start
+      // Initial delay of 2 seconds, then retry every 1 second up to 15 times
+      fetchRegistryInBackground(proxyPath, verbose, maxRetries, retryDelay, 2000);
+    },
+  };
+}
+
+// ============================================================================
+// Legacy API (for backwards compatibility)
+// ============================================================================
+
+/**
+ * @deprecated Use `createOpenApiDevTools()` instead.
+ * This function is kept for backwards compatibility but will be removed in a future version.
+ */
+export function registerOpenApiDevTools(app: App, options: OpenApiDevToolsOptions = {}): void {
+  const plugin = createOpenApiDevTools(options);
+  plugin.install(app);
+}
+
+// Re-export constants for external use
+export { DEVTOOLS_PLUGIN_ID, DEVTOOLS_INSPECTOR_ID, GLOBAL_STATE_KEY };
+
+// Export types
+export type { GlobalState, RegistryData, EndpointData };
