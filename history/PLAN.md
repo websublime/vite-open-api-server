@@ -7465,6 +7465,230 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
+## 9.4 Phase 6: Advanced DevTools Simulation
+
+### 9.4.1 Overview
+
+**Objective:** Implement advanced DevTools features for response simulation and testing, as defined in PRS FR-015 but deferred from Phase 5.
+
+**Dependencies:** Phase 5 (DevTools Plugin and Global State)
+
+**Deliverables:**
+- Interactive simulation panel UI in Vue DevTools
+- HTTP status code simulation via UI controls
+- Network condition simulation (latency, timeout, connection drops)
+- Error scenario simulation (server errors, rate limiting)
+- Edge case simulation (malformed responses, empty content)
+- Query parameter generation for simulation URLs
+- Simulation presets (save/load configurations)
+- Request timeline logging in DevTools
+- Copy URL to clipboard with simulation params
+
+---
+
+### 9.4.2 Task Breakdown
+
+#### P6-01: Implement Request Timeline
+
+**Description:** Add a timeline layer to Vue DevTools that logs all API requests made through the mock server. Shows request method, path, status, duration, and whether a custom handler was used.
+
+**Context:**
+- Uses `api.addTimelineLayer()` from @vue/devtools-api
+- Subscribes to request events from the mock server
+- Shows real-time request flow with timing information
+- Integrates with existing requestLog from GlobalState
+
+**Estimate:** M (2 days)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-01.1 | Create timeline layer | Call `api.addTimelineLayer({ id: 'openapi-requests', label: 'API Requests', color: 0x3b82f6 })` |
+| P6-01.2 | Hook into fetch/XHR | Intercept requests to proxyPath and log to timeline |
+| P6-01.3 | Format timeline events | Show method badge, path, status code, duration |
+| P6-01.4 | Add event details | Expand event to show headers, body, response preview |
+| P6-01.5 | Connect to GlobalState | Sync timeline with `requestLog` array |
+
+**Acceptance Criteria:**
+- [ ] Timeline layer appears in Vue DevTools
+- [ ] API requests logged in real-time
+- [ ] Each event shows method, path, status, duration
+- [ ] Click event to see full request/response details
+- [ ] Timeline synced with GlobalState.requestLog
+
+---
+
+#### P6-02: Implement Simulation Panel UI
+
+**Description:** Create an interactive panel in the DevTools inspector that allows configuring simulation parameters for the selected endpoint.
+
+**Context:**
+- Panel appears when an endpoint is selected in the inspector
+- Provides dropdowns and inputs for simulation options
+- Generates query parameters based on selections
+- Shows live URL preview with simulation params
+
+**Estimate:** L (3 days)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-02.1 | Design panel layout | Create state structure for simulation options |
+| P6-02.2 | Add status code selector | Dropdown with available status codes from OpenAPI responses |
+| P6-02.3 | Add delay input | Number input for response delay in milliseconds |
+| P6-02.4 | Add error type selector | Dropdown for error scenarios (timeout, network, server, etc.) |
+| P6-02.5 | Add edge case selector | Dropdown for response types (normal, empty, malformed, etc.) |
+| P6-02.6 | Show URL preview | Live-updating URL with query parameters |
+| P6-02.7 | Add Copy URL button | Copy generated URL to clipboard |
+
+**Acceptance Criteria:**
+- [ ] Simulation panel shows for selected endpoint
+- [ ] All simulation options configurable via UI
+- [ ] URL preview updates in real-time
+- [ ] Copy button copies URL to clipboard
+- [ ] Reset button clears all options
+
+---
+
+#### P6-03: Implement HTTP Status Simulation
+
+**Description:** Allow simulating different HTTP status codes for responses. The mock server intercepts `?simulateStatus=XXX` and returns that status code.
+
+**Context:**
+- Status codes from OpenAPI spec responses + common error codes
+- Mock server middleware checks for simulateStatus param
+- Returns appropriate error body for each status
+
+**Estimate:** M (2 days)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-03.1 | Add middleware to mock server | Check for `simulateStatus` query param |
+| P6-03.2 | Generate error responses | Create appropriate body for each status code |
+| P6-03.3 | Extract available statuses | Read from OpenAPI operation responses |
+| P6-03.4 | Update DevTools UI | Populate dropdown with available statuses |
+| P6-03.5 | Add status to URL generator | Include simulateStatus in generated URL |
+
+**Acceptance Criteria:**
+- [ ] Mock server responds with simulated status
+- [ ] Error body matches status code semantics
+- [ ] DevTools shows available status codes per endpoint
+- [ ] URL generator includes simulateStatus param
+
+---
+
+#### P6-04: Implement Network Condition Simulation
+
+**Description:** Simulate network conditions like latency, timeouts, and connection drops via query parameters.
+
+**Context:**
+- `?simulateDelay=2000` adds response delay
+- `?simulateTimeout=true` never responds (client timeout)
+- `?simulateConnection=drop` closes connection mid-response
+
+**Estimate:** M (2 days)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-04.1 | Implement delay simulation | Add setTimeout before response |
+| P6-04.2 | Implement timeout simulation | Never send response, let client timeout |
+| P6-04.3 | Implement connection drop | Close socket mid-response |
+| P6-04.4 | Add presets in UI | Quick buttons for common scenarios (3G, 4G, Slow) |
+| P6-04.5 | Update URL generator | Include network simulation params |
+
+**Acceptance Criteria:**
+- [ ] simulateDelay works with millisecond precision
+- [ ] simulateTimeout causes client-side timeout
+- [ ] simulateConnection=drop breaks response
+- [ ] Presets apply correct values
+- [ ] URL generator includes all network params
+
+---
+
+#### P6-05: Implement Simulation Presets
+
+**Description:** Allow saving and loading simulation configurations as named presets for quick reuse.
+
+**Context:**
+- Presets stored in localStorage
+- Common presets pre-configured (Slow Network, Server Error, etc.)
+- UI to save current config as preset
+- UI to load/delete presets
+
+**Estimate:** S (1 day)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-05.1 | Define preset structure | TypeScript interface for preset config |
+| P6-05.2 | Add default presets | Pre-configured common scenarios |
+| P6-05.3 | Implement save preset | Save current simulation config to localStorage |
+| P6-05.4 | Implement load preset | Apply preset config to simulation panel |
+| P6-05.5 | Implement delete preset | Remove custom preset from localStorage |
+| P6-05.6 | Add preset UI | Dropdown/list of available presets |
+
+**Acceptance Criteria:**
+- [ ] Default presets available out of the box
+- [ ] Save button creates new preset
+- [ ] Load button applies preset values
+- [ ] Delete button removes custom presets
+- [ ] Presets persist across sessions (localStorage)
+
+---
+
+#### P6-06: Implement URL Generation with Copy
+
+**Description:** Generate complete URLs with all simulation parameters and provide easy copy-to-clipboard functionality.
+
+**Context:**
+- Combines base URL, path, and simulation query params
+- Shows full URL preview in DevTools
+- Copy button with visual feedback
+- Optional: "Open in Browser" button
+
+**Estimate:** S (1 day)
+
+**Subtasks:**
+
+| ID | Subtask | Description |
+|----|---------|-------------|
+| P6-06.1 | Build URL generator function | Combine proxyPath, endpoint path, simulation params |
+| P6-06.2 | Create URL preview component | Show formatted, scrollable URL |
+| P6-06.3 | Implement copy to clipboard | Use Clipboard API with fallback |
+| P6-06.4 | Add copy feedback | Visual indicator when URL copied |
+| P6-06.5 | Add "Open in Browser" | Optional button to open URL in new tab |
+
+**Acceptance Criteria:**
+- [ ] URL correctly combines all simulation params
+- [ ] URL preview shows full generated URL
+- [ ] Copy button copies to clipboard
+- [ ] Visual feedback confirms copy
+- [ ] URL works when pasted in browser
+
+---
+
+### 9.4.3 Phase 6 Summary
+
+| Task ID | Task Name | Estimate | Dependencies |
+|---------|-----------|----------|--------------|
+| P6-01 | Implement Request Timeline | M (2d) | P5-04 |
+| P6-02 | Implement Simulation Panel UI | L (3d) | P5-03 |
+| P6-03 | Implement HTTP Status Simulation | M (2d) | P6-02 |
+| P6-04 | Implement Network Condition Simulation | M (2d) | P6-02 |
+| P6-05 | Implement Simulation Presets | S (1d) | P6-02 |
+| P6-06 | Implement URL Generation with Copy | S (1d) | P6-02 |
+
+**Total Estimate: 11 story points (~8 days)**
+
+---
+
 ## 10. Dependency Graph
 
 ```
@@ -7526,6 +7750,16 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 │       │                                                                      │
 │       └── P5-03 ──── P5-04                                                  │
 │                                                                              │
+│  PHASE 6: Advanced DevTools Simulation                                       │
+│  ─────────────────────────────────────                                       │
+│                                                                              │
+│  P5-04 ──── P6-01 (Request Timeline)                                        │
+│                                                                              │
+│  P5-03 ──── P6-02 ──┬── P6-03 (HTTP Status)                                 │
+│                     ├── P6-04 (Network Conditions)                          │
+│                     ├── P6-05 (Presets)                                     │
+│                     └── P6-06 (URL Generation)                              │
+│                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -7543,7 +7777,8 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 | 3 | Request Processing | 6 | 4 | FR-007, FR-008, FR-009, FR-010 |
 | 4 | Process Management | 6 | 4 | FR-011, FR-012 |
 | 5 | Developer Experience | 11 | 8 | FR-014, FR-015 |
-| **TOTAL** | | **63.5** | **36** | **15 FRs** |
+| 6 | Advanced DevTools Simulation | 11 | 8 | FR-015 (advanced) |
+| **TOTAL** | | **74.5** | **44** | **15 FRs** |
 
 ### 11.2 By Task Size
 
