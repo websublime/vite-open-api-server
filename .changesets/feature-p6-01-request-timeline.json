@@ -7,7 +7,15 @@
   "packages": [
     "@websublime/vite-plugin-open-api-server"
   ],
-  "changes": [],
+  "changes": [
+    "7e08de4f2b0445792fd901413728030cdb58256b",
+    "a29fb3c6d66d75ddc41f496c1d7b2d5551006338",
+    "408aed65c5b0aecf9104e5d54997a51171278dda",
+    "23ac10591aed8201fbe9cdffe47f5b3f2b2080fe",
+    "c6be6f0ca732b4b23404ae197f56b7e6f47bdfb1",
+    "60a07ef07816d96209d2171a1a1c6b3b4248b3f7",
+    "39caba058e6f19ec288641074128adc069e9b5cd"
+  ],
   "created_at": "2026-01-15T14:35:12.732154Z",
-  "updated_at": "2026-01-15T14:35:12.733204Z"
+  "updated_at": "2026-01-15T16:21:43.524847Z"
 }
