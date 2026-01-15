@@ -457,3 +457,64 @@ export function isValidIpcMessage(message: unknown): message is { type: string }
     typeof (message as Record<string, unknown>).type === 'string'
   );
 }
+
+/**
+ * Validates that a message is a valid ReadyMessage with required fields.
+ *
+ * Checks for:
+ * - type === 'ready'
+ * - port is a number
+ * - endpointCount is a number
+ *
+ * @param message - The message to validate (must have passed isValidIpcMessage first)
+ * @returns True if the message is a valid ReadyMessage
+ */
+export function isValidReadyMessage(message: { type: string }): message is ReadyMessage {
+  if (message.type !== 'ready') {
+    return false;
+  }
+  const msg = message as Record<string, unknown>;
+  return typeof msg.port === 'number' && typeof msg.endpointCount === 'number';
+}
+
+/**
+ * Validates that a message is a valid ErrorMessage with required fields.
+ *
+ * Checks for:
+ * - type === 'error'
+ * - message is a string
+ *
+ * @param message - The message to validate (must have passed isValidIpcMessage first)
+ * @returns True if the message is a valid ErrorMessage
+ */
+export function isValidErrorMessage(message: { type: string }): message is ErrorMessage {
+  if (message.type !== 'error') {
+    return false;
+  }
+  const msg = message as Record<string, unknown>;
+  return typeof msg.message === 'string';
+}
+
+/**
+ * Validates that a message is a valid LogMessage with required fields.
+ *
+ * Checks for:
+ * - type === 'log'
+ * - level is one of 'info', 'warn', 'error', 'debug'
+ * - message is a string
+ *
+ * @param message - The message to validate (must have passed isValidIpcMessage first)
+ * @returns True if the message is a valid LogMessage
+ */
+export function isValidLogMessage(message: { type: string }): message is LogMessage {
+  if (message.type !== 'log') {
+    return false;
+  }
+  const msg = message as Record<string, unknown>;
+  const validLevels = ['info', 'warn', 'error', 'debug'];
+  return (
+    typeof msg.message === 'string' &&
+    typeof msg.level === 'string' &&
+    validLevels.includes(msg.level)
+  );
+}

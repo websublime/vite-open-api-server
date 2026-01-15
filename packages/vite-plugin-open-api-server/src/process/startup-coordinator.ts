@@ -23,9 +23,9 @@
 
 import type { ChildProcess } from 'node:child_process';
 import {
-  type ErrorMessage,
+  isValidErrorMessage,
   isValidIpcMessage,
-  type OpenApiServerMessage,
+  isValidReadyMessage,
   type ReadyMessage,
 } from '../types/ipc-messages.js';
 
@@ -76,6 +76,39 @@ export class StartupError extends Error {
     this.childStack = stack;
     this.code = code;
   }
+}
+
+/**
+ * Processes a ready message, validating its structure before resolving.
+ * @internal
+ */
+function processReadyMessage(
+  message: { type: string },
+  onSuccess: (msg: ReadyMessage) => void,
+  onError: (err: StartupError) => void,
+): void {
+  if (!isValidReadyMessage(message)) {
+    onError(new StartupError('Received malformed ready message (missing port or endpointCount)'));
+    return;
+  }
+  onSuccess(message);
+}
+
+/**
+ * Processes an error message, validating its structure before rejecting.
+ * @internal
+ */
+function processErrorMessage(
+  message: { type: string },
+  onError: (err: StartupError) => void,
+): void {
+  if (!isValidErrorMessage(message)) {
+    onError(new StartupError('Received malformed error message from child process'));
+    return;
+  }
+  // Cast is safe after validation
+  const validMessage = message as { type: string; message: string; stack?: string; code?: string };
+  onError(new StartupError(validMessage.message, validMessage.stack, validMessage.code));
 }
 
 /**
@@ -146,19 +179,21 @@ export function waitForReady(
 
     /**
      * Handles IPC messages from the child process.
+     * Validates message payloads before processing for defense-in-depth.
      */
     const messageHandler = (message: unknown): void => {
       if (!isValidIpcMessage(message)) {
         return;
       }
 
-      const ipcMessage = message as OpenApiServerMessage;
-
-      if (ipcMessage.type === 'ready') {
-        settle(() => resolve(ipcMessage as ReadyMessage));
-      } else if (ipcMessage.type === 'error') {
-        const errorMsg = ipcMessage as ErrorMessage;
-        settle(() => reject(new StartupError(errorMsg.message, errorMsg.stack, errorMsg.code)));
+      if (message.type === 'ready') {
+        processReadyMessage(
+          message,
+          (msg) => settle(() => resolve(msg)),
+          (err) => settle(() => reject(err)),
+        );
+      } else if (message.type === 'error') {
+        processErrorMessage(message, (err) => settle(() => reject(err)));
       }
       // Ignore other message types during startup
     };
