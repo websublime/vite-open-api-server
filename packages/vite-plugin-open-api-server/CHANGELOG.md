@@ -1,3 +1,24 @@
+## [0.15.0] - 2026-01-15
+
+### Features
+
+- create file-watcher module with chokidar integration (4e3d25a)
+- integrate file watcher into Vite plugin (e693671)
+
+
+### Bug Fixes
+
+- address code review feedback (d339228)
+
+
+### Other Changes
+
+- sync changeset for feature/p5-01-file-watcher (a039f03)
+- add changeset for file watcher feature (65a02ea)
+- sync changeset for feature/p5-01-file-watcher (f8e82fe)
+
+
+
 ## [0.14.0] - 2026-01-15
 
 ### Features

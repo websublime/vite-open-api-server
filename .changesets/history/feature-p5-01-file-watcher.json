@@ -1,0 +1,28 @@
+{
+  "changeset": {
+    "branch": "feature/p5-01-file-watcher",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "654a4e348dd9149ef68255ccbbef4f4513359c09",
+      "3b515292c354037583fc90a2f94814081f6d5734",
+      "d398e93cbb79feb6f9f2716422283c5a96293a8a",
+      "86daad9c52323397eb8cdbb5118ec2d7cdf0b74d"
+    ],
+    "created_at": "2026-01-15T10:09:52.311171Z",
+    "updated_at": "2026-01-15T10:34:28.019228Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-15T10:35:53.844798295Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "a039f032009fbccfccdd5593b04666b11d9d16fe",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.15.0"
+    }
+  }
+}
