@@ -24,14 +24,15 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Logger } from 'vite';
 import { GREEN, RED, RESET, YELLOW } from '../logging/index.js';
-import type {
-  ErrorMessage,
-  LogMessage,
-  OpenApiServerMessage,
-  ReadyMessage,
-  ReloadedMessage,
-  ResponseMessage,
-  ShutdownMessage,
+import {
+  type ErrorMessage,
+  isValidIpcMessage,
+  type LogMessage,
+  type OpenApiServerMessage,
+  type ReadyMessage,
+  type ReloadedMessage,
+  type ResponseMessage,
+  type ShutdownMessage,
 } from '../types/ipc-messages.js';
 
 /**
@@ -111,19 +112,6 @@ function colorizeLogMessage(message: string, level: LogMessage['level']): string
   };
   const color = colorMap[level] || '';
   return color ? `${color}${message}${RESET}` : message;
-}
-
-/**
- * Validates that a value is a valid IPC message.
- * @internal
- */
-function isValidIpcMessage(message: unknown): message is { type: string } {
-  return (
-    typeof message === 'object' &&
-    message !== null &&
-    'type' in message &&
-    typeof (message as Record<string, unknown>).type === 'string'
-  );
 }
 
 /**

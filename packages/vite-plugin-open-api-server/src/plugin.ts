@@ -110,18 +110,17 @@ function createFallbackLogger(): Logger {
  * @internal
  */
 function logStartupError(error: unknown, logger: Logger): void {
-  const err = error as Error;
-
   if (error instanceof StartupTimeoutError) {
     logger.error(`[${PLUGIN_NAME}] Mock server startup timed out after ${error.timeout}ms`);
     logger.error(`[${PLUGIN_NAME}] Try increasing startupTimeout option for large specs`);
   } else if (error instanceof StartupError) {
-    logger.error(`[${PLUGIN_NAME}] Mock server startup failed: ${err.message}`);
+    logger.error(`[${PLUGIN_NAME}] Mock server startup failed: ${error.message}`);
     if (error.childStack) {
       logger.error(error.childStack);
     }
   } else {
-    logger.error(`[${PLUGIN_NAME}] Mock server error: ${err.message}`);
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`[${PLUGIN_NAME}] Mock server error: ${message}`);
   }
 }
 
@@ -191,6 +190,10 @@ const DEFAULT_OPTIONS = {
   enabled: true,
   /** Timeout (ms) to wait for mock server startup */
   startupTimeout: 5000,
+  /** Timeout (ms) to wait for graceful shutdown before SIGTERM */
+  gracefulShutdownTimeout: 5000,
+  /** Timeout (ms) to wait after SIGTERM before SIGKILL */
+  forceShutdownTimeout: 2000,
   /** Enable verbose logging */
   verbose: false,
 } as const;
@@ -413,7 +416,7 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       }
 
       // Spawn the mock server child process
-      const childProcess = await spawnMockServer(resolvedOptions, logger);
+      const childProcess = spawnMockServer(resolvedOptions, logger);
 
       if (!childProcess) {
         // spawnMockServer returns null on failure (already logged the error)
@@ -490,8 +493,8 @@ export function openApiServerPlugin(options: InputPluginOptions): Plugin {
       if (state.mockServerProcess) {
         try {
           await shutdownMockServer(state.mockServerProcess, logger, {
-            gracefulTimeout: 5000,
-            forceTimeout: 2000,
+            gracefulTimeout: resolvedOptions.gracefulShutdownTimeout,
+            forceTimeout: resolvedOptions.forceShutdownTimeout,
           });
         } catch (error) {
           const err = error as Error;

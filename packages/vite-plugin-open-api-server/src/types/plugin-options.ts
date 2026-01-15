@@ -142,6 +142,30 @@ export interface OpenApiServerPluginOptions {
   startupTimeout?: number;
 
   /**
+   * Timeout (ms) to wait for graceful shutdown before sending SIGTERM.
+   *
+   * After sending the IPC shutdown message, the plugin waits this long
+   * for the mock server to exit gracefully. Increase for slow CI/machines.
+   *
+   * @default 5000
+   *
+   * @example 10000
+   */
+  gracefulShutdownTimeout?: number;
+
+  /**
+   * Timeout (ms) to wait after SIGTERM before sending SIGKILL.
+   *
+   * If the mock server doesn't exit after SIGTERM within this time,
+   * SIGKILL is sent as a last resort. Increase for slow CI/machines.
+   *
+   * @default 2000
+   *
+   * @example 5000
+   */
+  forceShutdownTimeout?: number;
+
+  /**
    * Enable verbose logging.
    *
    * When enabled, the plugin will log detailed information about
@@ -194,6 +218,12 @@ export interface ResolvedPluginOptions {
 
   /** Startup timeout in ms. Default: 5000 */
   startupTimeout: number;
+
+  /** Graceful shutdown timeout in ms. Default: 5000 */
+  gracefulShutdownTimeout: number;
+
+  /** Force shutdown timeout in ms. Default: 2000 */
+  forceShutdownTimeout: number;
 
   /** Verbose logging. Default: false */
   verbose: boolean;

@@ -22,7 +22,12 @@
  */
 
 import type { ChildProcess } from 'node:child_process';
-import type { ErrorMessage, OpenApiServerMessage, ReadyMessage } from '../types/ipc-messages.js';
+import {
+  type ErrorMessage,
+  isValidIpcMessage,
+  type OpenApiServerMessage,
+  type ReadyMessage,
+} from '../types/ipc-messages.js';
 
 /**
  * Options for the waitForReady function.
@@ -71,19 +76,6 @@ export class StartupError extends Error {
     this.childStack = stack;
     this.code = code;
   }
-}
-
-/**
- * Validates that a value is a valid IPC message with a type field.
- * @internal
- */
-function isValidIpcMessage(message: unknown): message is { type: string } {
-  return (
-    typeof message === 'object' &&
-    message !== null &&
-    'type' in message &&
-    typeof (message as Record<string, unknown>).type === 'string'
-  );
 }
 
 /**
