@@ -39,9 +39,13 @@ export type {
   RegistryData,
   RequestLogEntry,
 } from './browser-client.js';
-// Main plugin factory for Vue DevTools integration
-// Legacy API (deprecated - use createOpenApiDevTools instead)
-// Constants
+// Main plugin factory for Vue DevTools integration (recommended)
+// Constants for external use
+/**
+ * @deprecated Use `createOpenApiDevTools()` instead.
+ * This export is kept for backwards compatibility but will be removed in a future version.
+ * @see createOpenApiDevTools
+ */
 export {
   createOpenApiDevTools,
   DEVTOOLS_INSPECTOR_ID,

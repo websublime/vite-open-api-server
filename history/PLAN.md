@@ -20,6 +20,13 @@
 7. [Phase 3: Request Processing](#7-phase-3-request-processing)
 8. [Phase 4: Process Management](#8-phase-4-process-management)
 9. [Phase 5: Developer Experience](#9-phase-5-developer-experience)
+   - [9.4 Phase 6: Advanced DevTools Simulation](#94-phase-6-advanced-devtools-simulation)
+     - [P6-01: Implement Request Timeline](#p6-01-implement-request-timeline)
+     - [P6-02: Implement Simulation Panel UI](#p6-02-implement-simulation-panel-ui)
+     - [P6-03: Implement HTTP Status Simulation](#p6-03-implement-http-status-simulation)
+     - [P6-04: Implement Network Condition Simulation](#p6-04-implement-network-condition-simulation)
+     - [P6-05: Implement Simulation Presets](#p6-05-implement-simulation-presets)
+     - [P6-06: Implement URL Generation with Copy](#p6-06-implement-url-generation-with-copy)
 10. [Dependency Graph](#10-dependency-graph)
 11. [Effort Estimates Summary](#11-effort-estimates-summary)
 12. [Risk Assessment](#12-risk-assessment)
@@ -7465,7 +7472,7 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-## 9.4 Phase 6: Advanced DevTools Simulation
+## 9.4 Phase 6: Advanced DevTools Simulation {#94-phase-6-advanced-devtools-simulation}
 
 ### 9.4.1 Overview
 
@@ -7488,7 +7495,7 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ### 9.4.2 Task Breakdown
 
-#### P6-01: Implement Request Timeline
+#### P6-01: Implement Request Timeline {#p6-01-implement-request-timeline}
 
 **Description:** Add a timeline layer to Vue DevTools that logs all API requests made through the mock server. Shows request method, path, status, duration, and whether a custom handler was used.
 
@@ -7519,7 +7526,7 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-#### P6-02: Implement Simulation Panel UI
+#### P6-02: Implement Simulation Panel UI {#p6-02-implement-simulation-panel-ui}
 
 **Description:** Create an interactive panel in the DevTools inspector that allows configuring simulation parameters for the selected endpoint.
 
@@ -7552,9 +7559,14 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-#### P6-03: Implement HTTP Status Simulation
+#### P6-03: Implement HTTP Status Simulation {#p6-03-implement-http-status-simulation}
 
 **Description:** Allow simulating different HTTP status codes for responses. The mock server intercepts `?simulateStatus=XXX` and returns that status code.
+
+> **Note on Query Parameter Compatibility:** Phase 3 defines `simulateError` and `delay` parameters for error simulation in custom handlers. Phase 6 introduces `simulateStatus`, `simulateDelay`, `simulateTimeout`, and `simulateConnection` for more granular control. Both sets are supported:
+> - `simulateError=404` (Phase 3) → Alias for `simulateStatus=404`
+> - `delay=2000` (Phase 3) → Alias for `simulateDelay=2000`
+> - New Phase 6 parameters take precedence if both are specified.
 
 **Context:**
 - Status codes from OpenAPI spec responses + common error codes
@@ -7581,9 +7593,13 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-#### P6-04: Implement Network Condition Simulation
+#### P6-04: Implement Network Condition Simulation {#p6-04-implement-network-condition-simulation}
 
 **Description:** Simulate network conditions like latency, timeouts, and connection drops via query parameters.
+
+> **Parameter Mapping from Phase 3:**
+> - `delay` → `simulateDelay` (both accepted, `simulateDelay` takes precedence)
+> - New: `simulateTimeout`, `simulateConnection`
 
 **Context:**
 - `?simulateDelay=2000` adds response delay
@@ -7611,7 +7627,7 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-#### P6-05: Implement Simulation Presets
+#### P6-05: Implement Simulation Presets {#p6-05-implement-simulation-presets}
 
 **Description:** Allow saving and loading simulation configurations as named presets for quick reuse.
 
@@ -7643,7 +7659,7 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 
 ---
 
-#### P6-06: Implement URL Generation with Copy
+#### P6-06: Implement URL Generation with Copy {#p6-06-implement-url-generation-with-copy}
 
 **Description:** Generate complete URLs with all simulation parameters and provide easy copy-to-clipboard functionality.
 
@@ -7685,7 +7701,9 @@ window.__VITE_OPENAPI_SERVER__.getSchema('Pet')
 | P6-05 | Implement Simulation Presets | S (1d) | P6-02 |
 | P6-06 | Implement URL Generation with Copy | S (1d) | P6-02 |
 
-**Total Estimate: 11 story points (~8 days)**
+#### Phase 6 Effort Total
+
+11 story points (~8 days)
 
 ---
 

@@ -33,16 +33,14 @@
 
 import { setupDevToolsPlugin } from '@vue/devtools-api';
 import type { App, Plugin } from 'vue';
+import { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const DEVTOOLS_PLUGIN_ID = 'vite-openapi-server';
 const DEVTOOLS_PLUGIN_LABEL = 'OpenAPI Server';
-const DEVTOOLS_INSPECTOR_ID = 'openapi-endpoints';
 const DEVTOOLS_INSPECTOR_LABEL = 'Endpoints';
-const GLOBAL_STATE_KEY = '__VITE_OPENAPI_SERVER__';
 
 // ============================================================================
 // Types
@@ -309,6 +307,12 @@ let requestLogCounter = 0;
 /** Store proxyPath for refresh functionality */
 let currentProxyPath = '/api';
 
+/** SSR cache for global state to avoid recreating on every call */
+let ssrGlobalStateCache: GlobalState | null = null;
+
+/** Default fetch timeout in milliseconds */
+const FETCH_TIMEOUT_MS = 10000;
+
 /**
  * Create the default global state object with helper methods
  */
@@ -433,7 +437,11 @@ function createGlobalState(proxyPath: string): GlobalState {
 
 function getGlobalState(): GlobalState {
   if (typeof window === 'undefined') {
-    return createGlobalState('/api');
+    // SSR environment: return cached state or create new one
+    if (!ssrGlobalStateCache) {
+      ssrGlobalStateCache = createGlobalState(currentProxyPath);
+    }
+    return ssrGlobalStateCache;
   }
 
   if (!window[GLOBAL_STATE_KEY]) {
@@ -470,14 +478,21 @@ async function fetchRegistryWithRetry(
   verbose: boolean,
   maxRetries: number,
   retryDelay: number,
+  fetchTimeout: number = FETCH_TIMEOUT_MS,
 ): Promise<RegistryData | null> {
   const registryUrl = `${proxyPath}/_openapiserver/registry`;
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     log(`Fetching registry (attempt ${attempt}/${maxRetries}) from: ${registryUrl}`, verbose);
 
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), fetchTimeout);
+
     try {
-      const response = await fetch(registryUrl);
+      const response = await fetch(registryUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
@@ -511,14 +526,23 @@ async function fetchRegistryWithRetry(
 
       return { endpoints, schemas, securitySchemes };
     } catch (error) {
+      // Ensure timeout is cleared even on error
+      clearTimeout(timeoutId);
+
       const isLastAttempt = attempt === maxRetries;
-      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isAbortError = error instanceof Error && error.name === 'AbortError';
+      const errorMsg = isAbortError
+        ? 'Request timeout'
+        : error instanceof Error
+          ? error.message
+          : String(error);
 
       if (isLastAttempt) {
         warn(`Failed to fetch registry after ${maxRetries} attempts: ${errorMsg}`);
         return null;
       }
 
+      // AbortError (timeout) is retryable
       log(`Fetch failed (${errorMsg}), retrying in ${retryDelay}ms...`, verbose);
       await sleep(retryDelay);
     }
@@ -973,16 +997,28 @@ export function createOpenApiDevTools(
 // ============================================================================
 
 /**
- * @deprecated Use `createOpenApiDevTools()` instead.
+ * Register OpenAPI DevTools with a Vue application.
+ *
+ * @deprecated Use `createOpenApiDevTools()` instead and install via `app.use()`.
  * This function is kept for backwards compatibility but will be removed in a future version.
+ *
+ * @example
+ * // Old way (deprecated):
+ * registerOpenApiDevTools(app, { proxyPath: '/api' })
+ *
+ * // New way (recommended):
+ * app.use(createOpenApiDevTools({ proxyPath: '/api' }))
+ *
+ * @param app - Vue application instance
+ * @param options - Configuration options
  */
 export function registerOpenApiDevTools(app: App, options: OpenApiDevToolsOptions = {}): void {
   const plugin = createOpenApiDevTools(options);
   plugin.install(app);
 }
 
-// Re-export constants for external use
-export { DEVTOOLS_PLUGIN_ID, DEVTOOLS_INSPECTOR_ID, GLOBAL_STATE_KEY };
+// Re-export constants from devtools-plugin.ts for external use
+export { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
 
 // Export types (GlobalState and RequestLogEntry already exported at declaration)
-export type { RegistryData, EndpointData };
+export type { EndpointData, RegistryData };

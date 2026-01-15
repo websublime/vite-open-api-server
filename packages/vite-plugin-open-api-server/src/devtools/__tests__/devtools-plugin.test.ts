@@ -307,7 +307,7 @@ describe('buildInspectorState', () => {
       const state = buildInspectorState(registry, 'tag:pets');
 
       expect(state['Tag Info']).toBeDefined();
-      expect(state['Endpoints']).toBeDefined();
+      expect(state.Endpoints).toBeDefined();
     });
 
     it('should include correct tag name', () => {
@@ -367,8 +367,8 @@ describe('buildInspectorState', () => {
     it('should include parameters for endpoints with params', () => {
       const state = buildInspectorState(registry, 'listPets');
 
-      expect(state['Parameters']).toBeDefined();
-      expect(state['Parameters'].length).toBe(1);
+      expect(state.Parameters).toBeDefined();
+      expect(state.Parameters.length).toBe(1);
     });
 
     it('should include request body for POST endpoints', () => {
@@ -380,14 +380,14 @@ describe('buildInspectorState', () => {
     it('should include responses', () => {
       const state = buildInspectorState(registry, 'getPetById');
 
-      expect(state['Responses']).toBeDefined();
-      expect(state['Responses'].length).toBe(2); // 200 and 404
+      expect(state.Responses).toBeDefined();
+      expect(state.Responses.length).toBe(2); // 200 and 404
     });
 
     it('should return error for non-existent endpoint', () => {
       const state = buildInspectorState(registry, 'nonexistent');
 
-      expect(state['Error']).toBeDefined();
+      expect(state.Error).toBeDefined();
     });
   });
 });
