@@ -37,6 +37,7 @@ export type {
   GlobalState,
   OpenApiDevToolsOptions,
   RegistryData,
+  RequestLogEntry,
 } from './browser-client.js';
 // Main plugin factory for Vue DevTools integration
 // Legacy API (deprecated - use createOpenApiDevTools instead)
