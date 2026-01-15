@@ -37,7 +37,78 @@
  * ```
  */
 
-import type { HandlerContext, HandlerResponse } from '@websublime/vite-plugin-open-api-server';
+import type {
+  HandlerContext,
+  HandlerResponse,
+  SecurityContext,
+} from '@websublime/vite-plugin-open-api-server';
+
+/**
+ * Logger interface for typing purposes.
+ */
+interface Logger {
+  info: (message: string) => void;
+}
+
+/**
+ * Logs security requirements for the operation.
+ */
+function logSecurityRequirements(
+  security: SecurityContext,
+  operationId: string,
+  logger: Logger,
+): void {
+  if (security.requirements.length === 0) {
+    return;
+  }
+
+  logger.info(`[${operationId}] Security requirements: ${security.requirements.length} scheme(s)`);
+
+  for (const req of security.requirements) {
+    const scopeInfo = req.scopes.length > 0 ? ` with scopes: ${req.scopes.join(', ')}` : '';
+    logger.info(`[${operationId}]   - ${req.schemeName}${scopeInfo}`);
+  }
+}
+
+/**
+ * Logs the security scheme type and details.
+ */
+function logSecurityScheme(security: SecurityContext, operationId: string, logger: Logger): void {
+  if (!security.scheme) {
+    return;
+  }
+
+  const { scheme } = security;
+
+  if (scheme.type === 'apiKey') {
+    logger.info(`[${operationId}] API Key authentication via ${scheme.in}: ${scheme.name}`);
+  } else if (scheme.type === 'http') {
+    logger.info(`[${operationId}] HTTP ${scheme.scheme} authentication`);
+  } else if (scheme.type === 'oauth2') {
+    logger.info(`[${operationId}] OAuth2 authentication`);
+    if (security.scopes.length > 0) {
+      logger.info(`[${operationId}] Scopes: ${security.scopes.join(', ')}`);
+    }
+  } else if (scheme.type === 'openIdConnect') {
+    logger.info(`[${operationId}] OpenID Connect authentication`);
+  }
+}
+
+/**
+ * Logs credential information if present.
+ */
+function logCredentialsInfo(security: SecurityContext, operationId: string, logger: Logger): void {
+  if (security.credentials) {
+    logger.info(
+      `[${operationId}] Credentials provided (length: ${security.credentials.length} chars)`,
+    );
+    logSecurityScheme(security, operationId, logger);
+  } else {
+    // Note: Scalar mock server already handles 401 for missing credentials
+    // This block would only be reached if security is optional
+    logger.info(`[${operationId}] No credentials provided`);
+  }
+}
 
 /**
  * Handler for the deletePet operation demonstrating SecurityContext access.
@@ -74,55 +145,11 @@ export default async function handler(context: HandlerContext): Promise<HandlerR
   // Log security context information for debugging
   logger.info(`[${operationId}] Processing delete request for pet ${petId}`);
 
-  // Check if this endpoint has security requirements
-  if (security.requirements.length > 0) {
-    logger.info(
-      `[${operationId}] Security requirements: ${security.requirements.length} scheme(s)`,
-    );
+  // Log security requirements
+  logSecurityRequirements(security, operationId, logger);
 
-    // Log each requirement
-    for (const req of security.requirements) {
-      const scopeInfo = req.scopes.length > 0 ? ` with scopes: ${req.scopes.join(', ')}` : '';
-      logger.info(`[${operationId}]   - ${req.schemeName}${scopeInfo}`);
-    }
-  }
-
-  // Check if credentials were provided
-  if (security.credentials) {
-    logger.info(
-      `[${operationId}] Credentials provided (length: ${security.credentials.length} chars)`,
-    );
-
-    // Access the matched security scheme
-    if (security.scheme) {
-      switch (security.scheme.type) {
-        case 'apiKey':
-          logger.info(
-            `[${operationId}] API Key authentication via ${security.scheme.in}: ${security.scheme.name}`,
-          );
-          break;
-
-        case 'http':
-          logger.info(`[${operationId}] HTTP ${security.scheme.scheme} authentication`);
-          break;
-
-        case 'oauth2':
-          logger.info(`[${operationId}] OAuth2 authentication`);
-          if (security.scopes.length > 0) {
-            logger.info(`[${operationId}] Scopes: ${security.scopes.join(', ')}`);
-          }
-          break;
-
-        case 'openIdConnect':
-          logger.info(`[${operationId}] OpenID Connect authentication`);
-          break;
-      }
-    }
-  } else {
-    // Note: Scalar mock server already handles 401 for missing credentials
-    // This block would only be reached if security is optional
-    logger.info(`[${operationId}] No credentials provided`);
-  }
+  // Log credentials information
+  logCredentialsInfo(security, operationId, logger);
 
   // Example: Custom authorization check (commented out as demonstration)
   // In a real scenario, you might check specific scopes or roles:
