@@ -375,8 +375,8 @@ describe('Hot Reload Handler', () => {
         onReadyStateUpdate: vi.fn(),
       };
 
-      // Should not throw
-      await expect(handleFileChange(event, context, state)).resolves.not.toThrow();
+      // Should resolve without throwing (function returns Promise<void>)
+      await expect(handleFileChange(event, context, state)).resolves.toBeUndefined();
     });
   });
 
