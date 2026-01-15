@@ -1,0 +1,32 @@
+{
+  "changeset": {
+    "branch": "feature/p5-03-devtools-plugin",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "99161c70a7d78cd5d453d172e531567fa1300124",
+      "2f72eebe000ebbc536fb44f0ff0f093ef8ba3f73",
+      "0ecf96078f8b27cc6c071604b9658fa888aad0d2",
+      "07ad5a23babb370e14c47facdc3ef18ff8a8db92",
+      "1001c6a0722096e36d96c184f6bd71130ee84a54",
+      "e9a2862dc698b494b3fd2dcb788e35f24741eb5c",
+      "b647ab740609e0a79f61b8440354cdea1e94be08",
+      "a265d2285e7b3c0abd6979575a1b6f80dfb384f7"
+    ],
+    "created_at": "2026-01-15T11:19:07.072682Z",
+    "updated_at": "2026-01-15T14:00:02.389410Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-15T14:22:57.190570970Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "e2176532b17b0abc80eaad45448a0881e81ffcb9",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.17.0"
+    }
+  }
+}

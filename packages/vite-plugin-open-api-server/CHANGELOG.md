@@ -1,3 +1,40 @@
+## [0.17.0] - 2026-01-15
+
+### Features
+
+- create devtools-plugin.ts with setupOpenApiDevTools function (ef10d8a)
+- add client script injection via transformIndexHtml (949eb72)
+- implement global state exposure with helper methods (P5-04) (4e214e1)
+
+
+### Bug Fixes
+
+- address code review feedback (f2d9aef)
+
+
+### Documentation
+
+- add Phase 6 - Advanced DevTools Simulation (2e1159a)
+
+
+### Code Refactoring
+
+- create Vue Plugin pattern with createOpenApiDevTools (780922d)
+
+
+### Tests
+
+- add comprehensive tests for DevTools plugin (31683f0)
+
+
+### Other Changes
+
+- sync changeset for feature/p5-03-devtools-plugin (e217653)
+- add changeset for DevTools integration feature (ad8c12f)
+- sync changeset for feature/p5-03-devtools-plugin (47ba11e)
+
+
+
 ## [0.16.0] - 2026-01-15
 
 ### Features
