@@ -164,8 +164,8 @@ export function checkDevToolsSupport(): {
   const isBrowser = typeof window !== 'undefined';
 
   // Check if Vue DevTools is installed
-  // biome-ignore lint/suspicious/noExplicitAny: Window type augmentation for DevTools hook detection
   const hasDevToolsHook =
+    // biome-ignore lint/suspicious/noExplicitAny: Window type augmentation for DevTools hook detection
     isBrowser && typeof (window as any).__VUE_DEVTOOLS_GLOBAL_HOOK__ !== 'undefined';
 
   return {
