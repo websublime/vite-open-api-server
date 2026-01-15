@@ -40,7 +40,7 @@
   "dependencies": {
     "@scalar/openapi-parser": "^0.23.11",
     "yaml": "^2.8.2",
-    "@scalar/mock-server": "^0.8.9",
+    "@scalar/mock-server": "^0.8.11",
     "fast-glob": "^3.3.3",
     "@vue/devtools-api": "^8.0.5",
     "@hono/node-server": "^1.19.7",

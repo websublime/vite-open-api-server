@@ -51,7 +51,12 @@ async function fetchPet(petId: number = 1): Promise<void> {
   };
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: 'Bearer test-token',
+        api_key: 'test-api-key',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -82,7 +87,12 @@ async function fetchPets(): Promise<void> {
   };
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: 'Bearer test-token',
+        api_key: 'test-api-key',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -127,7 +137,12 @@ async function fetchWithSimulation(
   };
 
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: {
+        Authorization: 'Bearer test-token',
+        api_key: 'test-api-key',
+      },
+    });
     const data = await response.json();
 
     if (!response.ok) {
