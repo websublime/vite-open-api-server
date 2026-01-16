@@ -453,16 +453,32 @@ export function installFetchInterceptor(config: FetchInterceptorConfig): void {
     return;
   }
 
+  // Validate proxyPath to prevent accidental global interception
+  // An empty string would match all paths via path.startsWith('')
+  if (!config.proxyPath || typeof config.proxyPath !== 'string') {
+    // biome-ignore lint/suspicious/noConsole: Error logging required
+    console.error(
+      '[OpenAPI Fetch Interceptor] Invalid proxyPath: must be a non-empty string. Interceptor not installed.',
+    );
+    return;
+  }
+
+  // Normalize proxyPath to ensure it starts with a leading slash
+  let normalizedProxyPath = config.proxyPath.trim();
+  if (!normalizedProxyPath.startsWith('/')) {
+    normalizedProxyPath = `/${normalizedProxyPath}`;
+  }
+
   // Store the original fetch
   state.originalFetch = window.fetch;
-  state.proxyPath = config.proxyPath;
+  state.proxyPath = normalizedProxyPath;
   state.verbose = config.verbose ?? false;
 
   // Replace global fetch with our intercepted version
   window.fetch = createInterceptedFetch();
   state.isActive = true;
 
-  log(`Installed fetch interceptor for proxyPath: ${config.proxyPath}`);
+  log(`Installed fetch interceptor for proxyPath: ${state.proxyPath}`);
 }
 
 /**
