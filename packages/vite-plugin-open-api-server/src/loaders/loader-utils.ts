@@ -129,6 +129,35 @@ export function logLoadSummary(
 }
 
 /**
+ * Get a descriptive type string for a value, handling null and arrays properly.
+ *
+ * @param value - The value to describe
+ * @returns Human-readable type description
+ *
+ * @example
+ * ```typescript
+ * describeValueType(null);        // 'null'
+ * describeValueType([1, 2]);      // 'object (array)'
+ * describeValueType(() => {});    // 'function'
+ * describeValueType('hello');     // 'string'
+ * describeValueType(123);         // 'number'
+ * ```
+ */
+export function describeValueType(value: unknown): string {
+  // Handle null explicitly (typeof null === 'object' but we want a clearer message)
+  if (value === null) {
+    return 'null';
+  }
+  if (Array.isArray(value)) {
+    return 'object (array)';
+  }
+  if (typeof value === 'function') {
+    return 'function';
+  }
+  return typeof value;
+}
+
+/**
  * Format an error description for invalid export type.
  *
  * @param expectedType - What was expected (e.g., "object mapping operationId to handler values")
@@ -138,20 +167,39 @@ export function logLoadSummary(
  * @example
  * ```typescript
  * formatInvalidExportError('object mapping operationId to handler values', [1, 2]);
- * // "... must be an object mapping operationId to handler values. Got: object (array)"
+ * // "default export must be an object mapping operationId to handler values. Got: object (array)"
+ *
+ * formatInvalidExportError('object mapping schemaName to seed values', null);
+ * // "default export must be an object mapping schemaName to seed values. Got: null"
  * ```
  */
 export function formatInvalidExportError(expectedType: string, actualValue: unknown): string {
-  let typeDesc: string = typeof actualValue;
+  return `default export must be an ${expectedType}. Got: ${describeValueType(actualValue)}`;
+}
 
-  // Handle null explicitly (typeof null === 'object' but we want a clearer message)
-  if (actualValue === null) {
-    typeDesc = 'null';
-  } else if (Array.isArray(actualValue)) {
-    typeDesc = 'object (array)';
-  } else if (typeof actualValue === 'function') {
-    typeDesc = 'function';
-  }
-
-  return `default export must be an ${expectedType}. Got: ${typeDesc}`;
+/**
+ * Format an error description for invalid value type within an export.
+ *
+ * Used when a specific key in the exports object has an invalid value type.
+ *
+ * @param keyName - The key name (operationId or schemaName)
+ * @param filename - The source filename
+ * @param actualValue - The actual value received
+ * @returns Formatted error message
+ *
+ * @example
+ * ```typescript
+ * formatInvalidValueError('getPetById', 'pets.handler.mjs', 123);
+ * // 'Invalid value for "getPetById" in pets.handler.mjs: expected string or function, got number'
+ *
+ * formatInvalidValueError('Pet', 'pets.seed.mjs', null);
+ * // 'Invalid value for "Pet" in pets.seed.mjs: expected string or function, got null'
+ * ```
+ */
+export function formatInvalidValueError(
+  keyName: string,
+  filename: string,
+  actualValue: unknown,
+): string {
+  return `Invalid value for "${keyName}" in ${filename}: expected string or function, got ${describeValueType(actualValue)}`;
 }
