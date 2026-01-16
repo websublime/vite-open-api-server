@@ -224,26 +224,6 @@ async function loadSeedFile(
 }
 
 /**
- * Extract schema name from seed filename.
- *
- * Note: This function is no longer used for extraction since seeds
- * now export objects with explicit schemaName keys. Kept for potential
- * future use or backward compatibility.
- *
- * @param filename - Seed filename (e.g., 'pets.seed.ts')
- * @returns Base name without extension (e.g., 'pets')
- *
- * @example
- * ```typescript
- * extractSchemaName('pets.seed.ts');     // 'pets'
- * extractSchemaName('Order.seed.mjs');   // 'Order'
- * ```
- */
-export function extractSchemaName(filename: string): string {
-  return filename.replace(/\.seed\.(ts|js|mts|mjs)$/, '');
-}
-
-/**
  * Find matching schema name in registry.
  *
  * Tries multiple candidates: exact match, capitalized, singular, plural forms.

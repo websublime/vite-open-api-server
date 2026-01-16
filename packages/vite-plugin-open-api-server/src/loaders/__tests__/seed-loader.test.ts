@@ -18,7 +18,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OpenApiEndpointRegistry } from '../../types/registry.js';
 import {
   capitalize,
-  extractSchemaName,
   findMatchingSchema,
   loadSeeds,
   pluralize,
@@ -160,32 +159,6 @@ describe('Seed Loader', () => {
 
     it('should handle empty string', () => {
       expect(pluralize('')).toBe('');
-    });
-  });
-
-  describe('extractSchemaName', () => {
-    it('should extract schema name from .seed.ts file', () => {
-      expect(extractSchemaName('pets.seed.ts')).toBe('pets');
-    });
-
-    it('should extract schema name from .seed.js file', () => {
-      expect(extractSchemaName('Pet.seed.js')).toBe('Pet');
-    });
-
-    it('should extract schema name from .seed.mts file', () => {
-      expect(extractSchemaName('Order.seed.mts')).toBe('Order');
-    });
-
-    it('should extract schema name from .seed.mjs file', () => {
-      expect(extractSchemaName('users.seed.mjs')).toBe('users');
-    });
-
-    it('should preserve case of filename', () => {
-      expect(extractSchemaName('OrderItem.seed.ts')).toBe('OrderItem');
-    });
-
-    it('should handle kebab-case names', () => {
-      expect(extractSchemaName('order-items.seed.ts')).toBe('order-items');
     });
   });
 

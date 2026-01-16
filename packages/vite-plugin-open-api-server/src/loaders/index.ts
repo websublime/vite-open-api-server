@@ -6,11 +6,7 @@
  * @module
  */
 
-export {
-  extractBaseName,
-  kebabToCamelCase,
-  loadHandlers,
-} from './handler-loader.js';
+export { kebabToCamelCase, loadHandlers } from './handler-loader.js';
 
 export {
   formatInvalidExportError,
@@ -22,7 +18,6 @@ export {
 
 export {
   capitalize,
-  extractSchemaName,
   findMatchingSchema,
   loadSeeds,
   pluralize,
