@@ -305,7 +305,8 @@ describe('Document Enhancer', () => {
 
         const operationInfo = findOperationById(result.document, 'getPetById');
         expect(operationInfo).not.toBeNull();
-        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(handlerCode);
+        if (!operationInfo) throw new Error('Operation getPetById not found');
+        expect(getExtension(operationInfo.operation, 'x-handler')).toBe(handlerCode);
       });
 
       it('should inject multiple static handlers', async () => {
@@ -321,10 +322,14 @@ describe('Document Enhancer', () => {
         expect(result.handlerCount).toBe(2);
 
         const listPetsOp = findOperationById(result.document, 'listPets');
-        expect(getExtension(listPetsOp?.operation, 'x-handler')).toBe('return store.list("Pet");');
+        expect(listPetsOp).not.toBeNull();
+        if (!listPetsOp) throw new Error('Operation listPets not found');
+        expect(getExtension(listPetsOp.operation, 'x-handler')).toBe('return store.list("Pet");');
 
         const createPetOp = findOperationById(result.document, 'createPet');
-        expect(getExtension(createPetOp?.operation, 'x-handler')).toBe(
+        expect(createPetOp).not.toBeNull();
+        if (!createPetOp) throw new Error('Operation createPet not found');
+        expect(getExtension(createPetOp.operation, 'x-handler')).toBe(
           'return store.create("Pet", req.body);',
         );
       });
@@ -347,7 +352,9 @@ describe('Document Enhancer', () => {
         const result = await enhanceDocument(spec, handlers, seeds, mockLogger);
 
         const operationInfo = findOperationById(result.document, 'getPetById');
-        const injectedCode = getExtension<string>(operationInfo?.operation, 'x-handler');
+        expect(operationInfo).not.toBeNull();
+        if (!operationInfo) throw new Error('Operation getPetById not found');
+        const injectedCode = getExtension<string>(operationInfo.operation, 'x-handler');
 
         expect(injectedCode).toContain('store.get("Pet"');
         expect(injectedCode).toContain('res["404"]'); // Should include 404 handling
@@ -363,6 +370,7 @@ describe('Document Enhancer', () => {
         await enhanceDocument(spec, handlers, seeds, mockLogger);
 
         expect(contextSpy).toHaveBeenCalledTimes(1);
+        if (contextSpy.mock.calls.length === 0) throw new Error('Context spy was not called');
         const context = contextSpy.mock.calls[0][0] as HandlerCodeContext;
 
         expect(context.operationId).toBe('getPetById');
@@ -387,7 +395,9 @@ describe('Document Enhancer', () => {
         const result = await enhanceDocument(spec, handlers, seeds, mockLogger);
 
         const operationInfo = findOperationById(result.document, 'listPets');
-        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(
+        expect(operationInfo).not.toBeNull();
+        if (!operationInfo) throw new Error('Operation listPets not found');
+        expect(getExtension(operationInfo.operation, 'x-handler')).toBe(
           'return store.list("Pet");',
         );
       });
@@ -557,9 +567,9 @@ describe('Document Enhancer', () => {
         );
 
         const operationInfo = findOperationById(result.document, 'getPetById');
-        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(
-          'return store.get("Pet");',
-        );
+        expect(operationInfo).not.toBeNull();
+        if (!operationInfo) throw new Error('Operation getPetById not found');
+        expect(getExtension(operationInfo.operation, 'x-handler')).toBe('return store.get("Pet");');
       });
 
       it('should warn when overriding existing x-seed', async () => {
@@ -813,10 +823,14 @@ describe('Document Enhancer', () => {
         expect(result.handlerCount).toBe(2);
 
         const listPetsOp = findOperationById(result.document, 'listPets');
-        expect(getExtension(listPetsOp?.operation, 'x-handler')).toBe('return store.list("Pet");');
+        expect(listPetsOp).not.toBeNull();
+        if (!listPetsOp) throw new Error('Operation listPets not found');
+        expect(getExtension(listPetsOp.operation, 'x-handler')).toBe('return store.list("Pet");');
 
         const getPetByIdOp = findOperationById(result.document, 'getPetById');
-        const dynamicCode = getExtension<string>(getPetByIdOp?.operation, 'x-handler');
+        expect(getPetByIdOp).not.toBeNull();
+        if (!getPetByIdOp) throw new Error('Operation getPetById not found');
+        const dynamicCode = getExtension<string>(getPetByIdOp.operation, 'x-handler');
         expect(dynamicCode).toContain('store.get("Pet"');
         expect(dynamicCode).toContain('// get');
       });

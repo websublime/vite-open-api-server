@@ -13,6 +13,14 @@ export {
 } from './handler-loader.js';
 
 export {
+  formatInvalidExportError,
+  getValueType,
+  isValidExportsObject,
+  isValidValue,
+  logLoadSummary,
+} from './loader-utils.js';
+
+export {
   capitalize,
   extractSchemaName,
   findMatchingSchema,

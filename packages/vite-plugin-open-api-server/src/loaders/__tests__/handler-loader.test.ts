@@ -209,7 +209,7 @@ describe('Handler Loader', () => {
         const registry = createMockRegistry();
         await loadHandlers(FIXTURES_DIR, registry, mockLogger);
 
-        // Should log error for invalid-not-function.handler.mjs (now exports array)
+        // Should log error for invalid-array-export.handler.mjs (exports array instead of object)
         expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
       });
 
