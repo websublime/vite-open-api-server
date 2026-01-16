@@ -1,65 +1,68 @@
 /**
- * Seed Data Generator for User Entities
+ * User Seeds - Code-based seeds for User schema
  *
  * ## What
- * This seed file provides initial data for the User schema, populating the mock server
- * with sample user records when the application starts.
+ * This file exports an object mapping schemaName to JavaScript code strings
+ * that will be injected as `x-seed` extensions into the OpenAPI spec.
  *
  * ## How
- * When the mock server initializes, it scans the seeds directory and invokes each seed
- * file's default export function. The function receives a `SeedContext` with utilities
- * for generating fake data and accessing schema definitions.
+ * Each key is a schema name from the OpenAPI spec (components.schemas), and
+ * each value is a JavaScript code string that Scalar Mock Server will execute
+ * to populate the in-memory store with initial data.
  *
  * ## Why
- * Seed data enables:
- * - Realistic mock responses for user-related endpoints
- * - Authentication flow testing with predefined credentials
- * - Consistent test users across development sessions
- * - Demonstration of user management features
+ * Custom seeds enable realistic mock data for user-related endpoints,
+ * allowing authentication flow testing with predefined credentials.
  *
+ * @see https://scalar.com/products/mock-server/data-seeding
  * @module seeds/users
- * @see {@link https://github.com/websublime/vite-open-api-server} Plugin documentation
- *
- * @example
- * ```typescript
- * // Example implementation (Phase 2)
- * export default async function seed(context: SeedContext) {
- *   const faker = context.faker;
- *
- *   return Array.from({ length: 5 }, (_, index) => ({
- *     id: index + 1,
- *     username: faker.internet.username(),
- *     firstName: faker.person.firstName(),
- *     lastName: faker.person.lastName(),
- *     email: faker.internet.email(),
- *     password: faker.internet.password(),
- *     phone: faker.phone.number(),
- *     userStatus: faker.helpers.arrayElement([0, 1, 2]),
- *   }));
- * }
- * ```
  */
 
-import type { SeedContext } from '@websublime/vite-plugin-open-api-server';
+import type { SeedExports } from '@websublime/vite-plugin-open-api-server';
 
 /**
- * Placeholder seed generator for User entities.
+ * User schema seeds.
  *
- * Currently returns an empty array indicating no seed data should be generated.
- * This seed will be implemented in Phase 2 (P2-02: Seed Loader).
- *
- * @param _context - The seed context containing faker instance and schema utilities
- * @returns An empty array (no seed data), or an array of User objects
- *
- * @remarks
- * Implementation planned for Phase 2:
- * - Generate 5-10 sample users
- * - Use faker for realistic names and emails
- * - Include test user with known credentials (user1/password)
- * - Vary userStatus values across users
+ * Available Scalar runtime context:
+ * - `seed` - Seeding utilities (count, etc.)
+ * - `faker` - Faker.js instance for generating fake data
+ * - `store` - In-memory data store (for referencing other seeded data)
  */
-export default async function seed(_context: SeedContext): Promise<unknown[]> {
-  // TODO: Implement seed data generation in Phase 2
-  // Returning empty array means no initial seed data
-  return [];
-}
+const seeds: SeedExports = {
+  /**
+   * User - Generates 10 sample users with realistic data
+   *
+   * Includes a test user with known credentials (user1/password123)
+   * for easy testing of authentication flows.
+   */
+  User: `
+    seed.count(10, (index) => {
+      // First user is a test user with known credentials
+      if (index === 0) {
+        return {
+          id: 1,
+          username: 'user1',
+          firstName: 'John',
+          lastName: 'Doe',
+          email: 'user1@example.com',
+          password: 'password123',
+          phone: '555-0100',
+          userStatus: 1
+        };
+      }
+
+      return {
+        id: index + 1,
+        username: faker.internet.username(),
+        firstName: faker.person.firstName(),
+        lastName: faker.person.lastName(),
+        email: faker.internet.email(),
+        password: faker.internet.password(),
+        phone: faker.phone.number(),
+        userStatus: faker.helpers.arrayElement([0, 1, 2])
+      };
+    })
+  `,
+};
+
+export default seeds;

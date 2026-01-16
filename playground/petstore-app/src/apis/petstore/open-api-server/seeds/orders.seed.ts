@@ -1,64 +1,47 @@
 /**
- * Seed Data Generator for Order Entities
+ * Order Seeds - Code-based seeds for Order schema
  *
  * ## What
- * This seed file provides initial data for the Order schema, populating the mock server
- * with sample order records when the application starts.
+ * This file exports an object mapping schemaName to JavaScript code strings
+ * that will be injected as `x-seed` extensions into the OpenAPI spec.
  *
  * ## How
- * When the mock server initializes, it scans the seeds directory and invokes each seed
- * file's default export function. The function receives a `SeedContext` with utilities
- * for generating fake data and accessing schema definitions.
+ * Each key is a schema name from the OpenAPI spec (components.schemas), and
+ * each value is a JavaScript code string that Scalar Mock Server will execute
+ * to populate the in-memory store with initial data.
  *
  * ## Why
- * Seed data enables:
- * - Realistic mock responses for store/order-related endpoints
- * - Order workflow testing (placed → approved → delivered)
- * - Consistent order history across development sessions
- * - Demonstration of e-commerce functionality
+ * Custom seeds enable realistic mock data for order-related endpoints,
+ * allowing order workflow testing (placed → approved → delivered).
  *
+ * @see https://scalar.com/products/mock-server/data-seeding
  * @module seeds/orders
- * @see {@link https://github.com/websublime/vite-open-api-server} Plugin documentation
- *
- * @example
- * ```typescript
- * // Example implementation (Phase 2)
- * export default async function seed(context: SeedContext) {
- *   const faker = context.faker;
- *
- *   return Array.from({ length: 10 }, (_, index) => ({
- *     id: index + 1,
- *     petId: faker.number.int({ min: 1, max: 20 }),
- *     quantity: faker.number.int({ min: 1, max: 5 }),
- *     shipDate: faker.date.future().toISOString(),
- *     status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
- *     complete: faker.datatype.boolean(),
- *   }));
- * }
- * ```
  */
 
-import type { SeedContext } from '@websublime/vite-plugin-open-api-server';
+import type { SeedExports } from '@websublime/vite-plugin-open-api-server';
 
 /**
- * Placeholder seed generator for Order entities.
+ * Order schema seeds.
  *
- * Currently returns an empty array indicating no seed data should be generated.
- * This seed will be implemented in Phase 2 (P2-02: Seed Loader).
- *
- * @param _context - The seed context containing faker instance and schema utilities
- * @returns An empty array (no seed data), or an array of Order objects
- *
- * @remarks
- * Implementation planned for Phase 2:
- * - Generate 10-15 sample orders
- * - Reference existing pet IDs from pets seed
- * - Include all order statuses (placed, approved, delivered)
- * - Mix of complete and incomplete orders
- * - Ship dates spanning past and future
+ * Available Scalar runtime context:
+ * - `seed` - Seeding utilities (count, etc.)
+ * - `faker` - Faker.js instance for generating fake data
+ * - `store` - In-memory data store (for referencing other seeded data)
  */
-export default async function seed(_context: SeedContext): Promise<unknown[]> {
-  // TODO: Implement seed data generation in Phase 2
-  // Returning empty array means no initial seed data
-  return [];
-}
+const seeds: SeedExports = {
+  /**
+   * Order - Generates 10 sample orders with realistic data
+   */
+  Order: `
+    seed.count(10, (index) => ({
+      id: index + 1,
+      petId: faker.number.int({ min: 1, max: 15 }),
+      quantity: faker.number.int({ min: 1, max: 5 }),
+      shipDate: faker.date.future().toISOString(),
+      status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+      complete: faker.datatype.boolean()
+    }))
+  `,
+};
+
+export default seeds;

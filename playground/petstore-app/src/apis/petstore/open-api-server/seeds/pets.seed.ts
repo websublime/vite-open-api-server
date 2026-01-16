@@ -1,80 +1,85 @@
 /**
- * Seed Data Generator for Pet Entities
+ * Pet Seeds - Code-based seeds for Pet schema
  *
  * ## What
- * This seed file provides initial data for the Pet schema, populating the mock server
- * with sample pet records when the application starts.
+ * This file exports an object mapping schemaName to JavaScript code strings
+ * that will be injected as `x-seed` extensions into the OpenAPI spec.
  *
  * ## How
- * When the mock server initializes, it scans the seeds directory and invokes each seed
- * file's default export function. The function receives a `SeedContext` with utilities
- * for generating fake data and accessing schema definitions.
+ * Each key is a schema name from the OpenAPI spec (components.schemas), and
+ * each value is a JavaScript code string that Scalar Mock Server will execute
+ * to populate the in-memory store with initial data.
  *
  * ## Why
- * Seed data enables:
- * - Realistic mock responses without manual data entry
- * - Consistent test data across development sessions
- * - Demonstration of API capabilities with meaningful examples
- * - Frontend development with populated data stores
+ * Custom seeds enable realistic mock data that better represents production
+ * scenarios, allowing frontend development with populated data stores.
  *
+ * @see https://scalar.com/products/mock-server/data-seeding
  * @module seeds/pets
- * @see {@link https://github.com/websublime/vite-open-api-server} Plugin documentation
  */
 
-import type { SeedContext } from '@websublime/vite-plugin-open-api-server';
+import type { SeedExports } from '@websublime/vite-plugin-open-api-server';
 
 /**
- * Pet seed data generator.
+ * Pet schema seeds.
  *
- * Generates a collection of sample pets with realistic data for testing
- * and development purposes.
- *
- * @param context - The seed context containing faker instance and schema utilities
- * @returns An array of Pet objects
+ * Available Scalar runtime context:
+ * - `seed` - Seeding utilities (count, etc.)
+ * - `faker` - Faker.js instance for generating fake data
+ * - `store` - In-memory data store (for referencing other seeded data)
  */
-export default async function seed(context: SeedContext): Promise<unknown[]> {
-  const { faker } = context;
-
-  // Categories for pets
-  const categories = [
-    { id: 1, name: 'Dogs' },
-    { id: 2, name: 'Cats' },
-    { id: 3, name: 'Birds' },
-    { id: 4, name: 'Fish' },
-    { id: 5, name: 'Reptiles' },
-  ];
-
-  // Sample tags
-  const tagOptions = [
-    { id: 1, name: 'friendly' },
-    { id: 2, name: 'playful' },
-    { id: 3, name: 'trained' },
-    { id: 4, name: 'vaccinated' },
-    { id: 5, name: 'neutered' },
-    { id: 6, name: 'young' },
-    { id: 7, name: 'senior' },
-    { id: 8, name: 'rescue' },
-  ];
-
-  // Pet statuses
-  const statuses = ['available', 'pending', 'sold'] as const;
-
-  // Generate 15 sample pets
-  return Array.from({ length: 15 }, (_, index) => {
-    const category = faker.helpers.arrayElement(categories);
-    const numTags = faker.number.int({ min: 1, max: 3 });
-    const tags = faker.helpers.arrayElements(tagOptions, numTags);
-
-    return {
+const seeds: SeedExports = {
+  /**
+   * Pet - Generates 15 sample pets with realistic data
+   */
+  Pet: `
+    seed.count(15, (index) => ({
       id: index + 1,
       name: faker.animal.petName(),
-      category: category,
+      category: {
+        id: faker.number.int({ min: 1, max: 5 }),
+        name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles'])
+      },
       photoUrls: [
         faker.image.url({ width: 640, height: 480 }),
-        faker.image.url({ width: 640, height: 480 }),
+        faker.image.url({ width: 640, height: 480 })
       ],
-      tags: tags,
-      status: faker.helpers.arrayElement(statuses),
-    };
-  });
-}
+      tags: faker.helpers.arrayElements(
+        [
+          { id: 1, name: 'friendly' },
+          { id: 2, name: 'playful' },
+          { id: 3, name: 'trained' },
+          { id: 4, name: 'vaccinated' },
+          { id: 5, name: 'neutered' },
+          { id: 6, name: 'young' },
+          { id: 7, name: 'senior' },
+          { id: 8, name: 'rescue' }
+        ],
+        { min: 1, max: 3 }
+      ),
+      status: faker.helpers.arrayElement(['available', 'pending', 'sold'])
+    }))
+  `,
+
+  /**
+   * Category - Generates pet categories
+   */
+  Category: `
+    seed.count(5, (index) => ({
+      id: index + 1,
+      name: ['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles'][index]
+    }))
+  `,
+
+  /**
+   * Tag - Generates pet tags
+   */
+  Tag: `
+    seed.count(8, (index) => ({
+      id: index + 1,
+      name: ['friendly', 'playful', 'trained', 'vaccinated', 'neutered', 'young', 'senior', 'rescue'][index]
+    }))
+  `,
+};
+
+export default seeds;
