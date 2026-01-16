@@ -144,7 +144,10 @@ export function logLoadSummary(
 export function formatInvalidExportError(expectedType: string, actualValue: unknown): string {
   let typeDesc: string = typeof actualValue;
 
-  if (Array.isArray(actualValue)) {
+  // Handle null explicitly (typeof null === 'object' but we want a clearer message)
+  if (actualValue === null) {
+    typeDesc = 'null';
+  } else if (Array.isArray(actualValue)) {
     typeDesc = 'object (array)';
   } else if (typeof actualValue === 'function') {
     typeDesc = 'function';

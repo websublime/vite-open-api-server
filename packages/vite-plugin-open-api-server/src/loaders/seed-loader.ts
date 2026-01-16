@@ -85,9 +85,25 @@ export async function loadSeeds(
     // Resolve to absolute path
     const absoluteDir = path.resolve(seedsDir);
 
-    // Check if directory exists before scanning
+    // Check if directory exists and is actually a directory before scanning
     if (!fs.existsSync(absoluteDir)) {
       const msg = `No seed files found in ${seedsDir}`;
+      logger.warn(`[seed-loader] ${msg}`);
+      warnings.push(msg);
+      return { seeds, loadedFiles, warnings, errors };
+    }
+
+    // Verify it's a directory, not a file
+    try {
+      const stat = fs.statSync(absoluteDir);
+      if (!stat.isDirectory()) {
+        const msg = `Path ${seedsDir} exists but is not a directory`;
+        logger.warn(`[seed-loader] ${msg}`);
+        warnings.push(msg);
+        return { seeds, loadedFiles, warnings, errors };
+      }
+    } catch {
+      const msg = `Cannot access ${seedsDir}`;
       logger.warn(`[seed-loader] ${msg}`);
       warnings.push(msg);
       return { seeds, loadedFiles, warnings, errors };
@@ -148,13 +164,13 @@ async function loadSeedFile(
   const fileUrl = pathToFileURL(filePath).href;
   const module = await import(fileUrl);
 
-  // Validate default export exists
-  if (!module.default) {
+  // Validate default export exists (use 'in' operator to detect property presence, not truthy check)
+  if (!('default' in module)) {
     throw new Error('Seed file must have a default export');
   }
 
   // Validate default export is an object (not function, array, or primitive)
-  const exports = module.default;
+  const exports = module.default as unknown;
   if (!isValidExportsObject(exports)) {
     throw new Error(
       'Seed file default export must be an object mapping schemaName to seed values. ' +
@@ -200,30 +216,12 @@ async function loadSeedFile(
 /**
  * Check if a schemaName exists in the registry.
  *
- * Tries multiple candidates: exact match, capitalized, singular, plural forms.
+ * Delegates to findMatchingSchema to centralize all schema-matching logic.
+ * This avoids duplication of candidate generation between checkSchemaExists
+ * and findMatchingSchema.
  */
 function checkSchemaExists(schemaName: string, registry: OpenApiEndpointRegistry): boolean {
-  // Direct match first
-  if (registry.schemas.has(schemaName)) {
-    return true;
-  }
-
-  // Try variations
-  const candidates = [
-    capitalize(schemaName),
-    singularize(schemaName),
-    capitalize(singularize(schemaName)),
-    pluralize(schemaName),
-    capitalize(pluralize(schemaName)),
-  ];
-
-  for (const candidate of candidates) {
-    if (registry.schemas.has(candidate)) {
-      return true;
-    }
-  }
-
-  return false;
+  return findMatchingSchema(schemaName, registry) !== null;
 }
 
 /**
