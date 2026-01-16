@@ -36,6 +36,7 @@ import type { App, Plugin } from 'vue';
 import { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
 import { installFetchInterceptor } from './fetch-interceptor.js';
 import { registerTimelineLayer } from './request-timeline.js';
+import { registerSimulationTab } from './simulation-tab.js';
 
 // ============================================================================
 // Constants
@@ -993,6 +994,10 @@ export function createOpenApiDevTools(
       // Install fetch interceptor to log requests to timeline
       installFetchInterceptor({ proxyPath, verbose });
       log('Fetch interceptor installed', verbose);
+
+      // Register simulation tab (P6-02)
+      registerSimulationTab({ proxyPath, verbose });
+      log('Simulation tab registered', verbose);
 
       log('OpenAPI DevTools plugin installed', verbose);
 
