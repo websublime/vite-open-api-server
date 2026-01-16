@@ -23,6 +23,15 @@
 
 import { ref } from 'vue';
 
+/**
+ * Shared headers for all API requests.
+ * Contains Authorization and api_key headers used across fetch calls.
+ */
+const API_HEADERS = {
+  Authorization: 'Bearer test-token',
+  api_key: 'test-api-key',
+} as const;
+
 /** State for API test results */
 const apiResponse = ref<string | null>(null);
 const apiError = ref<string | null>(null);
@@ -52,10 +61,7 @@ async function fetchPet(petId: number = 1): Promise<void> {
 
   try {
     const response = await fetch(url, {
-      headers: {
-        Authorization: 'Bearer test-token',
-        api_key: 'test-api-key',
-      },
+      headers: API_HEADERS,
     });
 
     if (!response.ok) {
@@ -88,10 +94,7 @@ async function fetchPets(): Promise<void> {
 
   try {
     const response = await fetch(url, {
-      headers: {
-        Authorization: 'Bearer test-token',
-        api_key: 'test-api-key',
-      },
+      headers: API_HEADERS,
     });
 
     if (!response.ok) {
@@ -138,10 +141,7 @@ async function fetchWithSimulation(
 
   try {
     const response = await fetch(url, {
-      headers: {
-        Authorization: 'Bearer test-token',
-        api_key: 'test-api-key',
-      },
+      headers: API_HEADERS,
     });
     const data = await response.json();
 

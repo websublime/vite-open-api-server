@@ -70,8 +70,8 @@ export default async function seed(context: SeedContext): Promise<unknown[]> {
       name: faker.animal.petName(),
       category: category,
       photoUrls: [
-        faker.image.urlLoremFlickr({ category: 'animals' }),
-        faker.image.urlLoremFlickr({ category: 'animals' }),
+        faker.image.url({ width: 640, height: 480 }),
+        faker.image.url({ width: 640, height: 480 }),
       ],
       tags: tags,
       status: faker.helpers.arrayElement(statuses),
