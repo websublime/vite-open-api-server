@@ -26,7 +26,10 @@ import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
-import type { SeedCodeGenerator } from '../types/seeds.js';
+// TODO: Full rewrite in subtask vite-open-api-server-thy.3
+// Currently using SeedValue but the loader logic needs to be rewritten
+// to support object exports instead of function exports
+import type { SeedValue } from '../types/seeds.js';
 
 /**
  * Result of loading seeds from a directory.
@@ -35,9 +38,9 @@ import type { SeedCodeGenerator } from '../types/seeds.js';
  */
 export interface LoadSeedsResult {
   /**
-   * Map of schema name to seed generator function.
+   * Map of schema name to seed value (string or function).
    */
-  seeds: Map<string, SeedCodeGenerator>;
+  seeds: Map<string, SeedValue>;
 
   /**
    * Errors encountered during loading (file path → error message).
@@ -74,8 +77,9 @@ export async function loadSeeds(
   seedsDir: string,
   registry: OpenApiEndpointRegistry,
   logger: Logger,
-): Promise<Map<string, SeedCodeGenerator>> {
-  const seeds = new Map<string, SeedCodeGenerator>();
+): Promise<Map<string, SeedValue>> {
+  // TODO: Rewrite to load object exports { schemaName: string | fn } instead of default function
+  const seeds = new Map<string, SeedValue>();
   const errors: string[] = [];
 
   try {
@@ -102,9 +106,10 @@ export async function loadSeeds(
         const fileUrl = pathToFileURL(filePath).href;
         const module = await import(fileUrl);
 
-        // Validate default export
-        if (!module.default || typeof module.default !== 'function') {
-          throw new Error(`Seed file must export a default async function`);
+        // TODO: Rewrite validation - should check for object export, not function
+        // Validate default export (temporary - accepts both old and new format)
+        if (!module.default) {
+          throw new Error(`Seed file must have a default export`);
         }
 
         // Extract schema name from filename
@@ -127,7 +132,8 @@ export async function loadSeeds(
           logger.warn(`[seed-loader] Duplicate seed for "${finalSchemaName}", overwriting`);
         }
 
-        seeds.set(finalSchemaName, module.default as SeedCodeGenerator);
+        // TODO: Handle object exports properly - for now cast to SeedValue
+        seeds.set(finalSchemaName, module.default as SeedValue);
         logger.info(`[seed-loader] Loaded seed: ${finalSchemaName}`);
       } catch (error) {
         const err = error as Error;

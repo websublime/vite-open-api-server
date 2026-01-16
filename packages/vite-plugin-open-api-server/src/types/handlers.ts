@@ -2,264 +2,228 @@
  * Handler Type Definitions
  *
  * ## What
- * This module defines the types for custom request handlers. Handlers allow
- * users to override default mock server responses with custom logic for
- * specific endpoints.
+ * This module defines the types for custom request handlers that inject
+ * x-handler code into OpenAPI operations for the Scalar Mock Server.
  *
  * ## How
- * Handler files export an async function that receives a `HandlerContext`
- * with full access to request data, the OpenAPI registry, logger, and
- * security context. Handlers return a `HandlerResponse` or null to use
- * the default mock behavior.
+ * Handler files export an object mapping operationId to JavaScript code.
+ * The code can be a static string or a function that generates code
+ * dynamically based on the operation context.
  *
  * ## Why
- * Custom handlers enable realistic mock responses that go beyond static
- * OpenAPI examples. With access to the registry and security context,
- * handlers can implement complex business logic, validate requests,
- * and return dynamic responses based on request parameters.
+ * The Scalar Mock Server expects x-handler extensions as JavaScript code
+ * strings in the OpenAPI document. This approach allows handlers to access
+ * Scalar's runtime context (store, faker, req, res) directly in the code.
+ *
+ * @see https://scalar.com/products/mock-server/custom-request-handler
  *
  * @module
  */
 
-import type { Logger } from 'vite';
-import type { OpenApiEndpointRegistry } from './registry.js';
-import type { SecurityContext } from './security.js';
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 /**
- * Context object passed to custom handler functions.
+ * Context provided to dynamic handler code generators.
  *
- * Provides access to request data, the OpenAPI registry, logger, and
- * security state. The generic `TBody` parameter allows typed request
- * bodies when the handler knows the expected schema.
- *
- * @template TBody - Type of request body (defaults to unknown)
+ * This context allows handler functions to generate operation-specific
+ * JavaScript code based on the OpenAPI specification.
  *
  * @example
  * ```typescript
- * // Handler file: post.createPet.mjs
- * export default async function handler(context: HandlerContext<{ name: string; status: string }>) {
- *   const { body, params, logger, security } = context;
+ * // Dynamic handler that generates code based on operation parameters
+ * const findPetsByStatus: HandlerCodeGeneratorFn = ({ operation }) => {
+ *   const hasStatusParam = operation.parameters?.some(p => p.name === 'status');
  *
- *   if (!security.credentials) {
- *     return { status: 401, body: { error: 'Unauthorized' } };
+ *   if (hasStatusParam) {
+ *     return `
+ *       const status = req.query.status || 'available';
+ *       return store.list('Pet').filter(p => p.status === status);
+ *     `;
  *   }
  *
- *   logger.info(`Creating pet: ${body.name}`);
- *
- *   return {
- *     status: 201,
- *     body: { id: Date.now(), name: body.name, status: body.status },
- *     headers: { 'X-Created-At': new Date().toISOString() },
- *   };
- * }
+ *   return `return store.list('Pet');`;
+ * };
  * ```
  */
-export interface HandlerContext<TBody = unknown> {
+export interface HandlerCodeContext {
   /**
-   * HTTP method of the request (uppercase).
+   * The operation ID this handler is for.
    *
-   * @example 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'
-   */
-  method: string;
-
-  /**
-   * Request path without query string.
-   *
-   * @example '/pets/123', '/users/456/orders'
-   */
-  path: string;
-
-  /**
-   * Path parameters extracted from the URL.
-   *
-   * Keys correspond to path parameter names defined in the OpenAPI spec.
-   *
-   * @example { petId: '123', categoryId: '456' }
-   */
-  params: Record<string, string>;
-
-  /**
-   * Query string parameters from the request URL.
-   *
-   * Values can be strings or arrays of strings for repeated parameters.
-   *
-   * @example { status: 'available', tags: ['dog', 'pet'] }
-   */
-  query: Record<string, string | string[]>;
-
-  /**
-   * Parsed request body.
-   *
-   * The body is automatically parsed based on the Content-Type header.
-   * For JSON requests, this will be the parsed JSON object.
-   * For form data, this will be the parsed form fields.
-   *
-   * Use the `TBody` generic parameter for typed access to the body.
-   */
-  body: TBody;
-
-  /**
-   * Request headers with lowercase keys.
-   *
-   * Header values can be strings, arrays of strings (for multiple values),
-   * or undefined if the header is not present.
-   *
-   * @example { 'content-type': 'application/json', 'authorization': 'Bearer token123' }
-   */
-  headers: Record<string, string | string[] | undefined>;
-
-  /**
-   * Vite logger for consistent logging.
-   *
-   * Use this logger instead of console.log to integrate with Vite's
-   * logging system and respect the user's verbose setting.
-   */
-  logger: Logger;
-
-  /**
-   * OpenAPI registry with read-only access to schemas, endpoints, and security.
-   *
-   * Use the registry to access schema definitions for validation,
-   * endpoint metadata for dynamic responses, or security scheme information.
-   */
-  registry: Readonly<OpenApiEndpointRegistry>;
-
-  /**
-   * Security context with current authentication state.
-   *
-   * Contains security requirements from the spec, the matched security
-   * scheme, extracted credentials, and validated scopes.
-   */
-  security: SecurityContext;
-
-  /**
-   * Operation ID for this endpoint.
-   *
-   * Matches the operationId from the OpenAPI spec. Useful for
-   * logging or conditional logic based on the operation.
-   *
-   * @example 'getPetById', 'createPet', 'listPets'
+   * @example 'findPetsByStatus', 'getPetById', 'createPet'
    */
   operationId: string;
 
   /**
-   * Seed data loaded for this endpoint.
+   * Full OpenAPI operation object.
    *
-   * If a seed file exists for this operation, its exported data
-   * will be available here for use in generating responses.
-   * Undefined if no seed file exists.
+   * Contains parameters, requestBody, responses, security, etc.
+   * Use this to generate context-aware handler code.
    */
-  seeds?: Record<string, unknown>;
+  operation: OpenAPIV3_1.OperationObject;
+
+  /**
+   * HTTP method for this operation (lowercase).
+   *
+   * @example 'get', 'post', 'put', 'patch', 'delete'
+   */
+  method: string;
+
+  /**
+   * OpenAPI path for this operation.
+   *
+   * @example '/pet/findByStatus', '/pet/{petId}'
+   */
+  path: string;
+
+  /**
+   * Complete OpenAPI document for reference.
+   *
+   * Use this to access shared components, security schemes,
+   * or other operations.
+   */
+  document: OpenAPIV3_1.Document;
+
+  /**
+   * Available schemas from components/schemas.
+   *
+   * Pre-extracted for convenience when generating code that
+   * needs to reference schema structures.
+   */
+  schemas: Record<string, OpenAPIV3_1.SchemaObject>;
 }
 
 /**
- * Response returned by custom handler functions.
+ * Function signature for dynamic handler code generation.
  *
- * Handlers return this response object to override the default mock behavior.
- * Return null to fall back to the default mock server response.
+ * Receives operation context and returns JavaScript code as a string.
+ * The returned code will be injected as x-handler in the OpenAPI spec.
+ *
+ * The code has access to Scalar's runtime context:
+ * - `store` - In-memory data store
+ * - `faker` - Faker.js instance
+ * - `req` - Request object (body, params, query, headers)
+ * - `res` - Example responses by status code
  *
  * @example
  * ```typescript
- * // Success response
- * const successResponse: HandlerResponse = {
- *   status: 200,
- *   body: { id: 1, name: 'Fluffy', status: 'available' },
- * };
+ * const getPetById: HandlerCodeGeneratorFn = ({ operation }) => {
+ *   const has404 = '404' in (operation.responses || {});
  *
- * // Error response with custom headers
- * const errorResponse: HandlerResponse = {
- *   status: 400,
- *   body: { error: 'Invalid pet ID', code: 'INVALID_ID' },
- *   headers: { 'X-Error-Code': 'INVALID_ID' },
+ *   return `
+ *     const pet = store.get('Pet', req.params.petId);
+ *     ${has404 ? 'if (!pet) return res[404];' : ''}
+ *     return pet;
+ *   `;
  * };
  * ```
  */
-export interface HandlerResponse {
-  /**
-   * HTTP status code for the response.
-   *
-   * @example 200, 201, 400, 401, 404, 500
-   */
-  status: number;
-
-  /**
-   * Response body.
-   *
-   * Objects will be JSON-serialized. Strings are sent as-is.
-   * Use null for empty responses (e.g., 204 No Content).
-   */
-  body: unknown;
-
-  /**
-   * Optional response headers.
-   *
-   * Headers are merged with default headers. Use this to add
-   * custom headers like cache-control, correlation IDs, etc.
-   */
-  headers?: Record<string, string>;
-}
+export type HandlerCodeGeneratorFn = (context: HandlerCodeContext) => string | Promise<string>;
 
 /**
- * Custom handler function signature.
+ * Handler value - either static code or a dynamic code generator.
  *
- * Async function that receives a handler context and returns a response
- * or null. Return null to use the default mock server response.
- *
- * @template TBody - Type of request body (defaults to unknown)
+ * - **String**: Static JavaScript code injected directly as x-handler
+ * - **Function**: Called with context to generate JavaScript code
  *
  * @example
  * ```typescript
- * // Handler that returns custom response
- * const getPetHandler: HandlerCodeGenerator<never> = async (context) => {
- *   const { params, registry } = context;
- *   const pet = await findPet(params.petId);
+ * // Static handler (simple, no context needed)
+ * const getInventory: HandlerValue = `
+ *   const pets = store.list('Pet');
+ *   return pets.reduce((acc, pet) => {
+ *     acc[pet.status] = (acc[pet.status] || 0) + 1;
+ *     return acc;
+ *   }, {});
+ * `;
  *
- *   if (!pet) {
- *     return { status: 404, body: { error: 'Pet not found' } };
- *   }
- *
- *   return { status: 200, body: pet };
- * };
- *
- * // Handler that falls back to default mock
- * const listPetsHandler: HandlerCodeGenerator = async (context) => {
- *   if (context.query.useDefault === 'true') {
- *     return null; // Use mock server's default response
- *   }
- *   return { status: 200, body: [] };
+ * // Dynamic handler (generates code based on operation)
+ * const findPetsByStatus: HandlerValue = ({ operation }) => {
+ *   // Generate different code based on operation config
+ *   return `return store.list('Pet').filter(p => p.status === req.query.status);`;
  * };
  * ```
  */
-export type HandlerCodeGenerator<TBody = unknown> = (
-  context: HandlerContext<TBody>,
-) => Promise<HandlerResponse | null>;
+export type HandlerValue = string | HandlerCodeGeneratorFn;
 
 /**
- * Expected exports from handler files.
+ * Handler file exports structure.
  *
- * Handler files must default export an async function matching the
- * `HandlerCodeGenerator` signature. Named exports are ignored.
+ * Handler files export an object mapping operationId to handler values.
+ * Each value is either a JavaScript code string or a function that
+ * generates code.
  *
  * @example
  * ```typescript
- * // get.getPetById.mjs
- * export default async function handler(context) {
- *   return { status: 200, body: { id: 1, name: 'Fluffy' } };
- * }
+ * // pets.handler.mjs
+ * export default {
+ *   // Static: Simple code string
+ *   getInventory: `
+ *     const pets = store.list('Pet');
+ *     return pets.reduce((acc, pet) => {
+ *       acc[pet.status] = (acc[pet.status] || 0) + 1;
+ *       return acc;
+ *     }, {});
+ *   `,
  *
- * // Or with TypeScript types
- * import type { HandlerCodeGenerator } from '@websublime/vite-plugin-open-api-server';
+ *   // Dynamic: Function that generates code
+ *   findPetsByStatus: ({ operation }) => {
+ *     const hasStatus = operation.parameters?.some(p => p.name === 'status');
+ *     return hasStatus
+ *       ? `return store.list('Pet').filter(p => p.status === req.query.status);`
+ *       : `return store.list('Pet');`;
+ *   },
  *
- * const handler: HandlerCodeGenerator = async (context) => {
- *   return { status: 200, body: { id: 1, name: 'Fluffy' } };
+ *   // Static: CRUD operations
+ *   getPetById: `return store.get('Pet', req.params.petId);`,
+ *   addPet: `return store.create('Pet', { id: faker.string.uuid(), ...req.body });`,
+ *   updatePet: `return store.update('Pet', req.params.petId, req.body);`,
+ *   deletePet: `store.delete('Pet', req.params.petId); return null;`,
  * };
- *
- * export default handler;
  * ```
  */
 export interface HandlerFileExports {
   /**
-   * Default export must be a handler function.
+   * Default export must be an object mapping operationId to handler values.
    */
-  default: HandlerCodeGenerator;
+  default: HandlerExports;
+}
+
+/**
+ * Map of operationId to handler values.
+ *
+ * This is the expected structure of the default export from handler files.
+ */
+export type HandlerExports = Record<string, HandlerValue>;
+
+/**
+ * Result of loading and resolving handler files.
+ *
+ * After loading, all handlers are resolved to their final code strings
+ * for injection into the OpenAPI document.
+ */
+export type ResolvedHandlers = Map<string, string>;
+
+/**
+ * Handler loading result with metadata.
+ */
+export interface HandlerLoadResult {
+  /**
+   * Map of operationId to handler value (string or function).
+   */
+  handlers: Map<string, HandlerValue>;
+
+  /**
+   * Files that were successfully loaded.
+   */
+  loadedFiles: string[];
+
+  /**
+   * Warnings encountered during loading.
+   */
+  warnings: string[];
+
+  /**
+   * Errors encountered during loading.
+   */
+  errors: string[];
 }

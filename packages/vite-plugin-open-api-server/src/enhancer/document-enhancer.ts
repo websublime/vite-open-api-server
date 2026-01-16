@@ -24,8 +24,11 @@
 import type { OpenAPIV3_1 } from 'openapi-types';
 import type { Logger } from 'vite';
 
-import type { HandlerCodeGenerator } from '../types/handlers.js';
-import type { SeedCodeGenerator } from '../types/seeds.js';
+// TODO: Full rewrite in subtask vite-open-api-server-thy.4
+// Currently using HandlerValue/SeedValue but the enhancer logic needs to be rewritten
+// to resolve code strings from values before injection
+import type { HandlerValue } from '../types/handlers.js';
+import type { SeedValue } from '../types/seeds.js';
 
 /**
  * HTTP methods supported by OpenAPI operations.
@@ -115,8 +118,8 @@ interface InjectionResult {
  */
 export function enhanceDocument(
   spec: OpenAPIV3_1.Document,
-  handlers: Map<string, HandlerCodeGenerator>,
-  seeds: Map<string, SeedCodeGenerator>,
+  handlers: Map<string, HandlerValue>,
+  seeds: Map<string, SeedValue>,
   logger: Logger,
 ): EnhanceDocumentResult {
   // Deep clone spec to preserve original
@@ -146,7 +149,7 @@ export function enhanceDocument(
  */
 function injectHandlers(
   spec: OpenAPIV3_1.Document,
-  handlers: Map<string, HandlerCodeGenerator>,
+  handlers: Map<string, HandlerValue>,
   logger: Logger,
 ): InjectionResult {
   let count = 0;
@@ -190,7 +193,7 @@ function injectHandlers(
  */
 function injectSeeds(
   spec: OpenAPIV3_1.Document,
-  seeds: Map<string, SeedCodeGenerator>,
+  seeds: Map<string, SeedValue>,
   logger: Logger,
 ): InjectionResult {
   let count = 0;
