@@ -320,7 +320,10 @@ function createInterceptedFetch(): typeof fetch {
     }
 
     // Extract request headers
-    const requestHeaders = headersToRecord(init?.headers);
+    // Fallback to Request object's headers if init.headers is not provided
+    const requestHeaders = headersToRecord(
+      init?.headers ?? (input instanceof Request ? input.headers : undefined),
+    );
 
     try {
       // Make the actual request
