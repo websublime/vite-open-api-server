@@ -1,3 +1,41 @@
+## [0.18.0] - 2026-01-16
+
+### Features
+
+- create timeline layer for Vue DevTools (a058c02)
+- hook into fetch to intercept API requests (a0650ff)
+- format timeline events with method, path, status, duration (62b2f27)
+- add event details with headers, body, response preview (fe877b1)
+- connect timeline to GlobalState requestLog (2a09df0)
+
+
+### Bug Fixes
+
+- address code review feedback (7fcf3f1)
+- capture headers from Request objects in fetch interceptor (7f0cd53)
+- validate proxyPath to prevent global interception (83196cc)
+- reject whitespace-only proxyPath values (d1811fc)
+
+
+### Code Refactoring
+
+- pass originalFetch as parameter to createInterceptedFetch (c9369da)
+
+
+### Other Changes
+
+- format code with biome (35b386d)
+- finalize request timeline cleanup (f3146c9)
+- sync changeset for feature/p6-01-request-timeline (f04041d)
+- update pnpm lock file (662978c)
+- sync changeset for feature/p6-01-request-timeline (4cac7b2)
+- sync changeset for feature/p6-01-request-timeline (2016305)
+- sync changeset for feature/p6-01-request-timeline (5929a43)
+- sync changeset for feature/p6-01-request-timeline (d591471)
+- sync changeset for feature/p6-01-request-timeline (26adb1b)
+
+
+
 ## [0.17.0] - 2026-01-15
 
 ### Features

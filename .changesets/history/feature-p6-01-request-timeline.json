@@ -1,0 +1,36 @@
+{
+  "changeset": {
+    "branch": "feature/p6-01-request-timeline",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "7e08de4f2b0445792fd901413728030cdb58256b",
+      "a29fb3c6d66d75ddc41f496c1d7b2d5551006338",
+      "408aed65c5b0aecf9104e5d54997a51171278dda",
+      "23ac10591aed8201fbe9cdffe47f5b3f2b2080fe",
+      "c6be6f0ca732b4b23404ae197f56b7e6f47bdfb1",
+      "60a07ef07816d96209d2171a1a1c6b3b4248b3f7",
+      "39caba058e6f19ec288641074128adc069e9b5cd",
+      "dbe8de24d0f1959f69dc4e4217782c6f74c9902b",
+      "32bc009a999ae7375f0e4d8f0ec9e5c780042d28",
+      "5c01bd12af58c933d35680aa0ff8a73e5873af47",
+      "e86ca32fced0fea86b981f08fe70b8da4bb9ea0f",
+      "d027ef211f8ddef15ea7e9d96f32c12a8a2a4c87"
+    ],
+    "created_at": "2026-01-15T14:35:12.732154Z",
+    "updated_at": "2026-01-16T09:38:13.520791Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-16T10:06:52.917951640Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "c9369da76da5df959f5486fb54d4a0d0e987968e",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.18.0"
+    }
+  }
+}
