@@ -305,7 +305,7 @@ describe('Document Enhancer', () => {
 
         const operationInfo = findOperationById(result.document, 'getPetById');
         expect(operationInfo).not.toBeNull();
-        expect(getExtension(operationInfo!.operation, 'x-handler')).toBe(handlerCode);
+        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(handlerCode);
       });
 
       it('should inject multiple static handlers', async () => {
@@ -321,10 +321,10 @@ describe('Document Enhancer', () => {
         expect(result.handlerCount).toBe(2);
 
         const listPetsOp = findOperationById(result.document, 'listPets');
-        expect(getExtension(listPetsOp!.operation, 'x-handler')).toBe('return store.list("Pet");');
+        expect(getExtension(listPetsOp?.operation, 'x-handler')).toBe('return store.list("Pet");');
 
         const createPetOp = findOperationById(result.document, 'createPet');
-        expect(getExtension(createPetOp!.operation, 'x-handler')).toBe(
+        expect(getExtension(createPetOp?.operation, 'x-handler')).toBe(
           'return store.create("Pet", req.body);',
         );
       });
@@ -347,7 +347,7 @@ describe('Document Enhancer', () => {
         const result = await enhanceDocument(spec, handlers, seeds, mockLogger);
 
         const operationInfo = findOperationById(result.document, 'getPetById');
-        const injectedCode = getExtension<string>(operationInfo!.operation, 'x-handler');
+        const injectedCode = getExtension<string>(operationInfo?.operation, 'x-handler');
 
         expect(injectedCode).toContain('store.get("Pet"');
         expect(injectedCode).toContain('res["404"]'); // Should include 404 handling
@@ -387,7 +387,7 @@ describe('Document Enhancer', () => {
         const result = await enhanceDocument(spec, handlers, seeds, mockLogger);
 
         const operationInfo = findOperationById(result.document, 'listPets');
-        expect(getExtension(operationInfo!.operation, 'x-handler')).toBe(
+        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(
           'return store.list("Pet");',
         );
       });
@@ -557,7 +557,7 @@ describe('Document Enhancer', () => {
         );
 
         const operationInfo = findOperationById(result.document, 'getPetById');
-        expect(getExtension(operationInfo!.operation, 'x-handler')).toBe(
+        expect(getExtension(operationInfo?.operation, 'x-handler')).toBe(
           'return store.get("Pet");',
         );
       });
@@ -813,10 +813,10 @@ describe('Document Enhancer', () => {
         expect(result.handlerCount).toBe(2);
 
         const listPetsOp = findOperationById(result.document, 'listPets');
-        expect(getExtension(listPetsOp!.operation, 'x-handler')).toBe('return store.list("Pet");');
+        expect(getExtension(listPetsOp?.operation, 'x-handler')).toBe('return store.list("Pet");');
 
         const getPetByIdOp = findOperationById(result.document, 'getPetById');
-        const dynamicCode = getExtension<string>(getPetByIdOp!.operation, 'x-handler');
+        const dynamicCode = getExtension<string>(getPetByIdOp?.operation, 'x-handler');
         expect(dynamicCode).toContain('store.get("Pet"');
         expect(dynamicCode).toContain('// get');
       });
