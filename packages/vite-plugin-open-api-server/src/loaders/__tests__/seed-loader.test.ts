@@ -3,8 +3,8 @@
  *
  * Tests the loadSeeds function and related utilities for:
  * - Empty directory handling
- * - Valid seed file loading
- * - Invalid exports (no default, wrong type)
+ * - Valid seed file loading (object exports)
+ * - Invalid exports (no default, function instead of object, array)
  * - Duplicate schema name detection
  * - Schema name extraction from filename
  * - Singular/plural conversion utilities
@@ -234,11 +234,14 @@ describe('Seed Loader', () => {
     });
 
     describe('empty directory', () => {
-      it('should return empty map and log warning for empty directory', async () => {
+      it('should return empty result and log warning for empty directory', async () => {
         const registry = createMockRegistry();
-        const seeds = await loadSeeds(SEED_EMPTY_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_EMPTY_DIR, registry, mockLogger);
 
-        expect(seeds.size).toBe(0);
+        expect(result.seeds.size).toBe(0);
+        expect(result.loadedFiles).toHaveLength(0);
+        expect(result.warnings.length).toBeGreaterThan(0);
+        expect(result.warnings[0]).toContain('No seed files found');
         expect(mockLogger.warn).toHaveBeenCalledWith(
           expect.stringContaining('No seed files found'),
         );
@@ -246,12 +249,13 @@ describe('Seed Loader', () => {
     });
 
     describe('missing directory', () => {
-      it('should return empty map and log warning for non-existent directory', async () => {
+      it('should return empty result and log warning for non-existent directory', async () => {
         const registry = createMockRegistry();
         const nonExistentDir = path.join(__dirname, 'non-existent-seed-directory');
-        const seeds = await loadSeeds(nonExistentDir, registry, mockLogger);
+        const result = await loadSeeds(nonExistentDir, registry, mockLogger);
 
-        expect(seeds.size).toBe(0);
+        expect(result.seeds.size).toBe(0);
+        expect(result.loadedFiles).toHaveLength(0);
         expect(mockLogger.warn).toHaveBeenCalledWith(
           expect.stringContaining('No seed files found'),
         );
@@ -259,20 +263,36 @@ describe('Seed Loader', () => {
     });
 
     describe('valid seeds', () => {
-      it('should load valid seed files', async () => {
-        const registry = createMockRegistry(['Pet', 'Order']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+      it('should load valid seed files with object exports', async () => {
+        const registry = createMockRegistry(['Pet', 'Order', 'Category']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should have loaded the valid seeds
-        expect(seeds.size).toBeGreaterThan(0);
+        expect(result.seeds.size).toBeGreaterThan(0);
+        expect(result.loadedFiles.length).toBeGreaterThan(0);
+      });
 
-        // Verify the seed is a function
-        const petSeed = seeds.get('Pet');
-        expect(typeof petSeed).toBe('function');
+      it('should load static seed values as strings', async () => {
+        const registry = createMockRegistry(['Pet']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        // Pet seed should be a string (static)
+        const petSeed = result.seeds.get('Pet');
+        expect(typeof petSeed).toBe('string');
+        expect(petSeed).toContain('seed.count');
+      });
+
+      it('should load dynamic seed values as functions', async () => {
+        const registry = createMockRegistry(['Category']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        // Category seed should be a function (dynamic)
+        const categorySeed = result.seeds.get('Category');
+        expect(typeof categorySeed).toBe('function');
       });
 
       it('should log info message for each loaded seed', async () => {
-        const registry = createMockRegistry(['Pet', 'Order']);
+        const registry = createMockRegistry(['Pet', 'Order', 'Category']);
         await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         expect(mockLogger.info).toHaveBeenCalledWith(expect.stringContaining('Loaded seed:'));
@@ -280,74 +300,81 @@ describe('Seed Loader', () => {
 
       it('should load seeds from subdirectories', async () => {
         const registry = createMockRegistry(['Pet']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // The subdirectory also has a pets.seed.mjs, so Pet should be present
-        // (duplicate warning should be logged)
-        expect(seeds.has('Pet')).toBe(true);
+        // The subdirectory also has a pets.seed.mjs with Pet key
+        // Duplicate warning should be logged
+        expect(result.seeds.has('Pet')).toBe(true);
         expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Duplicate seed'));
       });
 
-      it('should match plural filename to singular schema', async () => {
-        const registry = createMockRegistry(['Pet']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+      it('should return loaded files list', async () => {
+        const registry = createMockRegistry(['Pet', 'Order']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // pets.seed.mjs → Pet (singular schema)
-        expect(seeds.has('Pet')).toBe(true);
-      });
-
-      it('should match PascalCase filename to schema directly', async () => {
-        const registry = createMockRegistry(['Order']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
-
-        // Order.seed.mjs → Order (exact match)
-        expect(seeds.has('Order')).toBe(true);
+        expect(result.loadedFiles.length).toBeGreaterThan(0);
+        for (const file of result.loadedFiles) {
+          expect(file).toMatch(/\.seed\.(ts|js|mts|mjs)$/);
+        }
       });
     });
 
     describe('invalid seeds', () => {
       it('should log error for seed without default export', async () => {
         const registry = createMockRegistry();
-        await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should log error for invalid-no-default.seed.mjs
         expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
+        expect(result.errors.length).toBeGreaterThan(0);
       });
 
-      it('should log error for seed with non-function default export', async () => {
+      it('should log error for seed with function default export', async () => {
         const registry = createMockRegistry();
-        await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // Should log error for invalid-not-function.seed.mjs
+        // Should log error for invalid-not-function.seed.mjs (now exports function)
         expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
+        expect(result.errors.some((e) => e.includes('function'))).toBe(true);
+      });
+
+      it('should log error for seed with array default export', async () => {
+        const registry = createMockRegistry();
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        // Should log error for invalid-array-export.seed.mjs
+        expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
+        expect(result.errors.some((e) => e.includes('array'))).toBe(true);
       });
 
       it('should continue loading other seeds after error', async () => {
-        const registry = createMockRegistry(['Pet', 'Order']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const registry = createMockRegistry(['Pet', 'Order', 'Category']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should still have valid seeds despite errors
-        expect(seeds.has('Pet')).toBe(true);
-        expect(seeds.has('Order')).toBe(true);
+        expect(result.seeds.has('Pet')).toBe(true);
+        expect(result.seeds.has('Order')).toBe(true);
+        expect(result.seeds.has('Category')).toBe(true);
       });
     });
 
     describe('duplicate schema names', () => {
       it('should warn about duplicate schema names', async () => {
         const registry = createMockRegistry(['Pet']);
-        await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should warn about duplicate Pet (from fixtures/ and fixtures/subdirectory/)
         expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Duplicate seed'));
+        expect(result.warnings.some((w) => w.includes('Duplicate'))).toBe(true);
       });
 
       it('should overwrite earlier seed with later one for duplicates', async () => {
         const registry = createMockRegistry(['Pet']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should still have the seed (last one wins)
-        expect(seeds.has('Pet')).toBe(true);
-        expect(seeds.size).toBeGreaterThan(0);
+        expect(result.seeds.has('Pet')).toBe(true);
+        expect(result.seeds.size).toBeGreaterThan(0);
       });
     });
 
@@ -355,34 +382,35 @@ describe('Seed Loader', () => {
       it('should warn when seed does not match any schema', async () => {
         // Registry without matching schemas
         const registry = createMockRegistry(['SomeOtherSchema']);
-        await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should warn about seeds not matching schemas
         expect(mockLogger.warn).toHaveBeenCalledWith(
           expect.stringContaining('does not match any schema'),
         );
+        expect(result.warnings.some((w) => w.includes('does not match any schema'))).toBe(true);
       });
 
       it('should not warn when seed matches schema', async () => {
         // Registry with matching schema names
-        const registry = createMockRegistry(['Pet', 'Order']);
-        await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const registry = createMockRegistry(['Pet', 'Order', 'Category']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // Verify that Pet and Order are loaded successfully
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
-        expect(seeds.has('Pet')).toBe(true);
-        expect(seeds.has('Order')).toBe(true);
+        // Verify that Pet, Order, Category are loaded successfully
+        expect(result.seeds.has('Pet')).toBe(true);
+        expect(result.seeds.has('Order')).toBe(true);
+        expect(result.seeds.has('Category')).toBe(true);
       });
     });
 
     describe('error resilience', () => {
-      it('should log summary with success and error counts', async () => {
-        const registry = createMockRegistry(['Pet', 'Order']);
+      it('should log summary with file and seed counts', async () => {
+        const registry = createMockRegistry(['Pet', 'Order', 'Category']);
         await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
         // Should log summary
         expect(mockLogger.info).toHaveBeenCalledWith(
-          expect.stringMatching(/Loaded \d+ seed\(s\), \d+ error\(s\)/),
+          expect.stringMatching(/Summary: \d+ seed\(s\), from \d+ file\(s\)/),
         );
       });
 
@@ -392,42 +420,69 @@ describe('Seed Loader', () => {
         // Should not throw even with invalid seeds in fixtures
         await expect(loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger)).resolves.toBeDefined();
       });
+
+      it('should return errors in result object', async () => {
+        const registry = createMockRegistry();
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        // Should have errors for invalid fixtures
+        expect(result.errors.length).toBeGreaterThan(0);
+      });
     });
 
     describe('file patterns', () => {
       it('should only load files matching *.seed.{ts,js,mts,mjs} pattern', async () => {
         const registry = createMockRegistry();
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // All loaded seeds should come from .seed.* files
-        for (const [schemaName] of seeds) {
-          expect(typeof schemaName).toBe('string');
-          expect(schemaName.length).toBeGreaterThan(0);
+        // All loaded files should match the pattern
+        for (const file of result.loadedFiles) {
+          expect(file).toMatch(/\.seed\.(ts|js|mts|mjs)$/);
         }
       });
     });
 
-    describe('seed function execution', () => {
-      it('should return callable seed functions', async () => {
-        const registry = createMockRegistry(['Pet', 'Order']);
-        const seeds = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+    describe('seed value types', () => {
+      it('should return string seed values for static seeds', async () => {
+        const registry = createMockRegistry(['Pet']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        const petSeed = seeds.get('Pet');
-        expect(typeof petSeed).toBe('function');
+        const petSeed = result.seeds.get('Pet');
+        expect(typeof petSeed).toBe('string');
+      });
 
-        // Call the seed function with a mock context
+      it('should return function seed values for dynamic seeds', async () => {
+        const registry = createMockRegistry(['Category', 'Order']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        // Category is a dynamic seed in pets.seed.mjs
+        const categorySeed = result.seeds.get('Category');
+        expect(typeof categorySeed).toBe('function');
+
+        // Order is a dynamic seed in Order.seed.mjs
+        const orderSeed = result.seeds.get('Order');
+        expect(typeof orderSeed).toBe('function');
+      });
+
+      it('should allow calling dynamic seed functions', async () => {
+        const registry = createMockRegistry(['Category']);
+        const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
+
+        const categorySeed = result.seeds.get('Category');
+        expect(typeof categorySeed).toBe('function');
+
+        // Call the function with a mock context
         const mockContext = {
-          faker: undefined,
-          logger: mockLogger,
-          registry,
-          schemaName: 'Pet',
-          env: {},
+          schemaName: 'Category',
+          schema: { type: 'object', properties: { description: { type: 'string' } } },
+          document: { openapi: '3.1.0', info: { title: 'Test', version: '1.0' }, paths: {} },
+          schemas: {},
         };
 
-        // biome-ignore lint/style/noNonNullAssertion: test assertion
-        const result = await petSeed!(mockContext);
-        expect(Array.isArray(result)).toBe(true);
-        expect(result.length).toBeGreaterThan(0);
+        // biome-ignore lint/complexity/noBannedTypes: test assertion with dynamic seed function
+        const code = (categorySeed as Function)(mockContext);
+        expect(typeof code).toBe('string');
+        expect(code).toContain('seed');
       });
     });
   });
