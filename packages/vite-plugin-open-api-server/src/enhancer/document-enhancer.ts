@@ -135,9 +135,12 @@ export async function enhanceDocument(
   // Deep clone spec to preserve original
   const enhanced = cloneDocument(spec);
 
+  // Pre-compute schemas map once for all resolution calls
+  const cachedSchemas = extractSchemas(enhanced);
+
   // Inject handlers and seeds (with resolution)
-  const handlerResult = await injectHandlers(enhanced, handlers, logger);
-  const seedResult = await injectSeeds(enhanced, seeds, logger);
+  const handlerResult = await injectHandlers(enhanced, handlers, cachedSchemas, logger);
+  const seedResult = await injectSeeds(enhanced, seeds, cachedSchemas, logger);
 
   const handlerCount = handlerResult.count;
   const seedCount = seedResult.count;
@@ -155,6 +158,29 @@ export async function enhanceDocument(
 }
 
 /**
+ * Extract all schemas from the OpenAPI document.
+ *
+ * This function is called once per enhancement to build a cached schemas map
+ * that is reused by all handler and seed resolution calls.
+ *
+ * @param spec - OpenAPI document
+ * @returns Record of schema name to schema object (excluding $ref schemas)
+ */
+function extractSchemas(spec: OpenAPIV3_1.Document): Record<string, OpenAPIV3_1.SchemaObject> {
+  const schemas: Record<string, OpenAPIV3_1.SchemaObject> = {};
+
+  if (spec.components?.schemas) {
+    for (const [name, schemaOrRef] of Object.entries(spec.components.schemas)) {
+      if (!isReferenceObject(schemaOrRef)) {
+        schemas[name] = schemaOrRef;
+      }
+    }
+  }
+
+  return schemas;
+}
+
+/**
  * Resolve a handler value to a code string.
  *
  * If the value is already a string, returns it directly.
@@ -164,6 +190,7 @@ export async function enhanceDocument(
  * @param value - Handler value (string or generator function)
  * @param spec - OpenAPI document for context
  * @param operationInfo - Operation info for context
+ * @param schemas - Pre-computed schemas map
  * @returns Promise resolving to the code string
  */
 async function resolveHandlerValue(
@@ -171,19 +198,10 @@ async function resolveHandlerValue(
   value: HandlerValue,
   spec: OpenAPIV3_1.Document,
   operationInfo: OperationInfo,
+  schemas: Record<string, OpenAPIV3_1.SchemaObject>,
 ): Promise<string> {
   if (typeof value === 'string') {
     return value;
-  }
-
-  // Extract all schemas for context
-  const schemas: Record<string, OpenAPIV3_1.SchemaObject> = {};
-  if (spec.components?.schemas) {
-    for (const [name, schemaOrRef] of Object.entries(spec.components.schemas)) {
-      if (!isReferenceObject(schemaOrRef)) {
-        schemas[name] = schemaOrRef;
-      }
-    }
   }
 
   // Build context for the generator function
@@ -213,6 +231,7 @@ async function resolveHandlerValue(
  * @param value - Seed value (string or generator function)
  * @param spec - OpenAPI document for context
  * @param schema - Schema object for context
+ * @param schemas - Pre-computed schemas map
  * @returns Promise resolving to the code string
  */
 async function resolveSeedValue(
@@ -220,19 +239,10 @@ async function resolveSeedValue(
   value: SeedValue,
   spec: OpenAPIV3_1.Document,
   schema: OpenAPIV3_1.SchemaObject,
+  schemas: Record<string, OpenAPIV3_1.SchemaObject>,
 ): Promise<string> {
   if (typeof value === 'string') {
     return value;
-  }
-
-  // Extract all schemas for context
-  const schemas: Record<string, OpenAPIV3_1.SchemaObject> = {};
-  if (spec.components?.schemas) {
-    for (const [name, schemaOrRef] of Object.entries(spec.components.schemas)) {
-      if (!isReferenceObject(schemaOrRef)) {
-        schemas[name] = schemaOrRef;
-      }
-    }
   }
 
   // Build context for the generator function
@@ -256,6 +266,7 @@ async function resolveSeedValue(
 async function injectHandlers(
   spec: OpenAPIV3_1.Document,
   handlers: Map<string, HandlerValue>,
+  schemas: Record<string, OpenAPIV3_1.SchemaObject>,
   logger: Logger,
 ): Promise<InjectionResult> {
   let count = 0;
@@ -282,7 +293,13 @@ async function injectHandlers(
 
     try {
       // Resolve the handler value to a code string
-      const code = await resolveHandlerValue(operationId, handlerValue, spec, operationInfo);
+      const code = await resolveHandlerValue(
+        operationId,
+        handlerValue,
+        spec,
+        operationInfo,
+        schemas,
+      );
 
       // Inject the resolved code string
       setExtension(operation, 'x-handler', code);
@@ -312,6 +329,7 @@ async function injectHandlers(
 async function injectSeeds(
   spec: OpenAPIV3_1.Document,
   seeds: Map<string, SeedValue>,
+  cachedSchemas: Record<string, OpenAPIV3_1.SchemaObject>,
   logger: Logger,
 ): Promise<InjectionResult> {
   let count = 0;
@@ -347,7 +365,7 @@ async function injectSeeds(
 
     try {
       // Resolve the seed value to a code string
-      const code = await resolveSeedValue(schemaName, seedValue, spec, schema);
+      const code = await resolveSeedValue(schemaName, seedValue, spec, schema, cachedSchemas);
 
       // Inject the resolved code string
       setExtension(schema, 'x-seed', code);

@@ -22,6 +22,7 @@
  * @module
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fg from 'fast-glob';
@@ -29,6 +30,12 @@ import type { Logger } from 'vite';
 
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
 import type { SeedExports, SeedLoadResult, SeedValue } from '../types/seeds.js';
+import {
+  getValueType,
+  isValidExportsObject,
+  isValidValue,
+  logLoadSummary,
+} from './loader-utils.js';
 
 /**
  * Load seed data files from a directory.
@@ -78,6 +85,14 @@ export async function loadSeeds(
     // Resolve to absolute path
     const absoluteDir = path.resolve(seedsDir);
 
+    // Check if directory exists before scanning
+    if (!fs.existsSync(absoluteDir)) {
+      const msg = `No seed files found in ${seedsDir}`;
+      logger.warn(`[seed-loader] ${msg}`);
+      warnings.push(msg);
+      return { seeds, loadedFiles, warnings, errors };
+    }
+
     // Scan for seed files
     const files = await fg.glob('**/*.seed.{ts,js,mts,mjs}', {
       cwd: absoluteDir,
@@ -107,7 +122,7 @@ export async function loadSeeds(
     }
 
     // Log summary
-    logLoadSummary(seeds.size, loadedFiles.length, warnings.length, errors.length, logger);
+    logLoadSummary('seed', seeds.size, loadedFiles.length, warnings.length, errors.length, logger);
 
     return { seeds, loadedFiles, warnings, errors };
   } catch (error) {
@@ -153,7 +168,7 @@ async function loadSeedFile(
   // Process each seed in the exports
   for (const [schemaName, seedValue] of Object.entries(seedExports)) {
     // Validate seed value type
-    if (!isValidSeedValue(seedValue)) {
+    if (!isValidValue(seedValue)) {
       const msg = `Invalid seed value for "${schemaName}" in ${filename}: expected string or function, got ${typeof seedValue}`;
       warnings.push(msg);
       logger.warn(`[seed-loader] ${msg}`);
@@ -178,29 +193,8 @@ async function loadSeedFile(
 
     // Add to seeds map
     seeds.set(schemaName, seedValue);
-    logger.info(`[seed-loader] Loaded seed: ${schemaName} (${getSeedType(seedValue)})`);
+    logger.info(`[seed-loader] Loaded seed: ${schemaName} (${getValueType(seedValue)})`);
   }
-}
-
-/**
- * Check if a value is a valid exports object (plain object, not array/function).
- */
-function isValidExportsObject(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    typeof value !== 'function' &&
-    // Ensure it's a plain object, not a class instance
-    Object.getPrototypeOf(value) === Object.prototype
-  );
-}
-
-/**
- * Check if a value is a valid seed value (string or function).
- */
-function isValidSeedValue(value: unknown): value is SeedValue {
-  return typeof value === 'string' || typeof value === 'function';
 }
 
 /**
@@ -230,39 +224,6 @@ function checkSchemaExists(schemaName: string, registry: OpenApiEndpointRegistry
   }
 
   return false;
-}
-
-/**
- * Get a human-readable type description for a seed value.
- */
-function getSeedType(value: SeedValue): string {
-  if (typeof value === 'string') {
-    return `static, ${value.length} chars`;
-  }
-  return 'dynamic function';
-}
-
-/**
- * Log the loading summary.
- */
-function logLoadSummary(
-  seedCount: number,
-  fileCount: number,
-  warningCount: number,
-  errorCount: number,
-  logger: Logger,
-): void {
-  const parts = [`${seedCount} seed(s)`, `from ${fileCount} file(s)`];
-
-  if (warningCount > 0) {
-    parts.push(`${warningCount} warning(s)`);
-  }
-
-  if (errorCount > 0) {
-    parts.push(`${errorCount} error(s)`);
-  }
-
-  logger.info(`[seed-loader] Summary: ${parts.join(', ')}`);
 }
 
 /**

@@ -22,6 +22,7 @@
  * @module
  */
 
+import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import fg from 'fast-glob';
@@ -29,6 +30,12 @@ import type { Logger } from 'vite';
 
 import type { HandlerExports, HandlerLoadResult, HandlerValue } from '../types/handlers.js';
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
+import {
+  getValueType,
+  isValidExportsObject,
+  isValidValue,
+  logLoadSummary,
+} from './loader-utils.js';
 
 /**
  * Load custom handler files from a directory.
@@ -78,6 +85,14 @@ export async function loadHandlers(
     // Resolve to absolute path
     const absoluteDir = path.resolve(handlersDir);
 
+    // Check if directory exists before scanning
+    if (!fs.existsSync(absoluteDir)) {
+      const msg = `No handler files found in ${handlersDir}`;
+      logger.warn(`[handler-loader] ${msg}`);
+      warnings.push(msg);
+      return { handlers, loadedFiles, warnings, errors };
+    }
+
     // Scan for handler files
     const files = await fg.glob('**/*.handler.{ts,js,mts,mjs}', {
       cwd: absoluteDir,
@@ -107,7 +122,14 @@ export async function loadHandlers(
     }
 
     // Log summary
-    logLoadSummary(handlers.size, loadedFiles.length, warnings.length, errors.length, logger);
+    logLoadSummary(
+      'handler',
+      handlers.size,
+      loadedFiles.length,
+      warnings.length,
+      errors.length,
+      logger,
+    );
 
     return { handlers, loadedFiles, warnings, errors };
   } catch (error) {
@@ -153,7 +175,7 @@ async function loadHandlerFile(
   // Process each handler in the exports
   for (const [operationId, handlerValue] of Object.entries(handlerExports)) {
     // Validate handler value type
-    if (!isValidHandlerValue(handlerValue)) {
+    if (!isValidValue(handlerValue)) {
       const msg = `Invalid handler value for "${operationId}" in ${filename}: expected string or function, got ${typeof handlerValue}`;
       warnings.push(msg);
       logger.warn(`[handler-loader] ${msg}`);
@@ -178,30 +200,8 @@ async function loadHandlerFile(
 
     // Add to handlers map
     handlers.set(operationId, handlerValue);
-    logger.info(
-      `[handler-loader] Loaded handler: ${operationId} (${getHandlerType(handlerValue)})`,
-    );
+    logger.info(`[handler-loader] Loaded handler: ${operationId} (${getValueType(handlerValue)})`);
   }
-}
-
-/**
- * Check if a value is a valid exports object (plain object, not array/function).
- */
-function isValidExportsObject(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    // Ensure it's a plain object, not a class instance
-    Object.getPrototypeOf(value) === Object.prototype
-  );
-}
-
-/**
- * Check if a value is a valid handler value (string or function).
- */
-function isValidHandlerValue(value: unknown): value is HandlerValue {
-  return typeof value === 'string' || typeof value === 'function';
 }
 
 /**
@@ -214,39 +214,6 @@ function checkOperationExists(operationId: string, registry: OpenApiEndpointRegi
     }
   }
   return false;
-}
-
-/**
- * Get a human-readable type description for a handler value.
- */
-function getHandlerType(value: HandlerValue): string {
-  if (typeof value === 'string') {
-    return `static, ${value.length} chars`;
-  }
-  return 'dynamic function';
-}
-
-/**
- * Log the loading summary.
- */
-function logLoadSummary(
-  handlerCount: number,
-  fileCount: number,
-  warningCount: number,
-  errorCount: number,
-  logger: Logger,
-): void {
-  const parts = [`${handlerCount} handler(s)`, `from ${fileCount} file(s)`];
-
-  if (warningCount > 0) {
-    parts.push(`${warningCount} warning(s)`);
-  }
-
-  if (errorCount > 0) {
-    parts.push(`${errorCount} error(s)`);
-  }
-
-  logger.info(`[handler-loader] Summary: ${parts.join(', ')}`);
 }
 
 /**

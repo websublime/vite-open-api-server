@@ -333,7 +333,7 @@ describe('Seed Loader', () => {
         const registry = createMockRegistry();
         const result = await loadSeeds(SEED_FIXTURES_DIR, registry, mockLogger);
 
-        // Should log error for invalid-not-function.seed.mjs (now exports function)
+        // Should log error for invalid-function-export.seed.mjs (exports function instead of object)
         expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
         expect(result.errors.some((e) => e.includes('function'))).toBe(true);
       });
