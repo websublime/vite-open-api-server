@@ -192,37 +192,35 @@ async function loadSeedFile(
       continue;
     }
 
-    // Validate schemaName exists in registry
-    const schemaExists = checkSchemaExists(schemaName, registry);
-    if (!schemaExists) {
+    // Find matching schema name in registry (handles case/plural variations)
+    const matchedSchemaName = findMatchingSchema(schemaName, registry);
+    if (!matchedSchemaName) {
       const msg = `Seed "${schemaName}" in ${filename} does not match any schema in OpenAPI spec`;
       warnings.push(msg);
       logger.warn(`[seed-loader] ${msg}`);
-      // Continue anyway - user might know what they're doing
+      // Continue anyway with original name - user might know what they're doing
     }
 
+    // Use matched schema name if found, otherwise fall back to original
+    const keyName = matchedSchemaName ?? schemaName;
+
     // Check for duplicates
-    if (seeds.has(schemaName)) {
-      const msg = `Duplicate seed for "${schemaName}" in ${filename}, overwriting previous`;
+    if (seeds.has(keyName)) {
+      const msg = `Duplicate seed for "${keyName}" in ${filename}, overwriting previous`;
       warnings.push(msg);
       logger.warn(`[seed-loader] ${msg}`);
     }
 
-    // Add to seeds map
-    seeds.set(schemaName, seedValue);
-    logger.info(`[seed-loader] Loaded seed: ${schemaName} (${getValueType(seedValue)})`);
+    // Add to seeds map using the matched registry key
+    seeds.set(keyName, seedValue);
+    if (matchedSchemaName && matchedSchemaName !== schemaName) {
+      logger.info(
+        `[seed-loader] Loaded seed: ${schemaName} → ${matchedSchemaName} (${getValueType(seedValue)})`,
+      );
+    } else {
+      logger.info(`[seed-loader] Loaded seed: ${keyName} (${getValueType(seedValue)})`);
+    }
   }
-}
-
-/**
- * Check if a schemaName exists in the registry.
- *
- * Delegates to findMatchingSchema to centralize all schema-matching logic.
- * This avoids duplication of candidate generation between checkSchemaExists
- * and findMatchingSchema.
- */
-function checkSchemaExists(schemaName: string, registry: OpenApiEndpointRegistry): boolean {
-  return findMatchingSchema(schemaName, registry) !== null;
 }
 
 /**
