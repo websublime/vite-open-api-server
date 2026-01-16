@@ -18,8 +18,6 @@
  * @module handlers/users
  */
 
-import type { HandlerExports } from '@websublime/vite-plugin-open-api-server';
-
 /**
  * User operation handlers.
  *
@@ -29,7 +27,7 @@ import type { HandlerExports } from '@websublime/vite-plugin-open-api-server';
  * - `req` - Request object (body, params, query, headers)
  * - `res` - Response helpers keyed by status code
  */
-const handlers: HandlerExports = {
+const handlers = {
   /**
    * POST /user - Create user
    */

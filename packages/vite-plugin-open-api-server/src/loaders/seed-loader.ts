@@ -22,9 +22,9 @@
  * @module
  */
 
+import fg from 'fast-glob';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
@@ -79,7 +79,7 @@ export async function loadSeeds(
     const absoluteDir = path.resolve(seedsDir);
 
     // Scan for seed files
-    const files = await glob('**/*.seed.{ts,js,mts,mjs}', {
+    const files = await fg.glob('**/*.seed.{ts,js,mts,mjs}', {
       cwd: absoluteDir,
       absolute: true,
     });
