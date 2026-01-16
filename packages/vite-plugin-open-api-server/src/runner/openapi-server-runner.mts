@@ -42,9 +42,13 @@ import { Hono } from 'hono';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
 import { loadOpenApiSpec } from '../core/parser/index.js';
+import { enhanceDocument } from '../enhancer/index.js';
+import { loadHandlers, loadSeeds } from '../loaders/index.js';
 import { printRegistryTable } from '../logging/index.js';
 import { buildRegistry, serializeRegistry } from '../registry/index.js';
+import type { HandlerValue } from '../types/handlers.js';
 import type { OpenApiServerMessage } from '../types/ipc-messages.js';
+import type { SeedValue } from '../types/seeds.js';
 import { createRequestLogger } from './request-logger.mjs';
 
 /**
@@ -230,6 +234,64 @@ async function main(): Promise<void> {
   // Print formatted registry table to console
   printRegistryTable(registry, consoleLogger as Parameters<typeof printRegistryTable>[1]);
 
+  // Load custom handlers if directory is configured
+  let handlers = new Map<string, HandlerValue>();
+  if (config.handlersDir) {
+    if (config.verbose) {
+      console.log(`[mock-server] Loading handlers from: ${config.handlersDir}`);
+    }
+    const handlerResult = await loadHandlers(
+      config.handlersDir,
+      registry,
+      consoleLogger as Parameters<typeof loadHandlers>[2],
+    );
+    handlers = handlerResult.handlers;
+
+    if (handlerResult.errors.length > 0) {
+      console.warn(`[mock-server] Handler loading had ${handlerResult.errors.length} error(s)`);
+    }
+  }
+
+  // Load custom seeds if directory is configured
+  let seeds = new Map<string, SeedValue>();
+  if (config.seedsDir) {
+    if (config.verbose) {
+      console.log(`[mock-server] Loading seeds from: ${config.seedsDir}`);
+    }
+    const seedResult = await loadSeeds(
+      config.seedsDir,
+      registry,
+      consoleLogger as Parameters<typeof loadSeeds>[2],
+    );
+    seeds = seedResult.seeds;
+
+    if (seedResult.errors.length > 0) {
+      console.warn(`[mock-server] Seed loading had ${seedResult.errors.length} error(s)`);
+    }
+  }
+
+  // Enhance document with x-handler and x-seed extensions
+  let documentForMockServer = specAsOpenAPI;
+  if (handlers.size > 0 || seeds.size > 0) {
+    if (config.verbose) {
+      console.log(
+        `[mock-server] Enhancing document with ${handlers.size} handler(s) and ${seeds.size} seed(s)`,
+      );
+    }
+    const enhanceResult = await enhanceDocument(
+      specAsOpenAPI,
+      handlers,
+      seeds,
+      consoleLogger as Parameters<typeof enhanceDocument>[3],
+    );
+    documentForMockServer = enhanceResult.document;
+
+    console.log(
+      `[mock-server] Document enhanced: ${enhanceResult.handlerCount} handler(s), ${enhanceResult.seedCount} seed(s)` +
+        (enhanceResult.overrideCount > 0 ? `, ${enhanceResult.overrideCount} override(s)` : ''),
+    );
+  }
+
   // Create Hono app with logging middleware
   const app = new Hono();
 
@@ -265,9 +327,10 @@ async function main(): Promise<void> {
     return c.json(serialized, 200);
   });
 
-  // Create Scalar mock server (returns a Hono app with all routes configured)
+  // Create Scalar mock server with enhanced document (returns a Hono app with all routes configured)
+  // The enhanced document contains x-handler and x-seed extensions that Scalar will execute
   const mockServer = await createMockServer({
-    document: spec,
+    document: documentForMockServer,
   });
 
   // Mount the mock server routes on our Hono app
