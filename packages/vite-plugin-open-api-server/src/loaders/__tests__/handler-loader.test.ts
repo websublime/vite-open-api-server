@@ -17,7 +17,7 @@ import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { OpenApiEndpointRegistry } from '../../types/registry.js';
-import { extractBaseName, kebabToCamelCase, loadHandlers } from '../handler-loader.js';
+import { kebabToCamelCase, loadHandlers } from '../handler-loader.js';
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures');
 const EMPTY_DIR = path.join(__dirname, 'fixtures-empty');
@@ -85,28 +85,6 @@ describe('Handler Loader', () => {
     it('should handle consecutive dashes correctly', () => {
       // Edge case: consecutive dashes (unusual but should handle gracefully)
       expect(kebabToCamelCase('add--pet')).toBe('add-Pet');
-    });
-  });
-
-  describe('extractBaseName', () => {
-    it('should extract base name from .handler.ts file', () => {
-      expect(extractBaseName('pets.handler.ts')).toBe('pets');
-    });
-
-    it('should extract base name from .handler.js file', () => {
-      expect(extractBaseName('store.handler.js')).toBe('store');
-    });
-
-    it('should extract base name from .handler.mts file', () => {
-      expect(extractBaseName('users.handler.mts')).toBe('users');
-    });
-
-    it('should extract base name from .handler.mjs file', () => {
-      expect(extractBaseName('orders.handler.mjs')).toBe('orders');
-    });
-
-    it('should preserve kebab-case in filename', () => {
-      expect(extractBaseName('pet-store.handler.ts')).toBe('pet-store');
     });
   });
 

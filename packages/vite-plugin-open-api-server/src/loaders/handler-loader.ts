@@ -229,26 +229,6 @@ async function loadHandlerFile(
 }
 
 /**
- * Extract operationId from handler filename.
- *
- * Note: This function is no longer used for extraction since handlers
- * now export objects with explicit operationId keys. Kept for potential
- * future use or backward compatibility.
- *
- * @param filename - Handler filename (e.g., 'pets.handler.ts')
- * @returns Base name without extension (e.g., 'pets')
- *
- * @example
- * ```typescript
- * extractBaseName('pets.handler.ts');     // 'pets'
- * extractBaseName('store-orders.handler.mjs'); // 'store-orders'
- * ```
- */
-export function extractBaseName(filename: string): string {
-  return filename.replace(/\.handler\.(ts|js|mts|mjs)$/, '');
-}
-
-/**
  * Convert kebab-case to camelCase.
  *
  * @param str - String in kebab-case (e.g., 'add-pet')
