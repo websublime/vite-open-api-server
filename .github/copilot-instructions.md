@@ -68,6 +68,56 @@ For MCP-compatible clients (Claude Desktop, etc.), install the beads MCP server:
 Run `bd <command> --help` to see all available flags for any command.
 For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
 
+## AI-Assisted Development Flow
+
+This project uses a structured AI-assisted development workflow with three specialized agents:
+
+### Workflow Commands
+
+| Command | Role | Description |
+|---------|------|-------------|
+| `/developer` | Implementer | Picks up tasks, implements features, commits with conventional commits, marks for review |
+| `/coder` | Challenger | Deep code analysis to find bugs, suggest improvements, identify inconsistencies (like CodeRabbit) |
+| `/review` | Reviewer | Final validation, runs quality checks, manages labels (approves or requests changes) |
+
+### Development Pipeline
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  developer  │ ──▶ │    coder    │ ──▶ │   review    │
+│ implements  │     │ challenges  │     │  validates  │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+  needs-review        findings            reviewed
+  (adds label)      (PR comments)            or
+                    (no labels)         needs-changes
+```
+
+### Label Management
+
+**IMPORTANT**: Only `/review` manages workflow labels.
+
+| Label | Meaning | Who Adds | Who Removes |
+|-------|---------|----------|-------------|
+| `needs-review` | Ready for code analysis/review | `/developer` | `/review` |
+| `needs-changes` | Issues found, developer must fix | `/review` | Developer (after fixing) |
+| `reviewed` | Approved for merge | `/review` | - |
+
+### Typical Flow
+
+1. **Developer implements** → adds `needs-review` label
+2. **Coder challenges** → analyzes code deeply, outputs findings (PR comments or report)
+3. **Developer addresses** → fixes critical findings
+4. **Review validates** → final check, manages labels (`reviewed` or `needs-changes`)
+
+### Key Rules
+
+- `/coder` does NOT modify code or labels - only analyzes and reports
+- `/review` is the gatekeeper - only it can approve or request changes
+- All agents use `bd` commands for task tracking
+- See `.claude/commands/*.md` for detailed agent instructions
+
 ## Important Rules
 
 - ✅ Use bd for ALL task tracking

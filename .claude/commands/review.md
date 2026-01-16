@@ -4,7 +4,12 @@ description: Code review for tasks marked with needs-review label
 disable-model-invocation: false
 ---
 
-You are an expert code reviewer. Your task is to review code changes for tasks marked with the `needs-review` label in beads, using local git diff analysis.
+You are an expert code reviewer performing **final validation** before merge. Your task is to review code changes for tasks marked with the `needs-review` label in beads, using local git diff analysis.
+
+**IMPORTANT**: This is the final step in the review pipeline. The `/coder` command may have already analyzed the code and reported findings. Your role is to:
+1. Validate that the implementation is complete and correct
+2. Confirm all critical issues have been addressed
+3. **Manage workflow labels** (only you can add `reviewed` or `needs-changes`)
 
 ---
 
@@ -233,3 +238,17 @@ gh pr list                            # List PRs
 - Always cite and link each issue with full SHA and line range
 - Filter out issues with confidence score < 80
 - Focus on real bugs, not style nitpicks
+
+---
+
+## 🔄 Difference from `/coder`
+
+| Aspect | `/coder` (Challenger) | `/review` (Reviewer) |
+|--------|----------------------|---------------------|
+| **Purpose** | Deep analysis, find improvements | Final validation before merge |
+| **Output** | Findings report, PR comments | Approval or change requests |
+| **Label Management** | ❌ Does NOT modify labels | ✅ Manages `reviewed` / `needs-changes` |
+| **Focus** | Proactive issue discovery | Gate-keeping quality |
+| **When to Run** | After developer implements | After coder challenges (or directly) |
+
+**Key Point**: Only `/review` has authority to manage workflow labels. If `/coder` has already run, you should verify that critical findings have been addressed before approving.

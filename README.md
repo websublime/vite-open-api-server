@@ -136,22 +136,24 @@ The project uses Claude Code slash commands (`.claude/commands/`) to orchestrate
 | Command | Role | Description |
 |---------|------|-------------|
 | `/developer` | Implementer | Picks up tasks from beads, implements features, commits with conventional commits, marks for review |
-| `/coder` | Refiner | Refines code for clarity and consistency, applies project standards, preserves functionality |
-| `/review` | Reviewer | Validates implementation, runs quality checks, approves or requests changes |
+| `/coder` | Challenger | Deep code analysis to find bugs, suggest improvements, identify inconsistencies (like CodeRabbit) |
+| `/review` | Reviewer | Final validation, runs quality checks, manages labels (approves or requests changes) |
 
 ### Development Flow
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
 │  developer  │ ──▶ │    coder    │ ──▶ │   review    │
-│ implements  │     │   refines   │     │  validates  │
+│ implements  │     │ challenges  │     │  validates  │
 └─────────────┘     └─────────────┘     └─────────────┘
        │                   │                   │
        ▼                   ▼                   ▼
-  needs-review       needs-review         reviewed
-                                              or
-                                        needs-changes
+  needs-review        findings            reviewed
+  (adds label)      (PR comments)            or
+                    (no labels)         needs-changes
 ```
+
+**Note**: Only `/review` manages workflow labels. `/coder` outputs findings but doesn't modify labels.
 
 ### Issue Tracking with Beads
 
