@@ -115,6 +115,73 @@ pnpm format
 | `pnpm playground` | Start the playground application |
 | `pnpm clean` | Remove dist and node_modules |
 
+## AI-Assisted Development
+
+This project uses a **structured AI-assisted development workflow**. This is not vibe coding for non-programmers — we follow a rigorous process to plan, design, and implement features systematically.
+
+### Development Philosophy
+
+Every feature goes through a deliberate process:
+
+1. **Research & Iteration** - Features are first researched, iterated, and refined
+2. **Product Requirements** - Documented in `history/PRODUCT-REQUIREMENTS-SPECIFICATION.md` with clear goals and acceptance criteria
+3. **Technical Planning** - Detailed implementation plan in `history/PLAN.md` with context, architecture decisions, and step-by-step implementation guides
+4. **Task Breakdown** - Epics, tasks, and subtasks are created in [beads](https://github.com/steveyegge/beads) (Git-backed issue tracker)
+5. **Implementation** - Structured development following the workflow below
+
+### Workflow Commands
+
+The project uses Claude Code slash commands (`.claude/commands/`) to orchestrate development:
+
+| Command | Role | Description |
+|---------|------|-------------|
+| `/developer` | Implementer | Picks up tasks from beads, implements features, commits with conventional commits, marks for review |
+| `/coder` | Refiner | Refines code for clarity and consistency, applies project standards, preserves functionality |
+| `/review` | Reviewer | Validates implementation, runs quality checks, approves or requests changes |
+
+### Development Flow
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  developer  │ ──▶ │    coder    │ ──▶ │   review    │
+│ implements  │     │   refines   │     │  validates  │
+└─────────────┘     └─────────────┘     └─────────────┘
+       │                   │                   │
+       ▼                   ▼                   ▼
+  needs-review       needs-review         reviewed
+                                              or
+                                        needs-changes
+```
+
+### Issue Tracking with Beads
+
+We use [beads](https://github.com/steveyegge/beads) for issue tracking — a Git-backed tracker designed for AI-supervised coding workflows.
+
+```bash
+# Find ready tasks
+bd ready --json
+
+# Start work on a task
+bd update <task-id> --status in_progress
+
+# Close a task
+bd close <task-id> --reason "Implemented feature X"
+
+# Sync with git
+bd sync
+```
+
+For more details, see `.github/copilot-instructions.md`.
+
+### Key Documents
+
+| Document | Purpose |
+|----------|---------|
+| `history/PRODUCT-REQUIREMENTS-SPECIFICATION.md` | Product goals, features, and acceptance criteria |
+| `history/PLAN.md` | Technical implementation details and architecture |
+| `.claude/commands/*.md` | AI agent workflow instructions |
+| `.github/copilot-instructions.md` | Beads usage and project rules |
+
 ## Documentation
 
 - [Plugin Documentation](./packages/vite-plugin-open-api-server/README.md) - Detailed usage, configuration, and API reference

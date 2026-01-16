@@ -2,6 +2,26 @@
 
 This document defines the systematic workflow for each development session. Follow these instructions precisely to maintain consistency, quality, and traceability across all development work.
 
+## 🤖 Agent Instructions
+
+You are a **senior developer**. Follow these guidelines as golden rules:
+
+1. **Pick up work** - Find the next open task from beads and initiate or continue the work
+2. **Follow this document** - These instructions are your primary workflow guide; ask the user if in doubt
+3. **Stay in scope** - Keep work close to the task scope
+4. **Handle dependencies** - If implementation depends on future work, add a placeholder with `TODO: will be implemented on story/task/epic N`
+5. **Be thorough** - Analyse solutions in detail and keep them robust
+6. **Never assume** - Always consult documentation; verify APIs and sources
+7. **Maintain consistency** - Follow existing code style, patterns, and reuse code (DRY principle)
+8. **One task, one branch** - Each task gets its own branch (feature/, fix/, chore/, etc.)
+9. **Go deep** - Be thorough and consistent in your implementation
+
+---
+
+# Session Workflow Template
+
+This document defines the systematic workflow for each development session. Follow these instructions precisely to maintain consistency, quality, and traceability across all development work.
+
 ---
 
 ## 🎯 Session Objective
@@ -37,9 +57,11 @@ git status
 
 ### 1.2 Decision Tree
 
+First read the history/PRODUCT-REQUIREMENTS-SPECIFICATION.md document.
+
 **If there's a task in_progress:**
 - Continue from where it left off
-- Identify the next open subtask
+- Identify the next open subtask or task
 
 **If starting fresh (no in_progress tasks):**
 - Checkout and pull main
@@ -62,7 +84,112 @@ bd ready --json
 git checkout -b feature/<task-id-kebab-case>
 ```
 
-### 1.4 Create Workspace Changeset
+### 1.4 Start Task
+
+```bash
+# Set task to in_progress
+bd update <task-id> --status in_progress --json
+
+# Sync bd
+bd sync
+```
+
+### 1.5 Load Task Context
+
+**CRITICAL**: Always read the PLAN.md section for the task before implementation.
+
+```bash
+# Get task details to find PLAN.md line references
+bd show <task-id> --json
+```
+
+Then read the relevant section from `history/PLAN.md` using the line numbers from the task description (e.g., `📖 history/PLAN.md#L533-950`).
+
+---
+
+## 🔄 Phase 2: Implementation Loop
+
+This phase handles both tasks with subtasks and standalone tasks.
+
+### With Subtasks
+
+Repeat the loop (2.1 → 2.9) for each subtask until all are complete.
+
+### Without Subtasks
+
+If the task has no subtasks in beads, proceed directly from **2.3 to 2.7**, then skip to **Phase 3.2** (skip 3.1 since there are no subtasks to verify).
+
+> **Why no subtasks?** Some tasks are tightly coupled and splitting them provides no benefit. The plan may describe logical steps, but if they weren't created as separate beads issues, treat the task as a single unit of work.
+
+### 2.1 Identify Next Subtask
+
+```bash
+# Show task with dependents (subtasks)
+bd show <parent-task-id> --json
+```
+
+Pick the first subtask with `status: "open"`.
+
+### 2.2 Start Subtask
+
+```bash
+# Set subtask to in_progress
+bd update <subtask-id> --status in_progress --json
+```
+
+### 2.3 Implement
+
+Execute the subtask according to its description and the PLAN.md specifications.
+
+**During implementation, ensure:**
+- Follow existing code patterns and conventions
+- Add proper documentation (module-level, functions, types)
+- Handle errors appropriately
+- Consider edge cases
+
+### 2.4 Review (Critical Step)
+
+Before committing, perform a thorough review:
+
+#### 2.4.1 Code Quality Review
+
+- [ ] **Robustness**: Does the code handle errors and edge cases properly?
+- [ ] **Improvements**: Can readability, performance, or patterns be improved?
+- [ ] **Consistency**: Does it follow the project's existing patterns?
+- [ ] **Documentation**: Are modules, structs, functions, and types documented?
+- [ ] **Clean Code**: No dead code, TODOs, or temporary comments?
+- [ ] **No Assumptions**: All APIs and sources verified, not assumed?
+
+#### 2.4.2 Acceptance Criteria Check
+
+Review the subtask description and verify all requirements are met.
+
+#### 2.4.3 Technical DoD (Definition of Done)
+
+Run validations when applicable:
+
+```bash
+# Lint check (when biome is configured)
+pnpm lint
+
+# Type check (when TypeScript is configured)
+pnpm typecheck
+
+# Run tests (when tests exist)
+pnpm test
+```
+
+### 2.5 Decision Point
+
+**If review PASSES:**
+- Create changeset
+- Proceed to commit
+
+**If review FAILS:**
+- Fix the issues
+- Return to step 2.4
+
+### 2.6 Create Workspace Changeset
 
 **CRITICAL**: Every feature branch MUST have an associated changeset for version control and changelog generation.
 
@@ -127,101 +254,7 @@ workspace changeset delete
 workspace changeset check
 ```
 
-### 1.5 Start Task
-
-```bash
-# Set task to in_progress
-bd update <task-id> --status in_progress --json
-
-# Sync bd
-bd sync
-```
-
-### 1.6 Load Task Context
-
-**CRITICAL**: Always read the PLAN.md section for the task before implementation.
-
-```bash
-# Get task details to find PLAN.md line references
-bd show <task-id> --json
-```
-
-Then read the relevant section from `history/PLAN.md` using the line numbers from the task description (e.g., `📖 history/PLAN.md#L533-950`).
-
----
-
-## 🔄 Phase 2: Subtask Loop
-
-Repeat this loop for each subtask until all are complete.
-
-### 2.1 Identify Next Subtask
-
-```bash
-# Show task with dependents (subtasks)
-bd show <parent-task-id> --json
-```
-
-Pick the first subtask with `status: "open"`.
-
-### 2.2 Start Subtask
-
-```bash
-# Set subtask to in_progress
-bd update <subtask-id> --status in_progress --json
-```
-
-### 2.3 Implement
-
-Execute the subtask according to its description and the PLAN.md specifications.
-
-**During implementation, ensure:**
-- Follow existing code patterns and conventions
-- Add proper documentation (module-level, functions, types)
-- Handle errors appropriately
-- Consider edge cases
-
-### 2.4 Review (Critical Step)
-
-Before committing, perform a thorough review:
-
-#### 2.4.1 Code Quality Review
-
-- [ ] **Robustness**: Does the code handle errors and edge cases properly?
-- [ ] **Improvements**: Can readability, performance, or patterns be improved?
-- [ ] **Consistency**: Does it follow the project's existing patterns?
-- [ ] **Documentation**: Are modules, structs, functions, and types documented?
-- [ ] **Clean Code**: No dead code, TODOs, or temporary comments?
-- [ ] **No Assumptions**: All APIs and sources verified, not assumed?
-
-#### 2.4.2 Acceptance Criteria Check
-
-Review the subtask description and verify all requirements are met.
-
-#### 2.4.3 Technical DoD (Definition of Done)
-
-Run validations when applicable:
-
-```bash
-# Lint check (when biome is configured)
-pnpm lint
-
-# Type check (when TypeScript is configured)
-pnpm typecheck
-
-# Run tests (when tests exist)
-pnpm test
-```
-
-### 2.5 Decision Point
-
-**If review PASSES:**
-- Proceed to commit
-
-**If review FAILS:**
-- Fix the issues
-- Return to step 2.4
-
-### 2.6 Atomic Commit
+### 2.7 Atomic Commit
 
 ```bash
 # Stage changes
@@ -245,7 +278,7 @@ Closes: <subtask-id>"
 
 **Scope**: Use subtask ID (e.g., `P0-03.2`)
 
-### 2.7 Close Subtask
+### 2.8 Close Subtask
 
 ```bash
 # Close with descriptive reason
@@ -255,7 +288,7 @@ bd close <subtask-id> --reason "<what was accomplished>" --json
 bd sync
 ```
 
-### 2.8 Loop Back
+### 2.9 Loop Back
 
 Return to **2.1** to process the next subtask.
 
@@ -272,9 +305,13 @@ When all subtasks are closed:
 bd show <task-id> --json
 ```
 
-### 3.2 Close Parent Task
+### 3.2 Close Parent Task and Mark for Review
 
 ```bash
+# Add needs-review label for PR review
+bd label add <task-id> needs-review
+
+# Close task with summary
 bd close <task-id> --reason "<summary of all work completed>" --json
 bd sync
 ```
@@ -324,6 +361,24 @@ bd close <id> --reason "..." --json         # Complete work
 bd sync                            # Sync with git
 bd list --status in_progress --json         # Find WIP
 ```
+
+### bd Label Commands
+
+```bash
+bd label add <id> <label>          # Add label to issue
+bd label remove <id> <label>       # Remove label from issue
+bd label list <id>                 # List labels on issue
+bd label list-all                  # List all labels in use
+bd list --label <label>            # Filter issues by label (AND)
+bd list --label-any <l1>,<l2>      # Filter issues by labels (OR)
+```
+
+**Common Labels:**
+- `needs-review` - Task ready for code review
+- `needs-tests` - Tests required before closing
+- `needs-docs` - Documentation required
+- `breaking-change` - Contains breaking changes
+- `technical-debt` - Technical debt item
 
 ### Git Commands
 
