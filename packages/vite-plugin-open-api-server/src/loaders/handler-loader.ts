@@ -22,9 +22,9 @@
  * @module
  */
 
+import fg from 'fast-glob';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
 import type { HandlerExports, HandlerLoadResult, HandlerValue } from '../types/handlers.js';
@@ -79,7 +79,7 @@ export async function loadHandlers(
     const absoluteDir = path.resolve(handlersDir);
 
     // Scan for handler files
-    const files = await glob('**/*.handler.{ts,js,mts,mjs}', {
+    const files = await fg.glob('**/*.handler.{ts,js,mts,mjs}', {
       cwd: absoluteDir,
       absolute: true,
     });

@@ -18,8 +18,6 @@
  * @module seeds/orders
  */
 
-import type { SeedExports } from '@websublime/vite-plugin-open-api-server';
-
 /**
  * Order schema seeds.
  *
@@ -28,7 +26,7 @@ import type { SeedExports } from '@websublime/vite-plugin-open-api-server';
  * - `faker` - Faker.js instance for generating fake data
  * - `store` - In-memory data store (for referencing other seeded data)
  */
-const seeds: SeedExports = {
+const seeds = {
   /**
    * Order - Generates 10 sample orders with realistic data
    */

@@ -18,8 +18,6 @@
  * @module handlers/pets
  */
 
-import type { HandlerExports } from '@websublime/vite-plugin-open-api-server';
-
 /**
  * Pet operation handlers.
  *
@@ -29,7 +27,7 @@ import type { HandlerExports } from '@websublime/vite-plugin-open-api-server';
  * - `req` - Request object (body, params, query, headers)
  * - `res` - Response helpers keyed by status code
  */
-const handlers: HandlerExports = {
+const handlers = {
   /**
    * GET /pet/findByStatus - Find pets by status
    */
