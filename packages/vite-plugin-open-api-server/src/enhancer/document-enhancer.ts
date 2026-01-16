@@ -3,20 +3,26 @@
  *
  * ## What
  * This module provides functionality to enhance OpenAPI documents with custom
- * extensions for handlers and seeds. It clones the parsed spec, injects
- * `x-handler` extensions into operations that have custom handlers, and injects
- * `x-seed` extensions into schemas that have seed data.
+ * extensions for handlers and seeds. It clones the parsed spec, resolves handler
+ * and seed values (calling generator functions if needed), and injects the
+ * resulting code strings as `x-handler` and `x-seed` extensions.
  *
  * ## How
  * The enhancer deep clones the OpenAPI spec to preserve the original (needed for
- * hot reload), then iterates through handler and seed maps to inject extensions
- * into matching operations and schemas. Each injection is logged for visibility.
+ * hot reload), then iterates through handler and seed maps. For each entry:
+ * - If the value is a string, it's used directly as the code
+ * - If the value is a function, it's called with the appropriate context to
+ *   generate the code string
+ * The resolved code strings are then injected into the matching operations/schemas.
  *
  * ## Why
  * Enhancement happens after loading handlers/seeds and before starting the mock
- * server. The enhanced document is passed to Scalar mock server, which uses the
- * extensions to call custom handlers and pre-populate data. By cloning first,
- * we ensure the original spec remains unmodified for subsequent enhancements.
+ * server. The Scalar Mock Server expects `x-handler` and `x-seed` extensions to
+ * contain JavaScript code strings (not functions). By resolving functions to
+ * strings here, we ensure the enhanced document is ready for Scalar consumption.
+ *
+ * @see https://scalar.com/products/mock-server/custom-request-handler
+ * @see https://scalar.com/products/mock-server/data-seeding
  *
  * @module
  */
@@ -24,11 +30,8 @@
 import type { OpenAPIV3_1 } from 'openapi-types';
 import type { Logger } from 'vite';
 
-// TODO: Full rewrite in subtask vite-open-api-server-thy.4
-// Currently using HandlerValue/SeedValue but the enhancer logic needs to be rewritten
-// to resolve code strings from values before injection
-import type { HandlerValue } from '../types/handlers.js';
-import type { SeedValue } from '../types/seeds.js';
+import type { HandlerCodeContext, HandlerValue } from '../types/handlers.js';
+import type { SeedCodeContext, SeedValue } from '../types/seeds.js';
 
 /**
  * HTTP methods supported by OpenAPI operations.
@@ -91,43 +94,50 @@ interface InjectionResult {
 /**
  * Enhance OpenAPI document with x-handler and x-seed extensions.
  *
- * This function clones the original spec, then injects `x-handler` into
- * operations matching handler operationIds and `x-seed` into schemas
- * matching seed schema names.
+ * This function clones the original spec, resolves handler and seed values
+ * (calling generator functions if needed), then injects the resulting code
+ * strings into operations and schemas.
  *
  * @param spec - Parsed OpenAPI specification
- * @param handlers - Map of operationId to handler function
- * @param seeds - Map of schema name to seed function
+ * @param handlers - Map of operationId to handler value (string or generator function)
+ * @param seeds - Map of schema name to seed value (string or generator function)
  * @param logger - Vite logger
- * @returns Enhanced OpenAPI document result
+ * @returns Promise resolving to enhanced OpenAPI document result
  *
  * @example
  * ```typescript
  * const handlers = new Map([
- *   ['getPetById', async (ctx) => ({ status: 200, body: { id: 1, name: 'Fluffy' } })],
+ *   ['getPetById', 'return store.get("Pet", req.params.petId);'],
+ *   ['addPet', ({ operation }) => {
+ *     const has400 = operation?.responses?.['400'];
+ *     return `
+ *       if (!req.body.name) return res['${has400 ? '400' : '422'}'];
+ *       return store.create('Pet', req.body);
+ *     `;
+ *   }],
  * ]);
  *
  * const seeds = new Map([
- *   ['Pet', async (ctx) => [{ id: 1, name: 'Fluffy' }]],
+ *   ['Pet', `seed.count(15, () => ({ id: faker.number.int(), name: faker.animal.dog() }))`],
  * ]);
  *
- * const result = enhanceDocument(spec, handlers, seeds, logger);
- * // result.document has x-handler in GET /pets/{petId} operation
- * // result.document has x-seed in Pet schema
+ * const result = await enhanceDocument(spec, handlers, seeds, logger);
+ * // result.document has x-handler code strings in operations
+ * // result.document has x-seed code strings in schemas
  * ```
  */
-export function enhanceDocument(
+export async function enhanceDocument(
   spec: OpenAPIV3_1.Document,
   handlers: Map<string, HandlerValue>,
   seeds: Map<string, SeedValue>,
   logger: Logger,
-): EnhanceDocumentResult {
+): Promise<EnhanceDocumentResult> {
   // Deep clone spec to preserve original
   const enhanced = cloneDocument(spec);
 
-  // Inject handlers and seeds
-  const handlerResult = injectHandlers(enhanced, handlers, logger);
-  const seedResult = injectSeeds(enhanced, seeds, logger);
+  // Inject handlers and seeds (with resolution)
+  const handlerResult = await injectHandlers(enhanced, handlers, logger);
+  const seedResult = await injectSeeds(enhanced, seeds, logger);
 
   const handlerCount = handlerResult.count;
   const seedCount = seedResult.count;
@@ -145,17 +155,113 @@ export function enhanceDocument(
 }
 
 /**
+ * Resolve a handler value to a code string.
+ *
+ * If the value is already a string, returns it directly.
+ * If the value is a function, calls it with the handler context.
+ *
+ * @param operationId - The operationId for this handler
+ * @param value - Handler value (string or generator function)
+ * @param spec - OpenAPI document for context
+ * @param operationInfo - Operation info for context
+ * @returns Promise resolving to the code string
+ */
+async function resolveHandlerValue(
+  operationId: string,
+  value: HandlerValue,
+  spec: OpenAPIV3_1.Document,
+  operationInfo: OperationInfo,
+): Promise<string> {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  // Extract all schemas for context
+  const schemas: Record<string, OpenAPIV3_1.SchemaObject> = {};
+  if (spec.components?.schemas) {
+    for (const [name, schemaOrRef] of Object.entries(spec.components.schemas)) {
+      if (!isReferenceObject(schemaOrRef)) {
+        schemas[name] = schemaOrRef;
+      }
+    }
+  }
+
+  // Build context for the generator function
+  const context: HandlerCodeContext = {
+    operationId,
+    path: operationInfo.path,
+    method: operationInfo.method,
+    operation: operationInfo.operation,
+    document: spec,
+    schemas,
+  };
+
+  // Call the generator function (may be sync or async)
+  const result = value(context);
+
+  // Handle both sync and async returns
+  return Promise.resolve(result);
+}
+
+/**
+ * Resolve a seed value to a code string.
+ *
+ * If the value is already a string, returns it directly.
+ * If the value is a function, calls it with the seed context.
+ *
+ * @param schemaName - The schema name for this seed
+ * @param value - Seed value (string or generator function)
+ * @param spec - OpenAPI document for context
+ * @param schema - Schema object for context
+ * @returns Promise resolving to the code string
+ */
+async function resolveSeedValue(
+  schemaName: string,
+  value: SeedValue,
+  spec: OpenAPIV3_1.Document,
+  schema: OpenAPIV3_1.SchemaObject,
+): Promise<string> {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  // Extract all schemas for context
+  const schemas: Record<string, OpenAPIV3_1.SchemaObject> = {};
+  if (spec.components?.schemas) {
+    for (const [name, schemaOrRef] of Object.entries(spec.components.schemas)) {
+      if (!isReferenceObject(schemaOrRef)) {
+        schemas[name] = schemaOrRef;
+      }
+    }
+  }
+
+  // Build context for the generator function
+  const context: SeedCodeContext = {
+    schemaName,
+    schema,
+    document: spec,
+    schemas,
+  };
+
+  // Call the generator function (may be sync or async)
+  const result = value(context);
+
+  // Handle both sync and async returns
+  return Promise.resolve(result);
+}
+
+/**
  * Inject x-handler extensions into operations.
  */
-function injectHandlers(
+async function injectHandlers(
   spec: OpenAPIV3_1.Document,
   handlers: Map<string, HandlerValue>,
   logger: Logger,
-): InjectionResult {
+): Promise<InjectionResult> {
   let count = 0;
   let overrides = 0;
 
-  for (const [operationId, handlerFn] of handlers) {
+  for (const [operationId, handlerValue] of handlers) {
     const operationInfo = findOperationById(spec, operationId);
 
     if (!operationInfo) {
@@ -174,15 +280,27 @@ function injectHandlers(
       overrides++;
     }
 
-    setExtension(operation, 'x-handler', handlerFn);
-    count++;
+    try {
+      // Resolve the handler value to a code string
+      const code = await resolveHandlerValue(operationId, handlerValue, spec, operationInfo);
 
-    logger.info(
-      `[enhancer] Injected x-handler into ${method.toUpperCase()} ${path} (${operationId})`,
-      {
+      // Inject the resolved code string
+      setExtension(operation, 'x-handler', code);
+      count++;
+
+      const codePreview = code.length > 50 ? `${code.slice(0, 50)}...` : code;
+      logger.info(
+        `[enhancer] Injected x-handler into ${method.toUpperCase()} ${path} (${operationId}): ${codePreview.replace(/\n/g, ' ').trim()}`,
+        {
+          timestamp: true,
+        },
+      );
+    } catch (error) {
+      const err = error as Error;
+      logger.error(`[enhancer] Failed to resolve handler "${operationId}": ${err.message}`, {
         timestamp: true,
-      },
-    );
+      });
+    }
   }
 
   return { count, overrides };
@@ -191,11 +309,11 @@ function injectHandlers(
 /**
  * Inject x-seed extensions into schemas.
  */
-function injectSeeds(
+async function injectSeeds(
   spec: OpenAPIV3_1.Document,
   seeds: Map<string, SeedValue>,
   logger: Logger,
-): InjectionResult {
+): Promise<InjectionResult> {
   let count = 0;
   let overrides = 0;
 
@@ -203,7 +321,7 @@ function injectSeeds(
     return { count, overrides };
   }
 
-  for (const [schemaName, seedFn] of seeds) {
+  for (const [schemaName, seedValue] of seeds) {
     const schema = spec.components.schemas[schemaName];
 
     if (!schema) {
@@ -227,10 +345,25 @@ function injectSeeds(
       overrides++;
     }
 
-    setExtension(schema, 'x-seed', seedFn);
-    count++;
+    try {
+      // Resolve the seed value to a code string
+      const code = await resolveSeedValue(schemaName, seedValue, spec, schema);
 
-    logger.info(`[enhancer] Injected x-seed into schema ${schemaName}`, { timestamp: true });
+      // Inject the resolved code string
+      setExtension(schema, 'x-seed', code);
+      count++;
+
+      const codePreview = code.length > 50 ? `${code.slice(0, 50)}...` : code;
+      logger.info(
+        `[enhancer] Injected x-seed into schema ${schemaName}: ${codePreview.replace(/\n/g, ' ').trim()}`,
+        { timestamp: true },
+      );
+    } catch (error) {
+      const err = error as Error;
+      logger.error(`[enhancer] Failed to resolve seed "${schemaName}": ${err.message}`, {
+        timestamp: true,
+      });
+    }
   }
 
   return { count, overrides };
@@ -261,7 +394,7 @@ function logEnhancementSummary(
  *
  * Uses structuredClone for deep copying. Since the original spec should not
  * contain functions (only parsed JSON/YAML), this is safe. Functions are
- * injected after cloning.
+ * resolved to strings before injection.
  *
  * @param spec - OpenAPI document to clone
  * @returns Deep clone of the document
