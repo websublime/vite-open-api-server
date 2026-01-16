@@ -31,6 +31,8 @@ import type { Logger } from 'vite';
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
 import type { SeedExports, SeedLoadResult, SeedValue } from '../types/seeds.js';
 import {
+  formatInvalidExportError,
+  formatInvalidValueError,
   getValueType,
   isValidExportsObject,
   isValidValue,
@@ -173,8 +175,7 @@ async function loadSeedFile(
   const exports = module.default as unknown;
   if (!isValidExportsObject(exports)) {
     throw new Error(
-      'Seed file default export must be an object mapping schemaName to seed values. ' +
-        `Got: ${typeof exports}${Array.isArray(exports) ? ' (array)' : typeof exports === 'function' ? ' (function)' : ''}`,
+      `Seed file ${formatInvalidExportError('object mapping schemaName to seed values', exports)}`,
     );
   }
 
@@ -185,7 +186,7 @@ async function loadSeedFile(
   for (const [schemaName, seedValue] of Object.entries(seedExports)) {
     // Validate seed value type
     if (!isValidValue(seedValue)) {
-      const msg = `Invalid seed value for "${schemaName}" in ${filename}: expected string or function, got ${typeof seedValue}`;
+      const msg = formatInvalidValueError(schemaName, filename, seedValue);
       warnings.push(msg);
       logger.warn(`[seed-loader] ${msg}`);
       continue;

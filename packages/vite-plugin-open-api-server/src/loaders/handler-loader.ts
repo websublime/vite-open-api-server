@@ -31,6 +31,8 @@ import type { Logger } from 'vite';
 import type { HandlerExports, HandlerLoadResult, HandlerValue } from '../types/handlers.js';
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
 import {
+  formatInvalidExportError,
+  formatInvalidValueError,
   getValueType,
   isValidExportsObject,
   isValidValue,
@@ -188,8 +190,7 @@ async function loadHandlerFile(
   const exports = module.default as unknown;
   if (!isValidExportsObject(exports)) {
     throw new Error(
-      'Handler file default export must be an object mapping operationId to handler values. ' +
-        `Got: ${typeof exports}${Array.isArray(exports) ? ' (array)' : ''}`,
+      `Handler file ${formatInvalidExportError('object mapping operationId to handler values', exports)}`,
     );
   }
 
@@ -200,7 +201,7 @@ async function loadHandlerFile(
   for (const [operationId, handlerValue] of Object.entries(handlerExports)) {
     // Validate handler value type
     if (!isValidValue(handlerValue)) {
-      const msg = `Invalid handler value for "${operationId}" in ${filename}: expected string or function, got ${typeof handlerValue}`;
+      const msg = formatInvalidValueError(operationId, filename, handlerValue);
       warnings.push(msg);
       logger.warn(`[handler-loader] ${msg}`);
       continue;
