@@ -141,6 +141,9 @@ let timelineApi: TimelineApiRef | null = null;
 /** Counter for generating unique event IDs */
 let eventCounter = 0;
 
+/** Flag to prevent duplicate timeline layer registration on HMR */
+let timelineLayerRegistered = false;
+
 // ============================================================================
 // Timeline Setup
 // ============================================================================
@@ -165,6 +168,13 @@ let eventCounter = 0;
  * ```
  */
 export function registerTimelineLayer(api: DevToolsApiParam): void {
+  // Guard against duplicate registration on HMR
+  if (timelineLayerRegistered) {
+    // Update API reference but don't re-register layer
+    timelineApi = api;
+    return;
+  }
+
   // Store API reference for later use
   timelineApi = api;
 
@@ -174,6 +184,9 @@ export function registerTimelineLayer(api: DevToolsApiParam): void {
     label: TIMELINE_LAYER_LABEL,
     color: TIMELINE_LAYER_COLOR,
   });
+
+  // Mark as registered to prevent duplicate registration
+  timelineLayerRegistered = true;
 }
 
 // ============================================================================
@@ -418,4 +431,6 @@ export function isTimelineReady(): boolean {
 export function resetTimeline(): void {
   timelineApi = null;
   eventCounter = 0;
+  // Reset registration flag so layer can be re-registered after reset
+  timelineLayerRegistered = false;
 }

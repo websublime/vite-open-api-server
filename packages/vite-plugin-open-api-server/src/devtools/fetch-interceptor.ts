@@ -140,7 +140,12 @@ function getPathFromInput(input: RequestInfo | URL): string {
   }
 
   if (input instanceof Request) {
-    return new URL(input.url).pathname;
+    try {
+      return new URL(input.url).pathname;
+    } catch {
+      // Malformed Request URL, return empty string
+      return '';
+    }
   }
 
   return '';
@@ -298,14 +303,19 @@ function createInterceptedFetch(): typeof fetch {
     log(`Intercepting ${method} ${path}`);
 
     // Extract request body if present
+    // NOTE: Only JSON string bodies are parsed. Other BodyInit types (FormData, Blob,
+    // ArrayBuffer, ReadableStream, URLSearchParams, etc.) are intentionally left unparsed
+    // and requestBody will remain undefined. Support for non-string bodies can be added
+    // later if needed.
     let requestBody: unknown;
     if (init?.body) {
       try {
         if (typeof init.body === 'string') {
           requestBody = JSON.parse(init.body);
         }
+        // Non-string body types are not parsed - requestBody stays undefined
       } catch {
-        // Not JSON, leave as undefined
+        // Not valid JSON, leave as undefined
       }
     }
 
