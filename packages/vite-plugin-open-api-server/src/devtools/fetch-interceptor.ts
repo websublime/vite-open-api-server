@@ -463,8 +463,19 @@ export function installFetchInterceptor(config: FetchInterceptorConfig): void {
     return;
   }
 
+  // Trim and re-validate to catch whitespace-only strings
+  // A whitespace-only string would trim to '' then become '/' which matches most requests
+  const trimmedProxyPath = config.proxyPath.trim();
+  if (!trimmedProxyPath) {
+    // biome-ignore lint/suspicious/noConsole: Error logging required
+    console.error(
+      '[OpenAPI Fetch Interceptor] Invalid proxyPath: cannot be empty or whitespace-only. Interceptor not installed.',
+    );
+    return;
+  }
+
   // Normalize proxyPath to ensure it starts with a leading slash
-  let normalizedProxyPath = config.proxyPath.trim();
+  let normalizedProxyPath = trimmedProxyPath;
   if (!normalizedProxyPath.startsWith('/')) {
     normalizedProxyPath = `/${normalizedProxyPath}`;
   }
