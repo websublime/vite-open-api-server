@@ -2,20 +2,22 @@
  * Seed Loader Module
  *
  * ## What
- * This module provides functionality to dynamically load seed data generator files
- * from a directory. Seeds allow developers to provide consistent, realistic test
- * data for mock responses instead of relying on auto-generated mock data.
+ * This module provides functionality to dynamically load seed data files
+ * from a directory. Seeds define JavaScript code that will be injected as
+ * `x-seed` extensions into OpenAPI schemas for the Scalar Mock Server.
  *
  * ## How
  * The loader scans a directory for files matching the `*.seed.{ts,js,mts,mjs}`
  * pattern, dynamically imports each file as an ESM module, validates the default
- * export matches the `SeedCodeGenerator` signature, and builds a map of
- * schemaName → seed function.
+ * export is an object mapping schemaName → seed value, and aggregates all
+ * seeds into a single Map.
  *
  * ## Why
  * Custom seeds enable realistic mock data that better represents production
- * scenarios. By loading seeds dynamically, we support hot reload and allow
- * developers to add new seed files without modifying plugin configuration.
+ * scenarios. The code-based format (string or function returning string) allows
+ * seeds to access Scalar's runtime context (seed, store, faker).
+ *
+ * @see https://scalar.com/products/mock-server/data-seeding
  *
  * @module
  */
@@ -26,50 +28,39 @@ import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
-// TODO: Full rewrite in subtask vite-open-api-server-thy.3
-// Currently using SeedValue but the loader logic needs to be rewritten
-// to support object exports instead of function exports
-import type { SeedValue } from '../types/seeds.js';
+import type { SeedExports, SeedLoadResult, SeedValue } from '../types/seeds.js';
 
 /**
- * Result of loading seeds from a directory.
- *
- * Contains the seed map and any errors encountered during loading.
- */
-export interface LoadSeedsResult {
-  /**
-   * Map of schema name to seed value (string or function).
-   */
-  seeds: Map<string, SeedValue>;
-
-  /**
-   * Errors encountered during loading (file path → error message).
-   */
-  errors: string[];
-}
-
-/**
- * Load seed data generator files from a directory.
+ * Load seed data files from a directory.
  *
  * Scans for `*.seed.{ts,js,mts,mjs}` files, validates exports,
- * and returns a map of schemaName → seed function.
+ * and returns a map of schemaName → seed value.
+ *
+ * Seed files must export an object as default export, where each key
+ * is a schemaName and each value is either:
+ * - A string containing JavaScript code
+ * - A function that receives SeedCodeContext and returns a code string
  *
  * The loader is resilient: if one seed file fails to load or validate,
  * it logs the error and continues with the remaining files.
  *
  * @param seedsDir - Directory containing seed files
- * @param registry - OpenAPI endpoint registry (for schema validation)
+ * @param registry - OpenAPI endpoint registry (for validation)
  * @param logger - Vite logger
- * @returns Promise resolving to seed map
+ * @returns Promise resolving to SeedLoadResult
  *
  * @example
  * ```typescript
- * const seeds = await loadSeeds('./mock/seeds', registry, logger);
+ * const result = await loadSeeds('./mock/seeds', registry, logger);
  *
- * // Check if a seed exists for a schema
- * if (seeds.has('Pet')) {
- *   const seedFn = seeds.get('Pet');
- *   const data = await seedFn(context);
+ * // Access loaded seeds
+ * for (const [schemaName, seedValue] of result.seeds) {
+ *   console.log(`Seed for ${schemaName}:`, typeof seedValue);
+ * }
+ *
+ * // Check for issues
+ * if (result.errors.length > 0) {
+ *   console.error('Seed loading errors:', result.errors);
  * }
  * ```
  */
@@ -77,9 +68,10 @@ export async function loadSeeds(
   seedsDir: string,
   registry: OpenApiEndpointRegistry,
   logger: Logger,
-): Promise<Map<string, SeedValue>> {
-  // TODO: Rewrite to load object exports { schemaName: string | fn } instead of default function
+): Promise<SeedLoadResult> {
   const seeds = new Map<string, SeedValue>();
+  const loadedFiles: string[] = [];
+  const warnings: string[] = [];
   const errors: string[] = [];
 
   try {
@@ -93,8 +85,10 @@ export async function loadSeeds(
     });
 
     if (files.length === 0) {
-      logger.warn(`[seed-loader] No seed files found in ${seedsDir}`);
-      return seeds;
+      const msg = `No seed files found in ${seedsDir}`;
+      logger.warn(`[seed-loader] ${msg}`);
+      warnings.push(msg);
+      return { seeds, loadedFiles, warnings, errors };
     }
 
     logger.info(`[seed-loader] Found ${files.length} seed file(s)`);
@@ -102,39 +96,8 @@ export async function loadSeeds(
     // Load each seed file
     for (const filePath of files) {
       try {
-        // Dynamic import (ESM)
-        const fileUrl = pathToFileURL(filePath).href;
-        const module = await import(fileUrl);
-
-        // TODO: Rewrite validation - should check for object export, not function
-        // Validate default export (temporary - accepts both old and new format)
-        if (!module.default) {
-          throw new Error(`Seed file must have a default export`);
-        }
-
-        // Extract schema name from filename
-        const filename = path.basename(filePath);
-        const baseSchemaName = extractSchemaName(filename);
-
-        // Try to match with registry schemas (handle singular/plural)
-        const schemaName = findMatchingSchema(baseSchemaName, registry);
-
-        if (!schemaName) {
-          logger.warn(
-            `[seed-loader] Seed "${baseSchemaName}" does not match any schema in OpenAPI spec`,
-          );
-        }
-
-        const finalSchemaName = schemaName || capitalize(baseSchemaName);
-
-        // Add to map (warn on duplicates)
-        if (seeds.has(finalSchemaName)) {
-          logger.warn(`[seed-loader] Duplicate seed for "${finalSchemaName}", overwriting`);
-        }
-
-        // TODO: Handle object exports properly - for now cast to SeedValue
-        seeds.set(finalSchemaName, module.default as SeedValue);
-        logger.info(`[seed-loader] Loaded seed: ${finalSchemaName}`);
+        await loadSeedFile(filePath, seeds, registry, logger, warnings);
+        loadedFiles.push(filePath);
       } catch (error) {
         const err = error as Error;
         const errorMessage = `${filePath}: ${err.message}`;
@@ -143,38 +106,182 @@ export async function loadSeeds(
       }
     }
 
-    // Cross-reference with registry is done during loading (warnings logged above)
-
     // Log summary
-    const successCount = seeds.size;
-    const errorCount = errors.length;
-    logger.info(`[seed-loader] Loaded ${successCount} seed(s), ${errorCount} error(s)`);
+    logLoadSummary(seeds.size, loadedFiles.length, warnings.length, errors.length, logger);
 
-    return seeds;
+    return { seeds, loadedFiles, warnings, errors };
   } catch (error) {
     const err = error as Error;
-    logger.error(`[seed-loader] Fatal error: ${err.message}`);
-    return seeds;
+    const fatalError = `Fatal error scanning seeds directory: ${err.message}`;
+    logger.error(`[seed-loader] ${fatalError}`);
+    errors.push(fatalError);
+    return { seeds, loadedFiles, warnings, errors };
   }
+}
+
+/**
+ * Load a single seed file and merge its exports into the seeds map.
+ */
+async function loadSeedFile(
+  filePath: string,
+  seeds: Map<string, SeedValue>,
+  registry: OpenApiEndpointRegistry,
+  logger: Logger,
+  warnings: string[],
+): Promise<void> {
+  // Dynamic import (ESM)
+  const fileUrl = pathToFileURL(filePath).href;
+  const module = await import(fileUrl);
+
+  // Validate default export exists
+  if (!module.default) {
+    throw new Error('Seed file must have a default export');
+  }
+
+  // Validate default export is an object (not function, array, or primitive)
+  const exports = module.default;
+  if (!isValidExportsObject(exports)) {
+    throw new Error(
+      'Seed file default export must be an object mapping schemaName to seed values. ' +
+        `Got: ${typeof exports}${Array.isArray(exports) ? ' (array)' : typeof exports === 'function' ? ' (function)' : ''}`,
+    );
+  }
+
+  const seedExports = exports as SeedExports;
+  const filename = path.basename(filePath);
+
+  // Process each seed in the exports
+  for (const [schemaName, seedValue] of Object.entries(seedExports)) {
+    // Validate seed value type
+    if (!isValidSeedValue(seedValue)) {
+      const msg = `Invalid seed value for "${schemaName}" in ${filename}: expected string or function, got ${typeof seedValue}`;
+      warnings.push(msg);
+      logger.warn(`[seed-loader] ${msg}`);
+      continue;
+    }
+
+    // Validate schemaName exists in registry
+    const schemaExists = checkSchemaExists(schemaName, registry);
+    if (!schemaExists) {
+      const msg = `Seed "${schemaName}" in ${filename} does not match any schema in OpenAPI spec`;
+      warnings.push(msg);
+      logger.warn(`[seed-loader] ${msg}`);
+      // Continue anyway - user might know what they're doing
+    }
+
+    // Check for duplicates
+    if (seeds.has(schemaName)) {
+      const msg = `Duplicate seed for "${schemaName}" in ${filename}, overwriting previous`;
+      warnings.push(msg);
+      logger.warn(`[seed-loader] ${msg}`);
+    }
+
+    // Add to seeds map
+    seeds.set(schemaName, seedValue);
+    logger.info(`[seed-loader] Loaded seed: ${schemaName} (${getSeedType(seedValue)})`);
+  }
+}
+
+/**
+ * Check if a value is a valid exports object (plain object, not array/function).
+ */
+function isValidExportsObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    typeof value !== 'function' &&
+    // Ensure it's a plain object, not a class instance
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+/**
+ * Check if a value is a valid seed value (string or function).
+ */
+function isValidSeedValue(value: unknown): value is SeedValue {
+  return typeof value === 'string' || typeof value === 'function';
+}
+
+/**
+ * Check if a schemaName exists in the registry.
+ *
+ * Tries multiple candidates: exact match, capitalized, singular, plural forms.
+ */
+function checkSchemaExists(schemaName: string, registry: OpenApiEndpointRegistry): boolean {
+  // Direct match first
+  if (registry.schemas.has(schemaName)) {
+    return true;
+  }
+
+  // Try variations
+  const candidates = [
+    capitalize(schemaName),
+    singularize(schemaName),
+    capitalize(singularize(schemaName)),
+    pluralize(schemaName),
+    capitalize(pluralize(schemaName)),
+  ];
+
+  for (const candidate of candidates) {
+    if (registry.schemas.has(candidate)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Get a human-readable type description for a seed value.
+ */
+function getSeedType(value: SeedValue): string {
+  if (typeof value === 'string') {
+    return `static, ${value.length} chars`;
+  }
+  return 'dynamic function';
+}
+
+/**
+ * Log the loading summary.
+ */
+function logLoadSummary(
+  seedCount: number,
+  fileCount: number,
+  warningCount: number,
+  errorCount: number,
+  logger: Logger,
+): void {
+  const parts = [`${seedCount} seed(s)`, `from ${fileCount} file(s)`];
+
+  if (warningCount > 0) {
+    parts.push(`${warningCount} warning(s)`);
+  }
+
+  if (errorCount > 0) {
+    parts.push(`${errorCount} error(s)`);
+  }
+
+  logger.info(`[seed-loader] Summary: ${parts.join(', ')}`);
 }
 
 /**
  * Extract schema name from seed filename.
  *
- * Removes the `.seed.{ext}` suffix and returns the base name.
+ * Note: This function is no longer used for extraction since seeds
+ * now export objects with explicit schemaName keys. Kept for potential
+ * future use or backward compatibility.
  *
  * @param filename - Seed filename (e.g., 'pets.seed.ts')
- * @returns Base schema name (e.g., 'pets')
+ * @returns Base name without extension (e.g., 'pets')
  *
  * @example
  * ```typescript
  * extractSchemaName('pets.seed.ts');     // 'pets'
- * extractSchemaName('Pet.seed.mjs');     // 'Pet'
- * extractSchemaName('order-items.seed.js'); // 'order-items'
+ * extractSchemaName('Order.seed.mjs');   // 'Order'
  * ```
  */
 export function extractSchemaName(filename: string): string {
-  // Remove extension(s): .seed.ts, .seed.js, .seed.mts, .seed.mjs
   return filename.replace(/\.seed\.(ts|js|mts|mjs)$/, '');
 }
 
@@ -193,7 +300,6 @@ export function extractSchemaName(filename: string): string {
  * findMatchingSchema('pets', registry);   // 'Pet'
  * findMatchingSchema('pet', registry);    // 'Pet'
  * findMatchingSchema('Pet', registry);    // 'Pet'
- * findMatchingSchema('Pets', registry);   // null (if only 'Pet' exists)
  * ```
  */
 export function findMatchingSchema(

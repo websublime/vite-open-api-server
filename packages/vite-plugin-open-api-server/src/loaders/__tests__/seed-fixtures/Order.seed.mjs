@@ -2,19 +2,24 @@
  * Valid Order Seed Fixture
  *
  * Example seed file for testing the seed loader.
- * Uses PascalCase filename to match schema name directly.
- * Exports a valid async function matching SeedCodeGenerator signature.
+ * Exports an object mapping schemaName to seed values.
+ * Uses dynamic seed that generates code based on available schemas.
  */
 
-export default async function orderSeed(context) {
-  const { faker } = context;
+export default {
+  // Dynamic seed - function that generates code based on schema context
+  Order: ({ schemas }) => {
+    const hasPet = 'Pet' in schemas;
 
-  return Array.from({ length: 3 }, (_, i) => ({
-    id: i + 1,
-    petId: i + 100,
-    quantity: (i + 1) * 2,
-    shipDate: faker?.date?.future?.()?.toISOString() ?? '2026-01-15T00:00:00.000Z',
-    status: 'placed',
-    complete: false,
-  }));
-}
+    return `
+      seed.count(20, (index) => ({
+        id: faker.number.int({ min: 1, max: 10000 }),
+        petId: ${hasPet ? 'store.list("Pet")[index % 15]?.id' : 'faker.number.int({ min: 1, max: 100 })'},
+        quantity: faker.number.int({ min: 1, max: 5 }),
+        shipDate: faker.date.future().toISOString(),
+        status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+        complete: faker.datatype.boolean()
+      }))
+    `;
+  },
+};

@@ -16,7 +16,6 @@ export {
   capitalize,
   extractSchemaName,
   findMatchingSchema,
-  type LoadSeedsResult,
   loadSeeds,
   pluralize,
   singularize,
