@@ -9,9 +9,9 @@
  * ## How
  * Types are organized into categories:
  * - **Plugin Configuration**: Options for configuring the plugin
- * - **Handler API**: Types for implementing custom request handlers
- * - **Seed API**: Types for implementing seed data generators
- * - **Security API**: Types for accessing authentication state in handlers
+ * - **Handler API**: Types for implementing custom request handlers (code-based)
+ * - **Seed API**: Types for implementing seed data generators (code-based)
+ * - **Security API**: Types for accessing authentication state
  *
  * ## Why
  * Centralized type exports provide a clean public API surface while keeping
@@ -22,9 +22,10 @@
  * ```typescript
  * import type {
  *   OpenApiServerPluginOptions,
- *   HandlerContext,
- *   HandlerResponse,
- *   SeedContext,
+ *   HandlerCodeContext,
+ *   HandlerValue,
+ *   SeedCodeContext,
+ *   SeedValue,
  * } from '@websublime/vite-plugin-open-api-server';
  * ```
  *
@@ -58,16 +59,26 @@ export type {
 /**
  * Types for implementing custom request handlers.
  *
- * @see {@link HandlerContext}
- * @see {@link HandlerResponse}
- * @see {@link HandlerCodeGenerator}
- * @see {@link HandlerFileExports}
+ * Handler files export an object mapping operationId to JavaScript code.
+ * The code can be a static string or a function that generates code
+ * dynamically based on the operation context.
+ *
+ * @see {@link HandlerCodeContext} - Context passed to dynamic code generators
+ * @see {@link HandlerCodeGeneratorFn} - Function signature for dynamic handlers
+ * @see {@link HandlerValue} - Either static code string or generator function
+ * @see {@link HandlerExports} - Map of operationId to handler values
+ * @see {@link HandlerFileExports} - Expected exports from handler files
+ * @see {@link HandlerLoadResult} - Result of loading handler files
+ * @see {@link ResolvedHandlers} - Resolved code strings for injection
  */
 export type {
-  HandlerCodeGenerator,
-  HandlerContext,
+  HandlerCodeContext,
+  HandlerCodeGeneratorFn,
+  HandlerExports,
   HandlerFileExports,
-  HandlerResponse,
+  HandlerLoadResult,
+  HandlerValue,
+  ResolvedHandlers,
 } from './handlers.js';
 
 // =============================================================================
@@ -77,12 +88,27 @@ export type {
 /**
  * Types for implementing seed data generators.
  *
- * @see {@link SeedContext}
- * @see {@link SeedData}
- * @see {@link SeedCodeGenerator}
- * @see {@link SeedFileExports}
+ * Seed files export an object mapping schemaName to JavaScript code.
+ * The code can be a static string or a function that generates code
+ * dynamically based on the schema context.
+ *
+ * @see {@link SeedCodeContext} - Context passed to dynamic code generators
+ * @see {@link SeedCodeGeneratorFn} - Function signature for dynamic seeds
+ * @see {@link SeedValue} - Either static code string or generator function
+ * @see {@link SeedExports} - Map of schemaName to seed values
+ * @see {@link SeedFileExports} - Expected exports from seed files
+ * @see {@link SeedLoadResult} - Result of loading seed files
+ * @see {@link ResolvedSeeds} - Resolved code strings for injection
  */
-export type { SeedCodeGenerator, SeedContext, SeedData, SeedFileExports } from './seeds.js';
+export type {
+  ResolvedSeeds,
+  SeedCodeContext,
+  SeedCodeGeneratorFn,
+  SeedExports,
+  SeedFileExports,
+  SeedLoadResult,
+  SeedValue,
+} from './seeds.js';
 
 // =============================================================================
 // Security API Types (Public)
@@ -112,7 +138,7 @@ export type {
 
 /**
  * Registry types for accessing parsed OpenAPI endpoint information.
- * Exposed as read-only through HandlerContext and SeedContext.
+ * Exposed as read-only through HandlerCodeContext and SeedCodeContext.
  *
  * @see {@link OpenApiEndpointRegistry}
  * @see {@link OpenApiEndpointEntry}

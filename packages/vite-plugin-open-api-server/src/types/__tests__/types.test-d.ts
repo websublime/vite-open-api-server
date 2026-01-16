@@ -21,16 +21,19 @@
  * @module
  */
 
+import type { OpenAPIV3_1 } from 'openapi-types';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type {
   ApiKeySecurityScheme,
   EndpointRegistryEntry,
-  HandlerCodeGenerator,
-  // Handler types
-  HandlerContext,
+  // Handler types (code-based)
+  HandlerCodeContext,
+  HandlerCodeGeneratorFn,
+  HandlerExports,
   HandlerFileExports,
-  HandlerResponse,
+  HandlerLoadResult,
+  HandlerValue,
   HttpSecurityScheme,
   InputPluginOptions,
   // Security types
@@ -45,14 +48,18 @@ import type {
   OpenApiServerSchemaEntry,
   OpenIdConnectSecurityScheme,
   RegistryStats,
+  ResolvedHandlers,
   ResolvedPluginOptions,
+  ResolvedSeeds,
   SecurityContext,
   SecurityRequirement,
-  SeedCodeGenerator,
-  // Seed types
-  SeedContext,
-  SeedData,
+  // Seed types (code-based)
+  SeedCodeContext,
+  SeedCodeGeneratorFn,
+  SeedExports,
   SeedFileExports,
+  SeedLoadResult,
+  SeedValue,
 } from '../index.js';
 
 describe('Plugin Options Types', () => {
@@ -86,79 +93,107 @@ describe('Plugin Options Types', () => {
   });
 });
 
-describe('Handler Types', () => {
-  it('HandlerContext should have all request properties', () => {
-    type Context = HandlerContext<{ name: string }>;
+describe('Handler Types (Code-Based)', () => {
+  it('HandlerCodeContext should have operation context properties', () => {
+    type Context = HandlerCodeContext;
 
+    expectTypeOf<Context['operationId']>().toBeString();
+    expectTypeOf<Context['operation']>().toMatchTypeOf<OpenAPIV3_1.OperationObject>();
     expectTypeOf<Context['method']>().toBeString();
     expectTypeOf<Context['path']>().toBeString();
-    expectTypeOf<Context['params']>().toEqualTypeOf<Record<string, string>>();
-    expectTypeOf<Context['query']>().toEqualTypeOf<Record<string, string | string[]>>();
-    expectTypeOf<Context['body']>().toEqualTypeOf<{ name: string }>();
-    expectTypeOf<Context['headers']>().toMatchTypeOf<
-      Record<string, string | string[] | undefined>
-    >();
-    expectTypeOf<Context['operationId']>().toBeString();
+    expectTypeOf<Context['document']>().toMatchTypeOf<OpenAPIV3_1.Document>();
+    expectTypeOf<Context['schemas']>().toMatchTypeOf<Record<string, OpenAPIV3_1.SchemaObject>>();
   });
 
-  it('HandlerContext should have tools and utilities', () => {
-    type Context = HandlerContext;
-
-    expectTypeOf<Context['logger']>().toHaveProperty('info');
-    expectTypeOf<Context['registry']>().toMatchTypeOf<Readonly<OpenApiEndpointRegistry>>();
-    expectTypeOf<Context['security']>().toMatchTypeOf<SecurityContext>();
+  it('HandlerCodeGeneratorFn should return string or Promise<string>', () => {
+    expectTypeOf<HandlerCodeGeneratorFn>().toBeCallableWith({} as HandlerCodeContext);
+    expectTypeOf<HandlerCodeGeneratorFn>().returns.toMatchTypeOf<string | Promise<string>>();
   });
 
-  it('HandlerContext body should default to unknown', () => {
-    type Context = HandlerContext;
-    expectTypeOf<Context['body']>().toBeUnknown();
+  it('HandlerValue should be string or function', () => {
+    // Static handler (string code)
+    const staticHandler: HandlerValue = `return store.list('Pet');`;
+    expectTypeOf(staticHandler).toMatchTypeOf<HandlerValue>();
+
+    // Dynamic handler (function that generates code)
+    const dynamicHandler: HandlerValue = (_ctx: HandlerCodeContext) => {
+      return `return store.get('Pet', req.params.petId);`;
+    };
+    expectTypeOf(dynamicHandler).toMatchTypeOf<HandlerValue>();
   });
 
-  it('HandlerResponse should have status, body, and optional headers', () => {
-    expectTypeOf<HandlerResponse['status']>().toBeNumber();
-    expectTypeOf<HandlerResponse['body']>().toBeUnknown();
-    expectTypeOf<HandlerResponse['headers']>().toEqualTypeOf<Record<string, string> | undefined>();
+  it('HandlerExports should be a record of operationId to HandlerValue', () => {
+    const exports: HandlerExports = {
+      getPetById: `return store.get('Pet', req.params.petId);`,
+      listPets: (_ctx) => `return store.list('Pet');`,
+    };
+    expectTypeOf(exports).toMatchTypeOf<HandlerExports>();
   });
 
-  it('HandlerCodeGenerator should be an async function returning response or null', () => {
-    expectTypeOf<HandlerCodeGenerator>().toBeCallableWith({} as HandlerContext);
-    expectTypeOf<HandlerCodeGenerator>().returns.toMatchTypeOf<Promise<HandlerResponse | null>>();
+  it('HandlerFileExports should have default export of HandlerExports', () => {
+    expectTypeOf<HandlerFileExports['default']>().toMatchTypeOf<HandlerExports>();
   });
 
-  it('HandlerFileExports should require default export', () => {
-    expectTypeOf<HandlerFileExports['default']>().toMatchTypeOf<HandlerCodeGenerator>();
+  it('ResolvedHandlers should be a Map of operationId to code string', () => {
+    expectTypeOf<ResolvedHandlers>().toMatchTypeOf<Map<string, string>>();
+  });
+
+  it('HandlerLoadResult should have handlers map and metadata', () => {
+    expectTypeOf<HandlerLoadResult['handlers']>().toMatchTypeOf<Map<string, HandlerValue>>();
+    expectTypeOf<HandlerLoadResult['loadedFiles']>().toMatchTypeOf<string[]>();
+    expectTypeOf<HandlerLoadResult['warnings']>().toMatchTypeOf<string[]>();
+    expectTypeOf<HandlerLoadResult['errors']>().toMatchTypeOf<string[]>();
   });
 });
 
-describe('Seed Types', () => {
-  it('SeedContext should have faker and registry', () => {
-    type Context = SeedContext;
+describe('Seed Types (Code-Based)', () => {
+  it('SeedCodeContext should have schema context properties', () => {
+    type Context = SeedCodeContext;
 
-    expectTypeOf<Context['faker']>().toHaveProperty('person');
-    expectTypeOf<Context['logger']>().toHaveProperty('info');
-    expectTypeOf<Context['registry']>().toMatchTypeOf<Readonly<OpenApiEndpointRegistry>>();
     expectTypeOf<Context['schemaName']>().toBeString();
+    expectTypeOf<Context['schema']>().toMatchTypeOf<OpenAPIV3_1.SchemaObject>();
+    expectTypeOf<Context['document']>().toMatchTypeOf<OpenAPIV3_1.Document>();
+    expectTypeOf<Context['schemas']>().toMatchTypeOf<Record<string, OpenAPIV3_1.SchemaObject>>();
   });
 
-  it('SeedContext should have optional properties', () => {
-    type Context = SeedContext;
-
-    expectTypeOf<Context['operationId']>().toEqualTypeOf<string | undefined>();
-    expectTypeOf<Context['count']>().toEqualTypeOf<number | undefined>();
-    expectTypeOf<Context['env']>().toEqualTypeOf<Record<string, string | undefined>>();
+  it('SeedCodeGeneratorFn should return string or Promise<string>', () => {
+    expectTypeOf<SeedCodeGeneratorFn>().toBeCallableWith({} as SeedCodeContext);
+    expectTypeOf<SeedCodeGeneratorFn>().returns.toMatchTypeOf<string | Promise<string>>();
   });
 
-  it('SeedData should be an array', () => {
-    expectTypeOf<SeedData>().toMatchTypeOf<unknown[]>();
+  it('SeedValue should be string or function', () => {
+    // Static seed (string code)
+    const staticSeed: SeedValue = `seed.count(10, () => ({ id: faker.string.uuid() }))`;
+    expectTypeOf(staticSeed).toMatchTypeOf<SeedValue>();
+
+    // Dynamic seed (function that generates code)
+    const dynamicSeed: SeedValue = (_ctx: SeedCodeContext) => {
+      return `seed.count(15, () => ({ name: faker.animal.dog() }))`;
+    };
+    expectTypeOf(dynamicSeed).toMatchTypeOf<SeedValue>();
   });
 
-  it('SeedCodeGenerator should be an async function returning SeedData', () => {
-    expectTypeOf<SeedCodeGenerator>().toBeCallableWith({} as SeedContext);
-    expectTypeOf<SeedCodeGenerator>().returns.toMatchTypeOf<Promise<SeedData>>();
+  it('SeedExports should be a record of schemaName to SeedValue', () => {
+    const exports: SeedExports = {
+      Pet: `seed.count(15, () => ({ name: faker.animal.dog() }))`,
+      Order: (_ctx) => `seed.count(20, () => ({ status: 'placed' }))`,
+    };
+    expectTypeOf(exports).toMatchTypeOf<SeedExports>();
   });
 
-  it('SeedFileExports should require default export', () => {
-    expectTypeOf<SeedFileExports['default']>().toMatchTypeOf<SeedCodeGenerator>();
+  it('SeedFileExports should have default export of SeedExports', () => {
+    expectTypeOf<SeedFileExports['default']>().toMatchTypeOf<SeedExports>();
+  });
+
+  it('ResolvedSeeds should be a Map of schemaName to code string', () => {
+    expectTypeOf<ResolvedSeeds>().toMatchTypeOf<Map<string, string>>();
+  });
+
+  it('SeedLoadResult should have seeds map and metadata', () => {
+    expectTypeOf<SeedLoadResult['seeds']>().toMatchTypeOf<Map<string, SeedValue>>();
+    expectTypeOf<SeedLoadResult['loadedFiles']>().toMatchTypeOf<string[]>();
+    expectTypeOf<SeedLoadResult['warnings']>().toMatchTypeOf<string[]>();
+    expectTypeOf<SeedLoadResult['errors']>().toMatchTypeOf<string[]>();
   });
 });
 
@@ -281,37 +316,96 @@ describe('Registry Types', () => {
 });
 
 describe('Type Inference', () => {
-  it('HandlerContext generic should correctly type body', () => {
-    interface PetBody {
-      name: string;
-      status: 'available' | 'pending' | 'sold';
-    }
-
-    type PetHandlerContext = HandlerContext<PetBody>;
-
-    expectTypeOf<PetHandlerContext['body']>().toEqualTypeOf<PetBody>();
-    expectTypeOf<PetHandlerContext['body']['name']>().toBeString();
-    expectTypeOf<PetHandlerContext['body']['status']>().toEqualTypeOf<
-      'available' | 'pending' | 'sold'
-    >();
+  it('HandlerValue static should be a string', () => {
+    const staticHandler: HandlerValue = `return store.get('Pet', req.params.petId);`;
+    expectTypeOf(staticHandler).toMatchTypeOf<HandlerValue>();
   });
 
-  it('HandlerCodeGenerator generic should correctly type context body', () => {
-    interface CreatePetBody {
-      name: string;
-      category: { id: number; name: string };
-    }
-
-    type CreatePetHandler = HandlerCodeGenerator<CreatePetBody>;
-
-    // The handler should accept a context with typed body
-    const handler: CreatePetHandler = async (context) => {
-      // context.body should be typed as CreatePetBody
-      const name: string = context.body.name;
-      const categoryId: number = context.body.category.id;
-      return { status: 200, body: { name, categoryId } };
+  it('HandlerValue dynamic should accept context and return string', () => {
+    const dynamicHandler: HandlerValue = ({ operation, operationId: _operationId }) => {
+      const has404 = operation.responses && '404' in operation.responses;
+      return `
+        const pet = store.get('Pet', req.params.petId);
+        ${has404 ? "if (!pet) return res['404'];" : ''}
+        return pet;
+      `;
     };
+    expectTypeOf(dynamicHandler).toMatchTypeOf<HandlerValue>();
+  });
 
-    expectTypeOf(handler).toMatchTypeOf<CreatePetHandler>();
+  it('SeedValue static should be a string', () => {
+    const staticSeed: SeedValue = `
+      seed.count(15, () => ({
+        id: faker.number.int(),
+        name: faker.animal.dog()
+      }))
+    `;
+    expectTypeOf(staticSeed).toMatchTypeOf<SeedValue>();
+  });
+
+  it('SeedValue dynamic should accept context and return string', () => {
+    const dynamicSeed: SeedValue = ({ schemas, schemaName: _schemaName }) => {
+      const hasPet = 'Pet' in schemas;
+      return `
+        seed.count(20, (index) => ({
+          id: faker.number.int(),
+          petId: ${hasPet ? 'store.list("Pet")[index % 15]?.id' : 'faker.number.int()'}
+        }))
+      `;
+    };
+    expectTypeOf(dynamicSeed).toMatchTypeOf<SeedValue>();
+  });
+
+  it('HandlerExports should accept mixed static and dynamic handlers', () => {
+    const handlers: HandlerExports = {
+      getInventory: `
+        const pets = store.list('Pet');
+        return pets.reduce((acc, pet) => {
+          acc[pet.status] = (acc[pet.status] || 0) + 1;
+          return acc;
+        }, {});
+      `,
+      findPetsByStatus: ({ operation }) => {
+        const hasStatusParam = operation.parameters?.some(
+          (p) => 'name' in p && p.name === 'status',
+        );
+        return hasStatusParam
+          ? `return store.list('Pet').filter(p => p.status === req.query.status);`
+          : `return store.list('Pet');`;
+      },
+      getPetById: `return store.get('Pet', req.params.petId);`,
+      addPet: `return store.create('Pet', { id: faker.string.uuid(), ...req.body });`,
+    };
+    expectTypeOf(handlers).toMatchTypeOf<HandlerExports>();
+  });
+
+  it('SeedExports should accept mixed static and dynamic seeds', () => {
+    const seeds: SeedExports = {
+      Pet: `
+        seed.count(15, () => ({
+          id: faker.number.int({ min: 1, max: 10000 }),
+          name: faker.animal.dog(),
+          status: faker.helpers.arrayElement(['available', 'pending', 'sold'])
+        }))
+      `,
+      Category: `
+        seed([
+          { id: 1, name: 'Dogs' },
+          { id: 2, name: 'Cats' },
+          { id: 3, name: 'Birds' }
+        ])
+      `,
+      Order: ({ schemas }) => {
+        const hasPet = 'Pet' in schemas;
+        return `
+          seed.count(20, (index) => ({
+            id: faker.number.int(),
+            petId: ${hasPet ? 'store.list("Pet")[index % 15]?.id' : 'faker.number.int()'},
+            status: faker.helpers.arrayElement(['placed', 'approved', 'delivered'])
+          }))
+        `;
+      },
+    };
+    expectTypeOf(seeds).toMatchTypeOf<SeedExports>();
   });
 });

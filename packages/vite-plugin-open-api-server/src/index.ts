@@ -61,17 +61,28 @@ export {
 export { openApiServerPlugin, openApiServerPlugin as default } from './plugin.js';
 
 export type {
-  HandlerCodeGenerator,
-  HandlerContext,
+  // Handler types (code-based)
+  HandlerCodeContext,
+  HandlerCodeGeneratorFn,
+  HandlerExports,
   HandlerFileExports,
-  HandlerResponse,
+  HandlerLoadResult,
+  HandlerValue,
+  ResolvedHandlers,
+  // Seed types (code-based)
+  ResolvedSeeds,
+  SeedCodeContext,
+  SeedCodeGeneratorFn,
+  SeedExports,
+  SeedFileExports,
+  SeedLoadResult,
+  SeedValue,
+  // Security types
   NormalizedSecurityScheme,
-  OpenApiEndpointRegistry,
-  OpenApiServerPluginOptions,
   SecurityContext,
   SecurityRequirement,
-  SeedCodeGenerator,
-  SeedContext,
-  SeedData,
-  SeedFileExports,
+  // Registry types
+  OpenApiEndpointRegistry,
+  // Plugin options
+  OpenApiServerPluginOptions,
 } from './types/index.js';

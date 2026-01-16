@@ -25,7 +25,10 @@ import { pathToFileURL } from 'node:url';
 import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
-import type { HandlerCodeGenerator } from '../types/handlers.js';
+// TODO: Full rewrite in subtask vite-open-api-server-thy.2
+// Currently using HandlerValue but the loader logic needs to be rewritten
+// to support object exports instead of function exports
+import type { HandlerValue } from '../types/handlers.js';
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
 
 /**
@@ -35,9 +38,9 @@ import type { OpenApiEndpointRegistry } from '../types/registry.js';
  */
 export interface LoadHandlersResult {
   /**
-   * Map of operationId to handler function.
+   * Map of operationId to handler value (string or function).
    */
-  handlers: Map<string, HandlerCodeGenerator>;
+  handlers: Map<string, HandlerValue>;
 
   /**
    * Errors encountered during loading (file path → error message).
@@ -74,8 +77,9 @@ export async function loadHandlers(
   handlersDir: string,
   registry: OpenApiEndpointRegistry,
   logger: Logger,
-): Promise<Map<string, HandlerCodeGenerator>> {
-  const handlers = new Map<string, HandlerCodeGenerator>();
+): Promise<Map<string, HandlerValue>> {
+  // TODO: Rewrite to load object exports { operationId: string | fn } instead of default function
+  const handlers = new Map<string, HandlerValue>();
   const errors: string[] = [];
 
   try {
@@ -102,9 +106,10 @@ export async function loadHandlers(
         const fileUrl = pathToFileURL(filePath).href;
         const module = await import(fileUrl);
 
-        // Validate default export
-        if (!module.default || typeof module.default !== 'function') {
-          throw new Error(`Handler file must export a default async function`);
+        // TODO: Rewrite validation - should check for object export, not function
+        // Validate default export (temporary - accepts both old and new format)
+        if (!module.default) {
+          throw new Error(`Handler file must have a default export`);
         }
 
         // Extract operationId from filename
@@ -116,7 +121,8 @@ export async function loadHandlers(
           logger.warn(`[handler-loader] Duplicate handler for "${operationId}", overwriting`);
         }
 
-        handlers.set(operationId, module.default as HandlerCodeGenerator);
+        // TODO: Handle object exports properly - for now cast to HandlerValue
+        handlers.set(operationId, module.default as HandlerValue);
         logger.info(`[handler-loader] Loaded handler: ${operationId}`);
       } catch (error) {
         const err = error as Error;

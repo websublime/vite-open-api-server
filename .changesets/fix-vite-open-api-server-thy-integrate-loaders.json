@@ -1,0 +1,13 @@
+{
+  "branch": "fix/vite-open-api-server-thy-integrate-loaders",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-01-16T12:17:16.928160Z",
+  "updated_at": "2026-01-16T12:17:16.928825Z"
+}

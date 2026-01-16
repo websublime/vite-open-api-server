@@ -2,231 +2,249 @@
  * Seed Type Definitions
  *
  * ## What
- * This module defines the types for seed data generators. Seeds allow
- * users to provide consistent, realistic test data for mock responses
- * instead of relying on auto-generated mock data.
+ * This module defines the types for seed data generators that inject
+ * x-seed code into OpenAPI schemas for the Scalar Mock Server.
  *
  * ## How
- * Seed files export an async function that receives a `SeedContext`
- * with access to a faker instance, logger, registry, and schema name.
- * Seeds return an array of objects matching the target schema.
+ * Seed files export an object mapping schemaName to JavaScript code.
+ * The code can be a static string or a function that generates code
+ * dynamically based on the schema context.
  *
  * ## Why
- * Custom seeds enable realistic mock data that better represents
- * production scenarios. With access to faker and schema information,
- * seeds can generate consistent, deterministic data that helps with
- * testing and development workflows.
+ * The Scalar Mock Server expects x-seed extensions as JavaScript code
+ * strings in the OpenAPI document's schema definitions. This approach
+ * allows seeds to use Scalar's runtime context (seed, store, faker)
+ * directly in the code to populate the in-memory store.
+ *
+ * @see https://scalar.com/products/mock-server/data-seeding
  *
  * @module
  */
 
-import type { Faker } from '@faker-js/faker';
-import type { Logger } from 'vite';
-import type { OpenApiEndpointRegistry } from './registry.js';
+import type { OpenAPIV3_1 } from 'openapi-types';
 
 /**
- * Context object passed to seed generator functions.
+ * Context provided to dynamic seed code generators.
  *
- * Provides access to a faker instance for generating realistic data,
- * the OpenAPI registry for schema information, and a logger for
- * debugging seed generation.
+ * This context allows seed functions to generate schema-specific
+ * JavaScript code based on the OpenAPI specification.
  *
  * @example
  * ```typescript
- * // Seed file: Pet.seed.mjs
- * export default async function seed(context: SeedContext) {
- *   const { faker, logger, schemaName } = context;
+ * // Dynamic seed that generates code based on schema relationships
+ * const Order: SeedCodeGeneratorFn = ({ schemas }) => {
+ *   const hasPet = 'Pet' in schemas;
  *
- *   logger.info(`Generating seed data for ${schemaName}`);
- *
- *   return Array.from({ length: 10 }, (_, i) => ({
- *     id: i + 1,
- *     name: faker.animal.petName(),
- *     status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
- *     category: {
- *       id: faker.number.int({ min: 1, max: 5 }),
- *       name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds']),
- *     },
- *     tags: [
- *       { id: 1, name: faker.word.adjective() },
- *       { id: 2, name: faker.word.adjective() },
- *     ],
- *   }));
- * }
+ *   return `
+ *     seed.count(20, (index) => ({
+ *       id: faker.number.int({ min: 1, max: 10000 }),
+ *       ${hasPet ? 'petId: store.list("Pet")[index % 15]?.id,' : 'petId: faker.number.int(),'}
+ *       quantity: faker.number.int({ min: 1, max: 5 }),
+ *       status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+ *       complete: faker.datatype.boolean()
+ *     }))
+ *   `;
+ * };
  * ```
  */
-export interface SeedContext {
+export interface SeedCodeContext {
   /**
-   * Faker.js instance for generating realistic fake data.
+   * The schema name this seed is for.
    *
-   * Provides access to all faker modules (person, animal, commerce, etc.)
-   * for generating consistent, realistic test data.
-   *
-   * Note: @faker-js/faker is a peer dependency and may not be installed.
-   * Check for undefined before using.
-   *
-   * @see https://fakerjs.dev/
-   *
-   * @example
-   * ```typescript
-   * const name = context.faker.person.fullName();
-   * const email = context.faker.internet.email();
-   * const price = context.faker.commerce.price();
-   * ```
-   */
-  faker: Faker;
-
-  /**
-   * Vite logger for logging seed generation progress.
-   *
-   * Use this logger instead of console.log to integrate with Vite's
-   * logging system and respect the user's verbose setting.
-   */
-  logger: Logger;
-
-  /**
-   * OpenAPI registry with read-only access to schemas.
-   *
-   * Use the registry to access schema definitions for generating
-   * data that matches the expected structure.
-   */
-  registry: Readonly<OpenApiEndpointRegistry>;
-
-  /**
-   * Schema name this seed is generating data for.
-   *
-   * Corresponds to a schema name from `components.schemas` in the
-   * OpenAPI spec. Use this to generate schema-appropriate data.
-   *
-   * @example 'Pet', 'User', 'Order'
+   * @example 'Pet', 'Order', 'User', 'Category'
    */
   schemaName: string;
 
   /**
-   * Operation ID this seed is associated with.
+   * Full OpenAPI schema object for this schema.
    *
-   * Useful for generating operation-specific seed data or for
-   * logging purposes.
-   *
-   * @example 'listPets', 'getPetById', 'createPet'
+   * Contains type, properties, required fields, etc.
+   * Use this to generate context-aware seed code.
    */
-  operationId?: string;
+  schema: OpenAPIV3_1.SchemaObject;
 
   /**
-   * Number of seed items to generate (suggested).
+   * Complete OpenAPI document for reference.
    *
-   * This is a hint from the plugin about how many items to generate.
-   * Seed functions may generate more or fewer items as needed.
-   *
-   * @default 10
+   * Use this to access other parts of the spec like
+   * paths, security schemes, or other components.
    */
-  count?: number;
+  document: OpenAPIV3_1.Document;
 
   /**
-   * Environment variables accessible to seed functions.
+   * Available schemas from components/schemas.
    *
-   * Allows seeds to behave differently based on environment settings.
+   * Pre-extracted for convenience when generating code that
+   * needs to reference relationships between schemas.
    */
-  env: Record<string, string | undefined>;
+  schemas: Record<string, OpenAPIV3_1.SchemaObject>;
 }
 
 /**
- * Seed data returned by generator functions.
+ * Function signature for dynamic seed code generation.
  *
- * An array of objects that match the schema being seeded.
- * The exact structure depends on the target schema.
+ * Receives schema context and returns JavaScript code as a string.
+ * The returned code will be injected as x-seed in the OpenAPI spec.
  *
- * @example
- * ```typescript
- * // Pet seed data
- * const petSeeds: SeedData = [
- *   { id: 1, name: 'Fluffy', status: 'available' },
- *   { id: 2, name: 'Buddy', status: 'pending' },
- *   { id: 3, name: 'Max', status: 'sold' },
- * ];
- *
- * // User seed data
- * const userSeeds: SeedData = [
- *   { id: 1, username: 'john_doe', email: 'john@example.com' },
- *   { id: 2, username: 'jane_doe', email: 'jane@example.com' },
- * ];
- * ```
- */
-export type SeedData = unknown[];
-
-/**
- * Seed generator function signature.
- *
- * Async function that receives a seed context and returns an array
- * of seed objects matching the target schema.
+ * The code has access to Scalar's runtime context:
+ * - `seed` - Seed helper: seed(array), seed(factory), seed.count(n, factory)
+ * - `store` - Direct store access for relationships
+ * - `faker` - Faker.js instance for data generation
+ * - `schema` - Schema key name
  *
  * @example
  * ```typescript
- * // Basic seed generator
- * const petSeedGenerator: SeedCodeGenerator = async (context) => {
- *   const { faker, count = 10 } = context;
+ * const Pet: SeedCodeGeneratorFn = ({ schema }) => {
+ *   const hasStatus = schema.properties?.status;
  *
- *   return Array.from({ length: count }, (_, i) => ({
- *     id: i + 1,
- *     name: faker.animal.petName(),
- *     status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
- *   }));
- * };
- *
- * // Seed generator using schema information
- * const dynamicSeedGenerator: SeedCodeGenerator = async (context) => {
- *   const { faker, registry, schemaName } = context;
- *   const schema = registry.schemas.get(schemaName);
- *
- *   if (!schema) {
- *     return [];
- *   }
- *
- *   // Generate data based on schema properties
- *   return generateFromSchema(faker, schema.schema);
+ *   return `
+ *     seed.count(15, () => ({
+ *       id: faker.number.int({ min: 1, max: 10000 }),
+ *       name: faker.animal.dog(),
+ *       ${hasStatus ? "status: faker.helpers.arrayElement(['available', 'pending', 'sold'])," : ''}
+ *       photoUrls: [faker.image.url()],
+ *     }))
+ *   `;
  * };
  * ```
  */
-export type SeedCodeGenerator = (context: SeedContext) => Promise<SeedData>;
+export type SeedCodeGeneratorFn = (context: SeedCodeContext) => string | Promise<string>;
 
 /**
- * Expected exports from seed files.
+ * Seed value - either static code or a dynamic code generator.
  *
- * Seed files must default export an async function matching the
- * `SeedCodeGenerator` signature. Named exports are ignored.
+ * - **String**: Static JavaScript code injected directly as x-seed
+ * - **Function**: Called with context to generate JavaScript code
  *
  * @example
  * ```typescript
- * // Pet.seed.mjs
- * export default async function seed(context) {
- *   const { faker } = context;
- *
- *   return Array.from({ length: 10 }, (_, i) => ({
- *     id: i + 1,
- *     name: faker.animal.petName(),
+ * // Static seed (simple, no context needed)
+ * const Pet: SeedValue = `
+ *   seed.count(15, () => ({
+ *     id: faker.number.int({ min: 1, max: 10000 }),
+ *     name: faker.animal.dog(),
  *     status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
- *   }));
- * }
+ *     category: {
+ *       id: faker.number.int({ min: 1, max: 5 }),
+ *       name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds'])
+ *     },
+ *     photoUrls: [faker.image.url()],
+ *     tags: [{ id: faker.number.int({ min: 1, max: 100 }), name: faker.word.adjective() }]
+ *   }))
+ * `;
  *
- * // Or with TypeScript types
- * import type { SeedCodeGenerator } from '@websublime/vite-plugin-open-api-server';
- *
- * const seed: SeedCodeGenerator = async (context) => {
- *   const { faker } = context;
- *
- *   return Array.from({ length: 10 }, (_, i) => ({
- *     id: i + 1,
- *     name: faker.animal.petName(),
- *     status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
- *   }));
+ * // Dynamic seed (generates code based on schema)
+ * const Order: SeedValue = ({ schemas }) => {
+ *   const hasPet = 'Pet' in schemas;
+ *   return `
+ *     seed.count(20, (index) => ({
+ *       id: faker.number.int(),
+ *       petId: ${hasPet ? 'store.list("Pet")[index % 15]?.id' : 'faker.number.int()'},
+ *       status: faker.helpers.arrayElement(['placed', 'approved', 'delivered'])
+ *     }))
+ *   `;
  * };
+ * ```
+ */
+export type SeedValue = string | SeedCodeGeneratorFn;
+
+/**
+ * Seed file exports structure.
  *
- * export default seed;
+ * Seed files export an object mapping schemaName to seed values.
+ * Each value is either a JavaScript code string or a function that
+ * generates code.
+ *
+ * @example
+ * ```typescript
+ * // pets.seed.mjs
+ * export default {
+ *   // Static: Simple code string for Pet schema
+ *   Pet: `
+ *     seed.count(15, () => ({
+ *       id: faker.number.int({ min: 1, max: 10000 }),
+ *       name: faker.animal.dog(),
+ *       status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
+ *       category: {
+ *         id: faker.number.int({ min: 1, max: 5 }),
+ *         name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds'])
+ *       },
+ *       photoUrls: [faker.image.url()],
+ *       tags: [{ id: faker.number.int({ min: 1, max: 100 }), name: faker.word.adjective() }]
+ *     }))
+ *   `,
+ *
+ *   // Static: Category seed
+ *   Category: `
+ *     seed([
+ *       { id: 1, name: 'Dogs' },
+ *       { id: 2, name: 'Cats' },
+ *       { id: 3, name: 'Birds' },
+ *       { id: 4, name: 'Fish' },
+ *       { id: 5, name: 'Reptiles' }
+ *     ])
+ *   `,
+ *
+ *   // Dynamic: Function that generates code based on available schemas
+ *   Order: ({ schemas }) => {
+ *     const hasPet = 'Pet' in schemas;
+ *     return `
+ *       seed.count(20, (index) => ({
+ *         id: faker.number.int({ min: 1, max: 10000 }),
+ *         petId: ${hasPet ? 'store.list("Pet")[index % 15]?.id' : 'faker.number.int()'},
+ *         quantity: faker.number.int({ min: 1, max: 5 }),
+ *         shipDate: faker.date.future().toISOString(),
+ *         status: faker.helpers.arrayElement(['placed', 'approved', 'delivered']),
+ *         complete: faker.datatype.boolean()
+ *       }))
+ *     `;
+ *   },
+ * };
  * ```
  */
 export interface SeedFileExports {
   /**
-   * Default export must be a seed generator function.
+   * Default export must be an object mapping schemaName to seed values.
    */
-  default: SeedCodeGenerator;
+  default: SeedExports;
+}
+
+/**
+ * Map of schemaName to seed values.
+ *
+ * This is the expected structure of the default export from seed files.
+ */
+export type SeedExports = Record<string, SeedValue>;
+
+/**
+ * Result of loading and resolving seed files.
+ *
+ * After loading, all seeds are resolved to their final code strings
+ * for injection into the OpenAPI document.
+ */
+export type ResolvedSeeds = Map<string, string>;
+
+/**
+ * Seed loading result with metadata.
+ */
+export interface SeedLoadResult {
+  /**
+   * Map of schemaName to seed value (string or function).
+   */
+  seeds: Map<string, SeedValue>;
+
+  /**
+   * Files that were successfully loaded.
+   */
+  loadedFiles: string[];
+
+  /**
+   * Warnings encountered during loading.
+   */
+  warnings: string[];
+
+  /**
+   * Errors encountered during loading.
+   */
+  errors: string[];
 }
