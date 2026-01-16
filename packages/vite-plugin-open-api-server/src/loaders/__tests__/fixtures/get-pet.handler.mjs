@@ -1,10 +1,17 @@
 /**
  * Valid handler fixture for testing.
- * Filename: get-pet.handler.mjs → operationId: getPet
+ * Exports an object mapping operationId → handler code.
  */
-export default async function handler(_context) {
-  return {
-    status: 200,
-    body: { id: 1, name: 'Fluffy', status: 'available' },
-  };
-}
+export default {
+  // Static handler - code as string
+  getPet: `
+    const pet = store.get('Pet', req.params.petId);
+    if (!pet) {
+      return res['404'];
+    }
+    return pet;
+  `,
+
+  // Another static handler in the same file
+  getPetById: `return store.get('Pet', req.params.petId);`,
+};

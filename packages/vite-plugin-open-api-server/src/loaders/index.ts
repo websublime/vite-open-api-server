@@ -7,9 +7,8 @@
  */
 
 export {
-  extractOperationId,
+  extractBaseName,
   kebabToCamelCase,
-  type LoadHandlersResult,
   loadHandlers,
 } from './handler-loader.js';
 

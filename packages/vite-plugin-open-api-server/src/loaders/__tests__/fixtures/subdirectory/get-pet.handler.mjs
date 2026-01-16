@@ -1,13 +1,14 @@
 /**
  * Duplicate handler fixture for testing.
- * This file has the same operationId as the parent get-pet.handler.mjs
- * Filename: get-pet.handler.mjs → operationId: getPet
+ * This file exports a handler with the same operationId as the parent get-pet.handler.mjs
  *
  * Used to test that duplicate operationIds are detected and warned about.
  */
-export default async function handler(_context) {
-  return {
-    status: 200,
-    body: { id: 2, name: 'Duplicate Fluffy', status: 'pending' },
-  };
-}
+export default {
+  // Same operationId as parent directory's get-pet.handler.mjs
+  getPet: `
+    // This is the subdirectory version
+    const pet = store.get('Pet', req.params.petId);
+    return pet || { id: 2, name: 'Duplicate Fluffy', status: 'pending' };
+  `,
+};

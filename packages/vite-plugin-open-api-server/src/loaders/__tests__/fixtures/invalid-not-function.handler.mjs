@@ -1,13 +1,9 @@
 /**
  * Invalid handler fixture for testing.
- * Default export is not a function (it's an object).
+ * Default export is an array, which is not a valid handler exports format.
+ * Handler files must export a plain object mapping operationId → handler value.
  */
-export default {
-  handler: async (_context) => {
-    return {
-      status: 200,
-      body: { error: 'This should not work' },
-    };
-  },
-  name: 'invalidHandler',
-};
+export default [
+  { operationId: 'getPet', code: 'return store.get("Pet", req.params.petId);' },
+  { operationId: 'addPet', code: 'return store.create("Pet", req.body);' },
+];

@@ -68,21 +68,21 @@ export type {
   HandlerFileExports,
   HandlerLoadResult,
   HandlerValue,
+  // Security types
+  NormalizedSecurityScheme,
+  // Registry types
+  OpenApiEndpointRegistry,
+  // Plugin options
+  OpenApiServerPluginOptions,
   ResolvedHandlers,
   // Seed types (code-based)
   ResolvedSeeds,
+  SecurityContext,
+  SecurityRequirement,
   SeedCodeContext,
   SeedCodeGeneratorFn,
   SeedExports,
   SeedFileExports,
   SeedLoadResult,
   SeedValue,
-  // Security types
-  NormalizedSecurityScheme,
-  SecurityContext,
-  SecurityRequirement,
-  // Registry types
-  OpenApiEndpointRegistry,
-  // Plugin options
-  OpenApiServerPluginOptions,
 } from './types/index.js';
