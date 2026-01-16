@@ -85,9 +85,25 @@ export async function loadHandlers(
     // Resolve to absolute path
     const absoluteDir = path.resolve(handlersDir);
 
-    // Check if directory exists before scanning
+    // Check if directory exists and is actually a directory before scanning
     if (!fs.existsSync(absoluteDir)) {
       const msg = `No handler files found in ${handlersDir}`;
+      logger.warn(`[handler-loader] ${msg}`);
+      warnings.push(msg);
+      return { handlers, loadedFiles, warnings, errors };
+    }
+
+    // Verify it's a directory, not a file
+    try {
+      const stat = fs.statSync(absoluteDir);
+      if (!stat.isDirectory()) {
+        const msg = `Path ${handlersDir} exists but is not a directory`;
+        logger.warn(`[handler-loader] ${msg}`);
+        warnings.push(msg);
+        return { handlers, loadedFiles, warnings, errors };
+      }
+    } catch {
+      const msg = `Cannot access ${handlersDir}`;
       logger.warn(`[handler-loader] ${msg}`);
       warnings.push(msg);
       return { handlers, loadedFiles, warnings, errors };
@@ -108,10 +124,18 @@ export async function loadHandlers(
 
     logger.info(`[handler-loader] Found ${files.length} handler file(s)`);
 
+    // Pre-build a Set of operationIds for O(1) lookups
+    const operationIdSet = new Set<string>();
+    for (const endpoint of registry.endpoints.values()) {
+      if (endpoint.operationId) {
+        operationIdSet.add(endpoint.operationId);
+      }
+    }
+
     // Load each handler file
     for (const filePath of files) {
       try {
-        await loadHandlerFile(filePath, handlers, registry, logger, warnings);
+        await loadHandlerFile(filePath, handlers, operationIdSet, logger, warnings);
         loadedFiles.push(filePath);
       } catch (error) {
         const err = error as Error;
@@ -147,7 +171,7 @@ export async function loadHandlers(
 async function loadHandlerFile(
   filePath: string,
   handlers: Map<string, HandlerValue>,
-  registry: OpenApiEndpointRegistry,
+  operationIdSet: Set<string>,
   logger: Logger,
   warnings: string[],
 ): Promise<void> {
@@ -155,13 +179,13 @@ async function loadHandlerFile(
   const fileUrl = pathToFileURL(filePath).href;
   const module = await import(fileUrl);
 
-  // Validate default export exists
-  if (!module.default) {
+  // Validate default export exists (use 'in' operator to detect property presence, not truthy check)
+  if (!('default' in module)) {
     throw new Error('Handler file must have a default export');
   }
 
   // Validate default export is an object (not function, array, or primitive)
-  const exports = module.default;
+  const exports = module.default as unknown;
   if (!isValidExportsObject(exports)) {
     throw new Error(
       'Handler file default export must be an object mapping operationId to handler values. ' +
@@ -182,9 +206,8 @@ async function loadHandlerFile(
       continue;
     }
 
-    // Validate operationId exists in registry
-    const operationExists = checkOperationExists(operationId, registry);
-    if (!operationExists) {
+    // Validate operationId exists in registry (O(1) lookup)
+    if (!operationIdSet.has(operationId)) {
       const msg = `Handler "${operationId}" in ${filename} does not match any operation in OpenAPI spec`;
       warnings.push(msg);
       logger.warn(`[handler-loader] ${msg}`);
@@ -202,18 +225,6 @@ async function loadHandlerFile(
     handlers.set(operationId, handlerValue);
     logger.info(`[handler-loader] Loaded handler: ${operationId} (${getValueType(handlerValue)})`);
   }
-}
-
-/**
- * Check if an operationId exists in the registry.
- */
-function checkOperationExists(operationId: string, registry: OpenApiEndpointRegistry): boolean {
-  for (const endpoint of registry.endpoints.values()) {
-    if (endpoint.operationId === operationId) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
