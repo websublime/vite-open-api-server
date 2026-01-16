@@ -1,3 +1,50 @@
+## [0.19.0] - 2026-01-16
+
+### Breaking Changes
+
+- rewrite to load object exports (092c471)
+- resolve handler/seed values before injection (98a8305)
+
+
+### Features
+
+- rewrite handler and seed types to code-based format (1f66a3d)
+- rewrite to load object exports with operationId → code mappings (018e8a1)
+- integrate loaders and document enhancer (352cb45)
+- rewrite handler/seed examples to code-based format (545cb11)
+
+
+### Bug Fixes
+
+- use default import for fast-glob CJS compatibility (4721158)
+- use matched schema name as key for proper registry lookups (533dc06)
+
+
+### Documentation
+
+- add AI-assisted development workflow commands (f020161)
+
+
+### Code Refactoring
+
+- remove unused extractBaseName and extractSchemaName functions (3b98830)
+- fix lint errors in loaders and tests (7423895)
+- address code review feedback (4ea00d8)
+- address review comments for handler and seed loaders (e9f25bc)
+- use shared error formatters for consistent messaging (49c8716)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (e5b1d66)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (6262f55)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (47888fd)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (0f339cb)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (521bf2d)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (4b04d16)
+
+
+
 ## [0.18.0] - 2026-01-16
 
 ### Features
