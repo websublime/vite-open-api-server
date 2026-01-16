@@ -22,9 +22,9 @@
  * @module
  */
 
-import fg from 'fast-glob';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import fg from 'fast-glob';
 import type { Logger } from 'vite';
 
 import type { HandlerExports, HandlerLoadResult, HandlerValue } from '../types/handlers.js';
