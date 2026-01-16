@@ -1,21 +1,47 @@
 /**
- * Valid handler fixture for testing kebab-case to camelCase conversion.
- * Filename: add-new-pet.handler.mjs → operationId: addNewPet
+ * Valid handler fixture for testing.
+ * Exports an object with both static and dynamic handlers.
  */
-export default async function handler(context) {
-  const { body, logger } = context;
+export default {
+  // Static handler - code as string
+  addPet: `
+    const newPet = {
+      id: faker.string.uuid(),
+      ...req.body,
+      createdAt: new Date().toISOString()
+    };
+    return store.create('Pet', newPet);
+  `,
 
-  logger.info(`Creating new pet: ${body?.name}`);
+  // Dynamic handler - function that generates code based on context
+  addNewPet: ({ operation }) => {
+    const has400 = operation?.responses?.['400'];
+    const has422 = operation?.responses?.['422'];
 
-  return {
-    status: 201,
-    body: {
-      id: Date.now(),
-      name: body?.name || 'Unknown',
-      status: body?.status || 'available',
-    },
-    headers: {
-      'X-Created-At': new Date().toISOString(),
-    },
-  };
-}
+    let code = `
+      const { name, status, category } = req.body;
+    `;
+
+    if (has400 || has422) {
+      code += `
+      if (!name) {
+        return res['${has400 ? '400' : '422'}'];
+      }
+      `;
+    }
+
+    code += `
+      const newPet = {
+        id: faker.number.int({ min: 1, max: 10000 }),
+        name,
+        status: status || 'available',
+        category: category || { id: 1, name: 'Unknown' },
+        photoUrls: [],
+        tags: []
+      };
+      return store.create('Pet', newPet);
+    `;
+
+    return code;
+  },
+};

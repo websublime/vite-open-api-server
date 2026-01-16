@@ -3,19 +3,21 @@
  *
  * ## What
  * This module provides functionality to dynamically load custom handler files
- * from a directory. Handlers allow developers to override default mock server
- * responses with custom logic for specific endpoints.
+ * from a directory. Handlers define JavaScript code that will be injected as
+ * `x-handler` extensions into OpenAPI operations for the Scalar Mock Server.
  *
  * ## How
  * The loader scans a directory for files matching the `*.handler.{ts,js,mts,mjs}`
  * pattern, dynamically imports each file as an ESM module, validates the default
- * export matches the `HandlerCodeGenerator` signature, and builds a map of
- * operationId → handler function.
+ * export is an object mapping operationId → handler value, and aggregates all
+ * handlers into a single Map.
  *
  * ## Why
  * Custom handlers enable realistic mock responses that go beyond static OpenAPI
- * examples. By loading handlers dynamically, we support hot reload and allow
- * developers to add new handlers without modifying plugin configuration.
+ * examples. The code-based format (string or function returning string) allows
+ * handlers to access Scalar's runtime context (store, faker, req, res).
+ *
+ * @see https://scalar.com/products/mock-server/custom-request-handler
  *
  * @module
  */
@@ -25,34 +27,19 @@ import { pathToFileURL } from 'node:url';
 import { glob } from 'fast-glob';
 import type { Logger } from 'vite';
 
-// TODO: Full rewrite in subtask vite-open-api-server-thy.2
-// Currently using HandlerValue but the loader logic needs to be rewritten
-// to support object exports instead of function exports
-import type { HandlerValue } from '../types/handlers.js';
+import type { HandlerExports, HandlerLoadResult, HandlerValue } from '../types/handlers.js';
 import type { OpenApiEndpointRegistry } from '../types/registry.js';
-
-/**
- * Result of loading handlers from a directory.
- *
- * Contains the handler map and any errors encountered during loading.
- */
-export interface LoadHandlersResult {
-  /**
-   * Map of operationId to handler value (string or function).
-   */
-  handlers: Map<string, HandlerValue>;
-
-  /**
-   * Errors encountered during loading (file path → error message).
-   */
-  errors: string[];
-}
 
 /**
  * Load custom handler files from a directory.
  *
  * Scans for `*.handler.{ts,js,mts,mjs}` files, validates exports,
- * and returns a map of operationId → handler function.
+ * and returns a map of operationId → handler value.
+ *
+ * Handler files must export an object as default export, where each key
+ * is an operationId and each value is either:
+ * - A string containing JavaScript code
+ * - A function that receives HandlerCodeContext and returns a code string
  *
  * The loader is resilient: if one handler file fails to load or validate,
  * it logs the error and continues with the remaining files.
@@ -60,16 +47,20 @@ export interface LoadHandlersResult {
  * @param handlersDir - Directory containing handler files
  * @param registry - OpenAPI endpoint registry (for validation)
  * @param logger - Vite logger
- * @returns Promise resolving to handler map
+ * @returns Promise resolving to HandlerLoadResult
  *
  * @example
  * ```typescript
- * const handlers = await loadHandlers('./mock/handlers', registry, logger);
+ * const result = await loadHandlers('./mock/handlers', registry, logger);
  *
- * // Check if a handler exists for an operation
- * if (handlers.has('getPetById')) {
- *   const handler = handlers.get('getPetById');
- *   const response = await handler(context);
+ * // Access loaded handlers
+ * for (const [operationId, handlerValue] of result.handlers) {
+ *   console.log(`Handler for ${operationId}:`, typeof handlerValue);
+ * }
+ *
+ * // Check for issues
+ * if (result.errors.length > 0) {
+ *   console.error('Handler loading errors:', result.errors);
  * }
  * ```
  */
@@ -77,13 +68,14 @@ export async function loadHandlers(
   handlersDir: string,
   registry: OpenApiEndpointRegistry,
   logger: Logger,
-): Promise<Map<string, HandlerValue>> {
-  // TODO: Rewrite to load object exports { operationId: string | fn } instead of default function
+): Promise<HandlerLoadResult> {
   const handlers = new Map<string, HandlerValue>();
+  const loadedFiles: string[] = [];
+  const warnings: string[] = [];
   const errors: string[] = [];
 
   try {
-    // Check if directory exists
+    // Resolve to absolute path
     const absoluteDir = path.resolve(handlersDir);
 
     // Scan for handler files
@@ -93,8 +85,10 @@ export async function loadHandlers(
     });
 
     if (files.length === 0) {
-      logger.warn(`[handler-loader] No handler files found in ${handlersDir}`);
-      return handlers;
+      const msg = `No handler files found in ${handlersDir}`;
+      logger.warn(`[handler-loader] ${msg}`);
+      warnings.push(msg);
+      return { handlers, loadedFiles, warnings, errors };
     }
 
     logger.info(`[handler-loader] Found ${files.length} handler file(s)`);
@@ -102,28 +96,8 @@ export async function loadHandlers(
     // Load each handler file
     for (const filePath of files) {
       try {
-        // Dynamic import (ESM)
-        const fileUrl = pathToFileURL(filePath).href;
-        const module = await import(fileUrl);
-
-        // TODO: Rewrite validation - should check for object export, not function
-        // Validate default export (temporary - accepts both old and new format)
-        if (!module.default) {
-          throw new Error(`Handler file must have a default export`);
-        }
-
-        // Extract operationId from filename
-        const filename = path.basename(filePath);
-        const operationId = extractOperationId(filename);
-
-        // Add to map (warn on duplicates)
-        if (handlers.has(operationId)) {
-          logger.warn(`[handler-loader] Duplicate handler for "${operationId}", overwriting`);
-        }
-
-        // TODO: Handle object exports properly - for now cast to HandlerValue
-        handlers.set(operationId, module.default as HandlerValue);
-        logger.info(`[handler-loader] Loaded handler: ${operationId}`);
+        await loadHandlerFile(filePath, handlers, registry, logger, warnings);
+        loadedFiles.push(filePath);
       } catch (error) {
         const err = error as Error;
         const errorMessage = `${filePath}: ${err.message}`;
@@ -132,53 +106,167 @@ export async function loadHandlers(
       }
     }
 
-    // Cross-reference with registry
-    for (const operationId of handlers.keys()) {
-      const hasEndpoint = Array.from(registry.endpoints.values()).some(
-        (endpoint) => endpoint.operationId === operationId,
-      );
-
-      if (!hasEndpoint) {
-        logger.warn(
-          `[handler-loader] Handler "${operationId}" does not match any endpoint in OpenAPI spec`,
-        );
-      }
-    }
-
     // Log summary
-    const successCount = handlers.size;
-    const errorCount = errors.length;
-    logger.info(`[handler-loader] Loaded ${successCount} handler(s), ${errorCount} error(s)`);
+    logLoadSummary(handlers.size, loadedFiles.length, warnings.length, errors.length, logger);
 
-    return handlers;
+    return { handlers, loadedFiles, warnings, errors };
   } catch (error) {
     const err = error as Error;
-    logger.error(`[handler-loader] Fatal error: ${err.message}`);
-    return handlers;
+    const fatalError = `Fatal error scanning handlers directory: ${err.message}`;
+    logger.error(`[handler-loader] ${fatalError}`);
+    errors.push(fatalError);
+    return { handlers, loadedFiles, warnings, errors };
   }
+}
+
+/**
+ * Load a single handler file and merge its exports into the handlers map.
+ */
+async function loadHandlerFile(
+  filePath: string,
+  handlers: Map<string, HandlerValue>,
+  registry: OpenApiEndpointRegistry,
+  logger: Logger,
+  warnings: string[],
+): Promise<void> {
+  // Dynamic import (ESM)
+  const fileUrl = pathToFileURL(filePath).href;
+  const module = await import(fileUrl);
+
+  // Validate default export exists
+  if (!module.default) {
+    throw new Error('Handler file must have a default export');
+  }
+
+  // Validate default export is an object (not function, array, or primitive)
+  const exports = module.default;
+  if (!isValidExportsObject(exports)) {
+    throw new Error(
+      'Handler file default export must be an object mapping operationId to handler values. ' +
+        `Got: ${typeof exports}${Array.isArray(exports) ? ' (array)' : ''}`,
+    );
+  }
+
+  const handlerExports = exports as HandlerExports;
+  const filename = path.basename(filePath);
+
+  // Process each handler in the exports
+  for (const [operationId, handlerValue] of Object.entries(handlerExports)) {
+    // Validate handler value type
+    if (!isValidHandlerValue(handlerValue)) {
+      const msg = `Invalid handler value for "${operationId}" in ${filename}: expected string or function, got ${typeof handlerValue}`;
+      warnings.push(msg);
+      logger.warn(`[handler-loader] ${msg}`);
+      continue;
+    }
+
+    // Validate operationId exists in registry
+    const operationExists = checkOperationExists(operationId, registry);
+    if (!operationExists) {
+      const msg = `Handler "${operationId}" in ${filename} does not match any operation in OpenAPI spec`;
+      warnings.push(msg);
+      logger.warn(`[handler-loader] ${msg}`);
+      // Continue anyway - user might know what they're doing
+    }
+
+    // Check for duplicates
+    if (handlers.has(operationId)) {
+      const msg = `Duplicate handler for "${operationId}" in ${filename}, overwriting previous`;
+      warnings.push(msg);
+      logger.warn(`[handler-loader] ${msg}`);
+    }
+
+    // Add to handlers map
+    handlers.set(operationId, handlerValue);
+    logger.info(
+      `[handler-loader] Loaded handler: ${operationId} (${getHandlerType(handlerValue)})`,
+    );
+  }
+}
+
+/**
+ * Check if a value is a valid exports object (plain object, not array/function).
+ */
+function isValidExportsObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    // Ensure it's a plain object, not a class instance
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+/**
+ * Check if a value is a valid handler value (string or function).
+ */
+function isValidHandlerValue(value: unknown): value is HandlerValue {
+  return typeof value === 'string' || typeof value === 'function';
+}
+
+/**
+ * Check if an operationId exists in the registry.
+ */
+function checkOperationExists(operationId: string, registry: OpenApiEndpointRegistry): boolean {
+  for (const endpoint of registry.endpoints.values()) {
+    if (endpoint.operationId === operationId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Get a human-readable type description for a handler value.
+ */
+function getHandlerType(value: HandlerValue): string {
+  if (typeof value === 'string') {
+    return `static, ${value.length} chars`;
+  }
+  return 'dynamic function';
+}
+
+/**
+ * Log the loading summary.
+ */
+function logLoadSummary(
+  handlerCount: number,
+  fileCount: number,
+  warningCount: number,
+  errorCount: number,
+  logger: Logger,
+): void {
+  const parts = [`${handlerCount} handler(s)`, `from ${fileCount} file(s)`];
+
+  if (warningCount > 0) {
+    parts.push(`${warningCount} warning(s)`);
+  }
+
+  if (errorCount > 0) {
+    parts.push(`${errorCount} error(s)`);
+  }
+
+  logger.info(`[handler-loader] Summary: ${parts.join(', ')}`);
 }
 
 /**
  * Extract operationId from handler filename.
  *
- * Converts kebab-case filename to camelCase operationId.
+ * Note: This function is no longer used for extraction since handlers
+ * now export objects with explicit operationId keys. Kept for potential
+ * future use or backward compatibility.
  *
- * @param filename - Handler filename (e.g., 'add-pet.handler.ts')
- * @returns OperationId in camelCase (e.g., 'addPet')
+ * @param filename - Handler filename (e.g., 'pets.handler.ts')
+ * @returns Base name without extension (e.g., 'pets')
  *
  * @example
  * ```typescript
- * extractOperationId('add-pet.handler.ts');     // 'addPet'
- * extractOperationId('get-pet-by-id.handler.mjs'); // 'getPetById'
- * extractOperationId('listPets.handler.js');    // 'listPets'
+ * extractBaseName('pets.handler.ts');     // 'pets'
+ * extractBaseName('store-orders.handler.mjs'); // 'store-orders'
  * ```
  */
-export function extractOperationId(filename: string): string {
-  // Remove extension(s): .handler.ts, .handler.js, .handler.mts, .handler.mjs
-  const withoutExtension = filename.replace(/\.handler\.(ts|js|mts|mjs)$/, '');
-
-  // Convert kebab-case to camelCase
-  return kebabToCamelCase(withoutExtension);
+export function extractBaseName(filename: string): string {
+  return filename.replace(/\.handler\.(ts|js|mts|mjs)$/, '');
 }
 
 /**
