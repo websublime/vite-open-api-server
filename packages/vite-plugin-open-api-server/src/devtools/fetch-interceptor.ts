@@ -277,11 +277,10 @@ function extractOperationInfo(headers: Headers): {
 /**
  * Creates the intercepted fetch function.
  *
+ * @param originalFetch - The original fetch function to wrap
  * @returns A fetch function that logs matching requests to the timeline
  */
-function createInterceptedFetch(): typeof fetch {
-  const originalFetch = state.originalFetch!;
-
+function createInterceptedFetch(originalFetch: typeof fetch): typeof fetch {
   return async function interceptedFetch(
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -486,7 +485,8 @@ export function installFetchInterceptor(config: FetchInterceptorConfig): void {
   state.verbose = config.verbose ?? false;
 
   // Replace global fetch with our intercepted version
-  window.fetch = createInterceptedFetch();
+  // state.originalFetch is guaranteed to be set at this point
+  window.fetch = createInterceptedFetch(state.originalFetch);
   state.isActive = true;
 
   log(`Installed fetch interceptor for proxyPath: ${state.proxyPath}`);
