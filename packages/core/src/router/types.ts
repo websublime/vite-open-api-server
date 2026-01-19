@@ -39,6 +39,40 @@ export interface EndpointEntry {
 }
 
 /**
+ * Composite key for endpoint registry Map
+ * Format: "METHOD:path" (e.g., "get:/users/{id}", "post:/users")
+ *
+ * @example
+ * ```typescript
+ * // Creating a key
+ * const key: EndpointKey = `${method}:${path}`;
+ *
+ * // Parsing a key
+ * const [method, ...pathParts] = key.split(':');
+ * const path = pathParts.join(':'); // Handle paths with colons
+ * ```
+ */
+export type EndpointKey = `${HttpMethod}:${string}`;
+
+/**
+ * Helper to create an EndpointKey from method and path
+ */
+export function createEndpointKey(method: HttpMethod, path: string): EndpointKey {
+  return `${method}:${path}`;
+}
+
+/**
+ * Helper to parse an EndpointKey into method and path
+ */
+export function parseEndpointKey(key: EndpointKey): { method: HttpMethod; path: string } {
+  const colonIndex = key.indexOf(':');
+  return {
+    method: key.slice(0, colonIndex) as HttpMethod,
+    path: key.slice(colonIndex + 1),
+  };
+}
+
+/**
  * Statistics about the endpoint registry
  */
 export interface RegistryStats {
@@ -53,7 +87,8 @@ export interface RegistryStats {
  * Registry of all endpoints
  */
 export interface EndpointRegistry {
-  endpoints: Map<string, EndpointEntry>;
+  /** Map of endpoints keyed by "METHOD:path" format */
+  endpoints: Map<EndpointKey, EndpointEntry>;
   byTag: Map<string, EndpointEntry[]>;
   byPath: Map<string, EndpointEntry[]>;
   stats: RegistryStats;
