@@ -5,7 +5,7 @@
     "production"
   ],
   "packages": [
-    "@voas/core"
+    "@websublime/vite-open-api-core"
   ],
   "changes": [
     "c247b8691d8153e33ce763586e0d253cce5e078e"

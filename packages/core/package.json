@@ -1,5 +1,5 @@
 {
-  "name": "@voas/core",
+  "name": "@websublime/vite-open-api-core",
   "version": "0.0.0",
   "description": "Core server logic for vite-open-api-server - OpenAPI processing, routing, store, and data generation",
   "type": "module",
