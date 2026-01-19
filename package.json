@@ -13,7 +13,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "typecheck": "tsc --noEmit -p packages/vite-plugin-open-api-server/tsconfig.json",
+    "typecheck": "pnpm -r --filter='./packages/*' exec tsc --noEmit",
     "playground": "pnpm --filter petstore-app dev",
     "clean": "pnpm -r exec rm -rf dist node_modules",
     "changeset": "workspace changeset create",
