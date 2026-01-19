@@ -23,6 +23,11 @@ export class ProcessorError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'ProcessorError';
+
+    // Capture V8 stack trace excluding constructor frame
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, ProcessorError);
+    }
   }
 }
 

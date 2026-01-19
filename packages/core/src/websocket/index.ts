@@ -15,6 +15,7 @@ export type {
   RequestLogEntry,
   ResponseLogEntry,
   ServerEvent,
+  SimulationBase,
   SimulationConfig,
   SimulationState,
 } from './protocol.js';

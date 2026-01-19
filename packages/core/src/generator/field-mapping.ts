@@ -44,6 +44,11 @@ export const FIELD_NAME_MAPPING: Record<string, string> = {
 
 /**
  * Mapping of type:format combinations to Faker generators
+ *
+ * Note: For 'string:date' and 'string:date-time', the generator logic must
+ * post-format the faker result:
+ * - 'string:date' → ISO date only (YYYY-MM-DD) per RFC3339 full-date
+ * - 'string:date-time' → ISO date-time (YYYY-MM-DDTHH:mm:ssZ) per RFC3339
  */
 export const TYPE_FORMAT_MAPPING: Record<string, string> = {
   'string:email': 'internet.email',

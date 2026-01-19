@@ -9,8 +9,11 @@
  */
 
 export { convertOpenApiPath } from './path-converter.js';
-// TODO: Will be implemented in Task 1.4
-export { buildRoutes, type RouteBuilderOptions } from './route-builder.js';
+export {
+  buildRoutes,
+  RouteBuilderNotImplementedError,
+  type RouteBuilderOptions,
+} from './route-builder.js';
 export type {
   EndpointEntry,
   EndpointRegistry,

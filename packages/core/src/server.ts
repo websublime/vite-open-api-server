@@ -8,6 +8,8 @@
 
 // TODO: Will be implemented in Task 1.6: Server Factory
 
+import type { Hono } from 'hono';
+
 import type { EndpointRegistry } from './router/index.js';
 import type { Store } from './store/index.js';
 
@@ -33,7 +35,7 @@ export interface OpenApiServerConfig {
  * OpenAPI server instance
  */
 export interface OpenApiServer {
-  app: unknown; // Hono instance
+  app: Hono;
   store: Store;
   registry: EndpointRegistry;
   document: Record<string, unknown>;

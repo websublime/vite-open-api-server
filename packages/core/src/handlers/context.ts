@@ -8,7 +8,21 @@
 
 // TODO: Will be implemented in Task 2.1: Handler System
 
+import type { Faker } from '@faker-js/faker';
+
 import type { Store } from '../store/index.js';
+
+/**
+ * Logger interface for handler context
+ * Allows injection of custom or test loggers
+ */
+export interface Logger {
+  log(...args: unknown[]): void;
+  info(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  debug(...args: unknown[]): void;
+}
 
 /**
  * Request object available in handler context
@@ -37,17 +51,42 @@ export interface HandlerContext {
   req: HandlerRequest;
   res: HandlerResponseMeta;
   store: Store;
-  faker: unknown; // Faker instance
-  logger: Console;
+  faker: Faker;
+  logger: Logger;
 }
 
 /**
- * Possible return types from handlers
+ * Raw data return from handler (status 200)
  */
-export type HandlerReturn =
-  | unknown // Direct data (status 200)
-  | { status: number; data: unknown } // With custom status
-  | { status: number; data: unknown; headers: Record<string, string> }; // With headers
+export interface HandlerReturnRaw {
+  type: 'raw';
+  data: unknown;
+}
+
+/**
+ * Response with custom status
+ */
+export interface HandlerReturnWithStatus {
+  type: 'response';
+  status: number;
+  data: unknown;
+}
+
+/**
+ * Response with custom status and headers
+ */
+export interface HandlerReturnWithHeaders {
+  type: 'response';
+  status: number;
+  data: unknown;
+  headers: Record<string, string>;
+}
+
+/**
+ * Possible return types from handlers (discriminated union)
+ * Use the 'type' field to narrow the return type
+ */
+export type HandlerReturn = HandlerReturnRaw | HandlerReturnWithStatus | HandlerReturnWithHeaders;
 
 /**
  * Handler function signature
