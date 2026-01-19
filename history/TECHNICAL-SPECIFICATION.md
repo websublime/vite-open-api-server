@@ -329,10 +329,17 @@ function createEmptyDocument(): OpenAPIV3_1.Document {
   };
 }
 
+/** Processing step identifier for error tracking */
+export type ProcessorStep = 'bundle' | 'upgrade' | 'dereference' | 'validation';
+
 export class ProcessorError extends Error {
-  constructor(message: string) {
+  /** The processing step that failed */
+  readonly step: ProcessorStep;
+
+  constructor(message: string, step: ProcessorStep = 'validation') {
     super(message);
     this.name = 'ProcessorError';
+    this.step = step;
   }
 }
 ```

@@ -8,7 +8,7 @@
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ProcessorError, processOpenApiDocument } from '../processor.js';
+import { ProcessorError, type ProcessorStep, processOpenApiDocument } from '../processor.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const fixturesDir = resolve(__dirname, 'fixtures');
@@ -17,6 +17,16 @@ describe('processOpenApiDocument', () => {
   describe('empty input handling', () => {
     it('should return minimal document for undefined input', async () => {
       const result = await processOpenApiDocument(undefined as unknown as string);
+
+      expect(result).toEqual({
+        openapi: '3.1.0',
+        info: { title: 'OpenAPI Server', version: '1.0.0' },
+        paths: {},
+      });
+    });
+
+    it('should return minimal document for null input', async () => {
+      const result = await processOpenApiDocument(null as unknown as string);
 
       expect(result).toEqual({
         openapi: '3.1.0',
@@ -35,8 +45,38 @@ describe('processOpenApiDocument', () => {
       });
     });
 
+    it('should return minimal document for empty object string "{}"', async () => {
+      const result = await processOpenApiDocument('{}');
+
+      expect(result).toEqual({
+        openapi: '3.1.0',
+        info: { title: 'OpenAPI Server', version: '1.0.0' },
+        paths: {},
+      });
+    });
+
+    it('should return minimal document for empty array string "[]"', async () => {
+      const result = await processOpenApiDocument('[]');
+
+      expect(result).toEqual({
+        openapi: '3.1.0',
+        info: { title: 'OpenAPI Server', version: '1.0.0' },
+        paths: {},
+      });
+    });
+
     it('should return minimal document for empty object', async () => {
       const result = await processOpenApiDocument({});
+
+      expect(result).toEqual({
+        openapi: '3.1.0',
+        info: { title: 'OpenAPI Server', version: '1.0.0' },
+        paths: {},
+      });
+    });
+
+    it('should return minimal document for whitespace-only string', async () => {
+      const result = await processOpenApiDocument('   \n\t  ');
 
       expect(result).toEqual({
         openapi: '3.1.0',
@@ -188,6 +228,32 @@ describe('processOpenApiDocument', () => {
         expect((error as ProcessorError).step).toBe('bundle');
       }
     });
+
+    it('should throw ProcessorError with bundle step for invalid file path', async () => {
+      const invalidPath = '/this/path/definitely/does/not/exist/openapi.yaml';
+
+      try {
+        await processOpenApiDocument(invalidPath);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProcessorError);
+        expect((error as ProcessorError).step).toBe('bundle');
+        expect((error as ProcessorError).message).toContain('Failed to bundle');
+      }
+    });
+
+    it('should include original error message in ProcessorError', async () => {
+      const filePath = resolve(fixturesDir, 'non-existent.yaml');
+
+      try {
+        await processOpenApiDocument(filePath);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProcessorError);
+        // The error message should be descriptive
+        expect((error as ProcessorError).message.length).toBeGreaterThan(20);
+      }
+    });
   });
 
   describe('ProcessorError', () => {
@@ -210,6 +276,21 @@ describe('processOpenApiDocument', () => {
     it('should default to validation step', () => {
       const error = new ProcessorError('Validation failed');
       expect(error.step).toBe('validation');
+    });
+
+    it('should accept all valid ProcessorStep values', () => {
+      const steps: ProcessorStep[] = ['bundle', 'upgrade', 'dereference', 'validation'];
+
+      for (const step of steps) {
+        const error = new ProcessorError(`Error at ${step}`, step);
+        expect(error.step).toBe(step);
+      }
+    });
+
+    it('should be instanceof Error', () => {
+      const error = new ProcessorError('Test');
+      expect(error).toBeInstanceOf(Error);
+      expect(error).toBeInstanceOf(ProcessorError);
     });
   });
 });

@@ -10,6 +10,15 @@
  * 2. Upgrade - Convert OAS 2.0/3.0 to 3.1 for consistency
  * 3. Dereference - Inline all $ref pointers for easy traversal
  *
+ * @remarks
+ * **Security Considerations**: This processor is designed for development use only.
+ * It allows loading files and URLs from user input without sandboxing:
+ * - File paths can access any file readable by the process
+ * - URLs can fetch from any accessible endpoint
+ *
+ * Do NOT use this processor with untrusted input in production environments.
+ * For production use cases, implement URL allowlisting and path sandboxing.
+ *
  * @module parser/processor
  */
 
@@ -19,11 +28,21 @@ import { dereference } from '@scalar/openapi-parser';
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { upgrade } from '@scalar/openapi-upgrader';
 
+/** Processing step identifier for error tracking */
+export type ProcessorStep = 'bundle' | 'upgrade' | 'dereference' | 'validation';
+
 /**
  * Options for processing OpenAPI documents
+ *
+ * @remarks
+ * The `basePath` option is reserved for future use. Currently, file paths
+ * are resolved relative to the current working directory.
  */
 export interface ProcessorOptions {
-  /** Base directory for relative file resolution */
+  /**
+   * Base directory for relative file resolution.
+   * @reserved This option is not yet implemented and is reserved for future use.
+   */
   basePath?: string;
 }
 
@@ -35,15 +54,13 @@ export interface ProcessorOptions {
  * - Bundle: Failed to resolve external references
  * - Upgrade: Failed to convert to OpenAPI 3.1
  * - Dereference: Failed to inline $ref pointers
+ * - Validation: Processed document is missing required fields
  */
 export class ProcessorError extends Error {
   /** The processing step that failed */
-  readonly step: 'bundle' | 'upgrade' | 'dereference' | 'validation';
+  readonly step: ProcessorStep;
 
-  constructor(
-    message: string,
-    step: 'bundle' | 'upgrade' | 'dereference' | 'validation' = 'validation',
-  ) {
+  constructor(message: string, step: ProcessorStep = 'validation') {
     super(message);
     this.name = 'ProcessorError';
     this.step = step;
@@ -53,6 +70,30 @@ export class ProcessorError extends Error {
       Error.captureStackTrace(this, ProcessorError);
     }
   }
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Extracts error message from unknown error type
+ *
+ * @param error - The caught error value
+ * @returns Human-readable error message
+ */
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Type guard to check if a value is a valid object (non-null, non-array)
+ *
+ * @param value - The value to check
+ * @returns True if value is a valid object
+ */
+function isValidObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 /**
@@ -91,6 +132,131 @@ function isEmptyInput(input: string | Record<string, unknown> | undefined | null
   return false;
 }
 
+// ============================================================================
+// Pipeline Step Functions
+// ============================================================================
+
+/**
+ * Step 1: Bundle external $ref references
+ *
+ * @param input - OpenAPI document as file path, URL, or object
+ * @returns Bundled document with external refs resolved
+ * @throws ProcessorError if bundling fails
+ */
+async function bundleDocument(
+  input: string | Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  let bundled: unknown;
+
+  try {
+    bundled = await bundle(input, {
+      plugins: [parseJson(), parseYaml(), readFiles(), fetchUrls()],
+      treeShake: false,
+    });
+  } catch (error) {
+    throw new ProcessorError(
+      `Failed to bundle OpenAPI document: ${getErrorMessage(error)}`,
+      'bundle',
+    );
+  }
+
+  if (!isValidObject(bundled)) {
+    throw new ProcessorError('Bundled document is invalid: expected an object', 'bundle');
+  }
+
+  return bundled;
+}
+
+/**
+ * Step 2: Upgrade document to OpenAPI 3.1
+ *
+ * @param bundled - Bundled OpenAPI document
+ * @returns Upgraded OpenAPI 3.1 document
+ * @throws ProcessorError if upgrade fails
+ */
+function upgradeDocument(bundled: Record<string, unknown>): OpenAPIV3_1.Document {
+  let upgraded: unknown;
+
+  try {
+    upgraded = upgrade(bundled, '3.1');
+  } catch (error) {
+    throw new ProcessorError(
+      `Failed to upgrade to OpenAPI 3.1: ${getErrorMessage(error)}`,
+      'upgrade',
+    );
+  }
+
+  if (!isValidObject(upgraded)) {
+    throw new ProcessorError(
+      'Upgraded document is invalid: upgrade returned null or undefined',
+      'upgrade',
+    );
+  }
+
+  return upgraded as OpenAPIV3_1.Document;
+}
+
+/**
+ * Step 3: Dereference all $ref pointers
+ *
+ * @param upgraded - Upgraded OpenAPI 3.1 document
+ * @returns Dereferenced document with all refs inlined
+ * @throws ProcessorError if dereferencing fails
+ */
+async function dereferenceDocument(upgraded: OpenAPIV3_1.Document): Promise<OpenAPIV3_1.Document> {
+  let dereferenced: unknown;
+
+  try {
+    const result = await dereference(upgraded);
+
+    // Check for dereference errors
+    if (result.errors && result.errors.length > 0) {
+      const errorMessages = result.errors.map((e) => e?.message ?? 'Unknown error').join(', ');
+      throw new ProcessorError(
+        `Failed to dereference OpenAPI document: ${errorMessages}`,
+        'dereference',
+      );
+    }
+
+    dereferenced = result.schema;
+  } catch (error) {
+    // Re-throw ProcessorError as-is
+    if (error instanceof ProcessorError) {
+      throw error;
+    }
+
+    throw new ProcessorError(
+      `Failed to dereference OpenAPI document: ${getErrorMessage(error)}`,
+      'dereference',
+    );
+  }
+
+  if (!isValidObject(dereferenced)) {
+    throw new ProcessorError('Dereferenced schema is invalid: expected an object', 'dereference');
+  }
+
+  return dereferenced as OpenAPIV3_1.Document;
+}
+
+/**
+ * Validates the final processed document
+ *
+ * @param document - The processed OpenAPI document
+ * @throws ProcessorError if validation fails
+ */
+function validateDocument(document: OpenAPIV3_1.Document): void {
+  if (!document.openapi || !document.info) {
+    throw new ProcessorError(
+      'Processed document is missing required OpenAPI fields (openapi, info)',
+      'validation',
+    );
+  }
+}
+
+// ============================================================================
+// Main Processor Function
+// ============================================================================
+
 /**
  * Process an OpenAPI document through the full pipeline:
  * 1. Bundle - resolve external $ref references
@@ -101,6 +267,11 @@ function isEmptyInput(input: string | Record<string, unknown> | undefined | null
  * @param _options - Processing options (reserved for future use)
  * @returns Fully dereferenced OpenAPI 3.1 document
  * @throws ProcessorError if processing fails at any step
+ *
+ * @remarks
+ * When input is empty, undefined, or an empty object, a minimal valid OpenAPI 3.1
+ * document is returned instead of throwing an error. This allows graceful handling
+ * of missing or placeholder specifications.
  *
  * @example
  * ```typescript
@@ -127,86 +298,12 @@ export async function processOpenApiDocument(
     return createEmptyDocument();
   }
 
-  // Step 1: Bundle - Resolve external $ref references
-  let bundled: Record<string, unknown>;
-  try {
-    const bundleResult = await bundle(input, {
-      plugins: [parseJson(), parseYaml(), readFiles(), fetchUrls()],
-      treeShake: false,
-    });
-    bundled = bundleResult as Record<string, unknown>;
-  } catch (error) {
-    throw new ProcessorError(
-      `Failed to bundle OpenAPI document: ${error instanceof Error ? error.message : String(error)}`,
-      'bundle',
-    );
-  }
+  // Execute pipeline: bundle -> upgrade -> dereference -> validate
+  const bundled = await bundleDocument(input);
+  const upgraded = upgradeDocument(bundled);
+  const dereferenced = await dereferenceDocument(upgraded);
 
-  // Validate bundle result
-  if (!bundled || typeof bundled !== 'object') {
-    throw new ProcessorError('Bundled document is invalid: expected an object', 'bundle');
-  }
-
-  // Step 2: Upgrade - Convert to OpenAPI 3.1
-  let upgraded: OpenAPIV3_1.Document;
-  try {
-    // The upgrade function accepts the document and target version
-    upgraded = upgrade(bundled, '3.1') as OpenAPIV3_1.Document;
-  } catch (error) {
-    throw new ProcessorError(
-      `Failed to upgrade to OpenAPI 3.1: ${error instanceof Error ? error.message : String(error)}`,
-      'upgrade',
-    );
-  }
-
-  // Validate upgrade result
-  if (!upgraded || typeof upgraded !== 'object') {
-    throw new ProcessorError(
-      'Upgraded document is invalid: upgrade returned null or undefined',
-      'upgrade',
-    );
-  }
-
-  // Step 3: Dereference - Inline all $ref pointers
-  let dereferenced: OpenAPIV3_1.Document;
-  try {
-    const result = await dereference(upgraded);
-
-    // Check for dereference errors
-    if (result.errors && result.errors.length > 0) {
-      const errorMessages = result.errors.map((e) => e.message).join(', ');
-      throw new ProcessorError(
-        `Failed to dereference OpenAPI document: ${errorMessages}`,
-        'dereference',
-      );
-    }
-
-    // Get the dereferenced schema
-    dereferenced = result.schema as OpenAPIV3_1.Document;
-  } catch (error) {
-    // Re-throw ProcessorError as-is
-    if (error instanceof ProcessorError) {
-      throw error;
-    }
-
-    throw new ProcessorError(
-      `Failed to dereference OpenAPI document: ${error instanceof Error ? error.message : String(error)}`,
-      'dereference',
-    );
-  }
-
-  // Validate dereference result
-  if (!dereferenced || typeof dereferenced !== 'object') {
-    throw new ProcessorError('Dereferenced schema is invalid: expected an object', 'dereference');
-  }
-
-  // Validate that we have a valid OpenAPI document
-  if (!dereferenced.openapi || !dereferenced.info) {
-    throw new ProcessorError(
-      'Processed document is missing required OpenAPI fields (openapi, info)',
-      'validation',
-    );
-  }
+  validateDocument(dereferenced);
 
   return dereferenced;
 }
