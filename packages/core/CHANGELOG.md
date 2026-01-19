@@ -1,3 +1,28 @@
+## [0.1.1] - 2026-01-19
+
+### Features
+
+- implement OpenAPI processor pipeline (b11a770)
+
+
+### Bug Fixes
+
+- address PR review comments for processor (586bc51)
+
+
+### Code Refactoring
+
+- reduce processor complexity and improve test coverage (1045591)
+
+
+### Other Changes
+
+- sync changeset for feature/task-1-2-openapi-processor (29a157c)
+- update changeset for refactoring changes (8aa34d7)
+- sync changeset for feature/task-1-2-openapi-processor (e7a9966)
+
+
+
 ## [0.1.0] - 2026-01-19
 
 ### Breaking Changes
