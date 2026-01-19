@@ -1,0 +1,13 @@
+{
+  "branch": "feature/task-1-2-openapi-processor",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-01-19T16:19:44.597177Z",
+  "updated_at": "2026-01-19T16:19:44.597906Z"
+}

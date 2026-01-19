@@ -31,12 +31,13 @@ export default defineConfig({
     typecheck: {
       enabled: true,
       include: ['**/*.test-d.ts'],
+      exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/temp/**'],
     },
 
     /**
      * Directories and patterns to exclude from test discovery.
      */
-    exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/temp/**'],
 
     /**
      * Enable global test APIs (describe, it, expect) without explicit imports.
