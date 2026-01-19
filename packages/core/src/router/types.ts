@@ -10,8 +10,9 @@
 
 /**
  * HTTP methods supported by the router
+ * Includes all methods defined in OpenAPI specification
  */
-export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'options' | 'head';
+export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'options' | 'head' | 'trace';
 
 /**
  * Security requirement from OpenAPI spec

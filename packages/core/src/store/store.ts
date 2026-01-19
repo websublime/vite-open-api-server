@@ -18,16 +18,17 @@ export interface StoreOptions {
 
 /**
  * Store interface for data operations
+ * Generic type T allows typed operations when schema type is known
  */
-export interface Store {
+export interface Store<T = unknown> {
   /** List all items of a schema */
-  list(schema: string): unknown[];
+  list(schema: string): T[];
   /** Get item by ID */
-  get(schema: string, id: string | number): unknown | null;
+  get(schema: string, id: string | number): T | null;
   /** Create new item */
-  create(schema: string, data: unknown): unknown;
+  create(schema: string, data: T): T;
   /** Update existing item */
-  update(schema: string, id: string | number, data: Partial<unknown>): unknown | null;
+  update<U extends T>(schema: string, id: string | number, data: Partial<U>): U | null;
   /** Delete item */
   delete(schema: string, id: string | number): boolean;
   /** Clear all items of a schema */
@@ -49,6 +50,11 @@ export class StoreError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'StoreError';
+
+    // Capture V8 stack trace excluding constructor frame
+    if (typeof Error.captureStackTrace === 'function') {
+      Error.captureStackTrace(this, StoreError);
+    }
   }
 }
 

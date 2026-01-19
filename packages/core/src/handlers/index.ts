@@ -14,6 +14,10 @@ export type {
   HandlerRequest,
   HandlerResponseMeta,
   HandlerReturn,
+  HandlerReturnRaw,
+  HandlerReturnWithHeaders,
+  HandlerReturnWithStatus,
+  Logger,
 } from './context.js';
 // TODO: Will be implemented in Task 2.1
-export { executeHandler, type HandlerResponse } from './executor.js';
+export { ExecutorError, executeHandler, type HandlerResponse } from './executor.js';

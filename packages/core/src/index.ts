@@ -1,11 +1,11 @@
 /**
- * @voas/core - Core Server Package
+ * @websublime/vite-open-api-core - Core Server Package
  *
  * What: Core server logic for vite-open-api-server
  * How: Provides OpenAPI processing, routing, store, and data generation
  * Why: Reusable server components independent of Vite
  *
- * @module @voas/core
+ * @module @websublime/vite-open-api-core
  */
 
 // =============================================================================
@@ -41,16 +41,21 @@ export type {
   RouteBuilderOptions,
   SecurityRequirement,
 } from './router/index.js';
-export { buildRoutes, convertOpenApiPath } from './router/index.js';
+export {
+  buildRoutes,
+  convertOpenApiPath,
+  RouteBuilderNotImplementedError,
+} from './router/index.js';
 
 // =============================================================================
 // Generator Module - Fake Data Generation
 // =============================================================================
 
+// Internal/experimental exports - consumers should not use until Task 1.5 is complete
 export {
+  _generateFromFieldName,
+  _generateFromSchema,
   FIELD_NAME_MAPPING,
-  generateFromFieldName,
-  generateFromSchema,
   TYPE_FORMAT_MAPPING,
 } from './generator/index.js';
 
@@ -65,8 +70,12 @@ export type {
   HandlerResponse,
   HandlerResponseMeta,
   HandlerReturn,
+  HandlerReturnRaw,
+  HandlerReturnWithHeaders,
+  HandlerReturnWithStatus,
+  Logger,
 } from './handlers/index.js';
-export { executeHandler } from './handlers/index.js';
+export { ExecutorError, executeHandler } from './handlers/index.js';
 
 // =============================================================================
 // WebSocket Module - Real-time Communication
@@ -77,6 +86,7 @@ export type {
   RequestLogEntry,
   ResponseLogEntry,
   ServerEvent,
+  SimulationBase,
   SimulationConfig,
   SimulationState,
   WebSocketHub,

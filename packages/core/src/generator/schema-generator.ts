@@ -4,6 +4,8 @@
  * What: Generates fake data from OpenAPI schema definitions
  * How: Matches types, formats, and field names to Faker.js generators
  * Why: Provides intelligent mock data generation
+ *
+ * @internal These functions are experimental until Task 1.5 is complete
  */
 
 // TODO: Will be implemented in Task 1.5: Data Generator
@@ -11,12 +13,13 @@
 /**
  * Generate fake data from an OpenAPI schema
  *
+ * @internal Experimental - throws until Task 1.5 is implemented
  * @param schema - OpenAPI schema object
  * @param faker - Faker instance
  * @param propertyName - Optional property name for smart field detection
  * @returns Generated fake data matching the schema
  */
-export function generateFromSchema(
+export function _generateFromSchema(
   _schema: Record<string, unknown>,
   _faker: unknown,
   _propertyName?: string,
@@ -28,11 +31,12 @@ export function generateFromSchema(
 /**
  * Generate fake data based on field name
  *
+ * @internal Experimental - throws until Task 1.5 is implemented
  * @param fieldName - Property name to match
  * @param faker - Faker instance
- * @returns Generated value or undefined if no match
+ * @returns Generated value or throws if not implemented
  */
-export function generateFromFieldName(_fieldName: string, _faker: unknown): unknown {
+export function _generateFromFieldName(_fieldName: string, _faker: unknown): unknown {
   // TODO: Implement in Task 1.5
-  return undefined;
+  throw new Error('Not implemented yet - see Task 1.5');
 }

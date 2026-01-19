@@ -36,14 +36,20 @@ export interface ResponseLogEntry {
 }
 
 /**
- * Simulation state for active simulations
+ * Base simulation configuration
+ * Shared definition to avoid drift between SimulationState and SimulationConfig
  */
-export interface SimulationState {
+export interface SimulationBase {
   path: string;
   status: number;
   delay?: number;
   body?: unknown;
 }
+
+/**
+ * Simulation state for active simulations
+ */
+export type SimulationState = SimulationBase;
 
 /**
  * Server to client events
@@ -57,14 +63,10 @@ export type ServerEvent =
   | { type: 'simulation:active'; data: SimulationState[] };
 
 /**
- * Simulation configuration
+ * Simulation configuration (alias for SimulationBase)
+ * Used in client commands for setting simulations
  */
-export interface SimulationConfig {
-  path: string;
-  status: number;
-  delay?: number;
-  body?: unknown;
-}
+export type SimulationConfig = SimulationBase;
 
 /**
  * Client to server commands
