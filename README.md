@@ -4,18 +4,20 @@
 [![license](https://img.shields.io/npm/l/@websublime/vite-plugin-open-api-server.svg)](./LICENSE)
 [![node version](https://img.shields.io/node/v/@websublime/vite-plugin-open-api-server.svg)](https://nodejs.org/)
 
-Vite plugin for OpenAPI-based mock server with Scalar integration. Enables frontend developers to work independently of backend services during local development, with realistic mock data and customizable response logic.
+Vite plugin that provides a local OpenAPI server for frontend development. Enables frontend developers to work independently of backend services, with realistic data generation, custom handlers, and integrated DevTools.
 
 ## Features
 
-- 🚀 **Automatic Mock Server** - Powered by [@scalar/mock-server](https://github.com/scalar/scalar)
-- 📄 **OpenAPI 3.x Support** - Load specifications from YAML or JSON files
-- 🔄 **Hot Reload** - Automatically reload handlers and seeds on file changes
-- 🎯 **Custom Handlers** - Override mock responses with custom logic per endpoint
-- 🌱 **Seed Data** - Provide consistent test data with optional Faker.js integration
-- 🔌 **Vite Integration** - Seamless integration with Vite's development server
-- 📊 **Endpoint Registry** - Track all available endpoints and their customization status
-- 🛡️ **TypeScript** - Full TypeScript support with exported types
+- **OpenAPI-First** - Automatic endpoint generation from OpenAPI 2.0/3.x specifications
+- **Custom Hono Server** - Lightweight, fast HTTP server with native WebSocket support
+- **Realistic Data** - Automatic fake data generation based on schemas using Faker.js
+- **Custom Handlers** - Override responses with custom logic per endpoint
+- **Seed Data** - Populate the store with consistent test data
+- **In-Memory Store** - Full CRUD operations per schema with configurable ID fields
+- **Hot Reload** - Automatically reload handlers and seeds on file changes
+- **Vue DevTools** - Integrated SPA with Routes, Timeline, Models, and Simulator views
+- **Error Simulation** - Simulate network delays, errors, and edge cases
+- **TypeScript** - Full TypeScript support with exported types
 
 ## Quick Start
 
@@ -30,15 +32,17 @@ pnpm add -D @websublime/vite-plugin-open-api-server
 Add the plugin to your `vite.config.ts`:
 
 ```typescript
-import { openApiServerPlugin } from '@websublime/vite-plugin-open-api-server';
 import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
+import { openApiServer } from '@websublime/vite-plugin-open-api-server';
 
 export default defineConfig({
   plugins: [
-    openApiServerPlugin({
-      openApiPath: './src/api/openapi.yaml',
-      port: 3456,
-      proxyPath: '/api',
+    vue(),
+    openApiServer({
+      spec: './openapi/petstore.yaml',
+      port: 4000,
+      proxyPath: '/api/v3',
     }),
   ],
 });
@@ -46,38 +50,196 @@ export default defineConfig({
 
 The plugin will:
 
-1. Parse your OpenAPI specification
-2. Start a mock server on the specified port
-3. Proxy requests from `/api/*` to the mock server
-4. Generate realistic responses based on your schema
+1. Parse and process your OpenAPI specification
+2. Start a Hono server with auto-generated routes
+3. Proxy requests from `/api/v3/*` to the server
+4. Generate realistic responses based on your schemas
+5. Register a custom tab in Vue DevTools
 
-For detailed configuration options, see the [plugin README](./packages/vite-plugin-open-api-server/README.md).
+### Configuration Options
+
+```typescript
+openApiServer({
+  // Required
+  spec: './openapi/petstore.yaml',  // Path to OpenAPI spec (YAML/JSON)
+
+  // Server
+  port: 4000,                        // Server port (default: auto-detect)
+  proxyPath: '/api/v3',              // Vite proxy path (default: '/api')
+
+  // Customization
+  handlersDir: './mocks/handlers',   // Custom handlers directory
+  seedsDir: './mocks/seeds',         // Seed data directory
+  idFields: {                        // ID field per schema
+    User: 'username',
+    Order: 'orderId',
+  },
+
+  // Features
+  enabled: true,                     // Enable/disable plugin
+  devtools: true,                    // Enable Vue DevTools integration
+  timelineLimit: 500,                // Max timeline events
+});
+```
+
+## Custom Handlers
+
+Create handlers to override default responses:
+
+```typescript
+// mocks/handlers/pets.handler.ts
+import { defineHandlers } from '@websublime/vite-plugin-open-api-server';
+
+export default defineHandlers({
+  getPetById: ({ req, store }) => {
+    const pet = store.get('Pet', req.params.petId);
+    if (!pet) {
+      return { status: 404, data: { message: 'Pet not found' } };
+    }
+    return pet;
+  },
+
+  findPetsByStatus: ({ req, store }) => {
+    const status = req.query.status || 'available';
+    return store.list('Pet').filter(p => p.status === status);
+  },
+
+  addPet: ({ req, store, faker }) => {
+    const newPet = store.create('Pet', {
+      ...req.body,
+      id: faker.number.int({ min: 1000, max: 9999 }),
+    });
+    return { status: 201, data: newPet };
+  },
+});
+```
+
+### Handler Context
+
+Handlers receive a context object with:
+
+| Property | Description |
+|----------|-------------|
+| `req.method` | HTTP method |
+| `req.path` | Request path |
+| `req.params` | Path parameters |
+| `req.query` | Query parameters |
+| `req.body` | Parsed request body |
+| `req.headers` | Request headers |
+| `store` | In-memory data store |
+| `faker` | Faker.js instance |
+| `logger` | Console logger |
+
+## Seed Data
+
+Populate the store with initial data:
+
+```typescript
+// mocks/seeds/pets.seed.ts
+import { defineSeeds } from '@websublime/vite-plugin-open-api-server';
+
+export default defineSeeds({
+  Pet: ({ seed, faker }) => seed.count(15, (index) => ({
+    id: index + 1,
+    name: faker.animal.dog(),
+    category: {
+      id: faker.number.int({ min: 1, max: 5 }),
+      name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds']),
+    },
+    photoUrls: [faker.image.url()],
+    status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
+  })),
+
+  Category: ({ seed }) => seed([
+    { id: 1, name: 'Dogs' },
+    { id: 2, name: 'Cats' },
+    { id: 3, name: 'Birds' },
+  ]),
+});
+```
+
+### Seed Context
+
+Seeds receive a context object with:
+
+| Property | Description |
+|----------|-------------|
+| `seed(data[])` | Seed with static array |
+| `seed.count(n, factory)` | Generate n items with factory |
+| `store` | Access already-seeded data (for relationships) |
+| `faker` | Faker.js instance |
+| `schema` | OpenAPI schema definition |
+
+## Store API
+
+The in-memory store provides CRUD operations:
+
+```typescript
+store.list('Pet');                           // Get all pets
+store.get('Pet', 123);                       // Get pet by ID
+store.create('Pet', { name: 'Buddy', ... }); // Create pet
+store.update('Pet', 123, { status: 'sold' });// Update pet
+store.delete('Pet', 123);                    // Delete pet
+store.clear('Pet');                          // Clear all pets
+```
+
+## Vue DevTools Integration
+
+The plugin adds a custom tab to Vue DevTools with:
+
+| Page | Description |
+|------|-------------|
+| **Routes** | List of all endpoints grouped by tags/schema |
+| **Timeline** | Real-time request/response log |
+| **Models** | JSON editor for store data |
+| **Simulator** | Error simulation with presets |
+
+### Simulation Presets
+
+| Preset | Effect |
+|--------|--------|
+| Slow Network (3G) | 3000ms delay |
+| Server Error (500) | HTTP 500 response |
+| Rate Limit (429) | HTTP 429 response |
+| Not Found (404) | HTTP 404 response |
+| Request Timeout | 30000ms delay |
+| Empty Response | HTTP 200 with empty body |
+| Unauthorized (401) | HTTP 401 response |
+
+## Response Priority
+
+Responses are determined in this order:
+
+1. **Active Simulation** - If a simulation is active for the endpoint
+2. **Custom Handler** - If a handler is defined for the operationId
+3. **Seed Data** - If seed data exists for the response schema
+4. **Spec Example** - If an example is defined in the OpenAPI spec
+5. **Auto-Generated** - Generated using Faker.js based on schema
 
 ## Monorepo Structure
-
-This repository is organized as a pnpm monorepo:
 
 ```
 vite-open-api-server/
 ├── packages/
-│   └── vite-plugin-open-api-server/  # Main plugin package (published to npm)
-├── playground/
-│   └── petstore-app/                 # Test application with Petstore API
-├── history/                          # Planning and architecture documents
-└── .github/                          # GitHub Actions workflows
+│   ├── core/                  # Core server logic (Hono, store, generator)
+│   ├── devtools-client/       # Vue SPA for DevTools
+│   ├── vite-plugin/           # Vite plugin wrapper
+│   └── playground/            # Demo application
+└── history/                   # Planning and architecture docs
 ```
 
-| Directory | Description |
-|-----------|-------------|
-| `packages/vite-plugin-open-api-server` | The main Vite plugin, published to npm as `@websublime/vite-plugin-open-api-server` |
-| `playground/petstore-app` | Vue 3 application demonstrating plugin usage with the Swagger Petstore API |
+| Package | Description |
+|---------|-------------|
+| `@websublime/openapi-server-core` | Core server, store, router, generator |
+| `@websublime/openapi-devtools-client` | Vue DevTools SPA |
+| `@websublime/vite-plugin-open-api-server` | Vite plugin (main package) |
 
 ## Development
 
 ### Prerequisites
 
-- **Node.js**: `^20.19.0` or `>=22.12.0`
-- **pnpm**: `9.15.0` or higher
+- **Node.js**: >=18.0.0
+- **pnpm**: 9.x
 
 ### Getting Started
 
@@ -85,16 +247,16 @@ vite-open-api-server/
 # Install dependencies
 pnpm install
 
-# Build the plugin
+# Build all packages
 pnpm build
 
-# Run the playground application
+# Run the playground
 pnpm playground
 
 # Run tests
 pnpm test
 
-# Lint and format code
+# Lint and format
 pnpm lint
 pnpm format
 ```
@@ -104,100 +266,25 @@ pnpm format
 | Command | Description |
 |---------|-------------|
 | `pnpm install` | Install all dependencies |
-| `pnpm dev` | Start plugin in watch mode |
-| `pnpm build` | Build the plugin for production |
+| `pnpm dev` | Start packages in watch mode |
+| `pnpm build` | Build all packages |
 | `pnpm test` | Run tests with Vitest |
-| `pnpm test:watch` | Run tests in watch mode |
 | `pnpm lint` | Check code with Biome |
-| `pnpm lint:fix` | Fix linting issues automatically |
-| `pnpm format` | Format code with Biome |
 | `pnpm typecheck` | Run TypeScript type checking |
 | `pnpm playground` | Start the playground application |
-| `pnpm clean` | Remove dist and node_modules |
-
-## AI-Assisted Development
-
-This project uses a **structured AI-assisted development workflow**. This is not vibe coding for non-programmers — we follow a rigorous process to plan, design, and implement features systematically.
-
-### Development Philosophy
-
-Every feature goes through a deliberate process:
-
-1. **Research & Iteration** - Features are first researched, iterated, and refined
-2. **Product Requirements** - Documented in `history/PRODUCT-REQUIREMENTS-SPECIFICATION.md` with clear goals and acceptance criteria
-3. **Technical Planning** - Detailed implementation plan in `history/PLAN.md` with context, architecture decisions, and step-by-step implementation guides
-4. **Task Breakdown** - Epics, tasks, and subtasks are created in [beads](https://github.com/steveyegge/beads) (Git-backed issue tracker)
-5. **Implementation** - Structured development following the workflow below
-
-### Workflow Commands
-
-The project uses Claude Code slash commands (`.claude/commands/`) to orchestrate development:
-
-| Command | Role | Description |
-|---------|------|-------------|
-| `/developer` | Implementer | Picks up tasks from beads, implements features, commits with conventional commits, marks for review |
-| `/coder` | Challenger | Deep code analysis to find bugs, suggest improvements, identify inconsistencies (like CodeRabbit) |
-| `/review` | Reviewer | Final validation, runs quality checks, manages labels (approves or requests changes) |
-
-### Development Flow
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  developer  │ ──▶ │    coder    │ ──▶ │   review    │
-│ implements  │     │ challenges  │     │  validates  │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-  needs-review        findings            reviewed
-  (adds label)      (PR comments)            or
-                    (no labels)         needs-changes
-```
-
-**Note**: Only `/review` manages workflow labels. `/coder` outputs findings but doesn't modify labels.
-
-### Issue Tracking with Beads
-
-We use [beads](https://github.com/steveyegge/beads) for issue tracking — a Git-backed tracker designed for AI-supervised coding workflows.
-
-```bash
-# Find ready tasks
-bd ready --json
-
-# Start work on a task
-bd update <task-id> --status in_progress
-
-# Close a task
-bd close <task-id> --reason "Implemented feature X"
-
-# Sync with git
-bd sync
-```
-
-For more details, see `.github/copilot-instructions.md`.
-
-### Key Documents
-
-| Document | Purpose |
-|----------|---------|
-| `history/PRODUCT-REQUIREMENTS-SPECIFICATION.md` | Product goals, features, and acceptance criteria |
-| `history/PLAN.md` | Technical implementation details and architecture |
-| `.claude/commands/*.md` | AI agent workflow instructions |
-| `.github/copilot-instructions.md` | Beads usage and project rules |
 
 ## Documentation
 
-- [Plugin Documentation](./packages/vite-plugin-open-api-server/README.md) - Detailed usage, configuration, and API reference
-- [Contributing Guide](./CONTRIBUTING.md) - How to contribute to this project
-- [Playground README](./playground/petstore-app/README.md) - Using the test application
+- [Product Requirements](./history/PRODUCT-REQUIREMENTS-DOC.md) - Product vision and features
+- [Technical Specification](./history/TECHNICAL-SPECIFICATION.md) - Architecture and implementation details
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on:
+Contributions are welcome! This project uses:
 
-- Development setup
-- Changeset workflow for versioning
-- Code standards and conventions
-- Pull request process
+- **Beads** for issue tracking (`bd ready` to find work)
+- **Biome** for linting and formatting
+- **Conventional commits** for commit messages
 
 ## License
 
