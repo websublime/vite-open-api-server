@@ -10,6 +10,7 @@
 
 /**
  * Request log entry for timeline
+ * Note: query allows string[] to match HandlerRequest.query for multi-value params
  */
 export interface RequestLogEntry {
   id: string;
@@ -18,7 +19,7 @@ export interface RequestLogEntry {
   operationId: string;
   timestamp: number;
   headers: Record<string, string>;
-  query: Record<string, string>;
+  query: Record<string, string | string[]>;
   body?: unknown;
 }
 

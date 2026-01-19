@@ -16,8 +16,10 @@ export {
 } from './route-builder.js';
 export type {
   EndpointEntry,
+  EndpointKey,
   EndpointRegistry,
   HttpMethod,
   RegistryStats,
   SecurityRequirement,
 } from './types.js';
+export { createEndpointKey, parseEndpointKey } from './types.js';

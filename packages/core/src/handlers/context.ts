@@ -67,7 +67,7 @@ export interface HandlerReturnRaw {
  * Response with custom status
  */
 export interface HandlerReturnWithStatus {
-  type: 'response';
+  type: 'status';
   status: number;
   data: unknown;
 }
@@ -76,7 +76,7 @@ export interface HandlerReturnWithStatus {
  * Response with custom status and headers
  */
 export interface HandlerReturnWithHeaders {
-  type: 'response';
+  type: 'full';
   status: number;
   data: unknown;
   headers: Record<string, string>;
@@ -84,7 +84,10 @@ export interface HandlerReturnWithHeaders {
 
 /**
  * Possible return types from handlers (discriminated union)
- * Use the 'type' field to narrow the return type
+ * Use the 'type' field to narrow the return type:
+ * - 'raw': Direct data (status 200)
+ * - 'status': Data with custom status code
+ * - 'full': Data with custom status and headers
  */
 export type HandlerReturn = HandlerReturnRaw | HandlerReturnWithStatus | HandlerReturnWithHeaders;
 
