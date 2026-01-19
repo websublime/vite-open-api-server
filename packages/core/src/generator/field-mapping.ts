@@ -43,12 +43,26 @@ export const FIELD_NAME_MAPPING: Record<string, string> = {
 };
 
 /**
+ * Post-processing requirements for date formats per RFC3339
+ *
+ * When generating values for these keys, the faker Date result must be
+ * formatted according to OpenAPI/RFC3339 specifications:
+ * - 'string:date' → format as YYYY-MM-DD (full-date per RFC3339 section 5.6)
+ * - 'string:date-time' → format as YYYY-MM-DDTHH:mm:ssZ (date-time per RFC3339)
+ *
+ * @see Task 1.5 for implementation
+ * @see https://datatracker.ietf.org/doc/html/rfc3339#section-5.6
+ */
+export const DATE_FORMAT_POST_PROCESSING = {
+  'string:date': (date: Date): string => date.toISOString().split('T')[0],
+  'string:date-time': (date: Date): string => date.toISOString(),
+} as const;
+
+/**
  * Mapping of type:format combinations to Faker generators
  *
- * Note: For 'string:date' and 'string:date-time', the generator logic must
- * post-format the faker result:
- * - 'string:date' → ISO date only (YYYY-MM-DD) per RFC3339 full-date
- * - 'string:date-time' → ISO date-time (YYYY-MM-DDTHH:mm:ssZ) per RFC3339
+ * Note: For date formats, use DATE_FORMAT_POST_PROCESSING to convert
+ * the faker Date result to the correct RFC3339 string format.
  */
 export const TYPE_FORMAT_MAPPING: Record<string, string> = {
   'string:email': 'internet.email',
