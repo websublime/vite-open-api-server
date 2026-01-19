@@ -61,7 +61,9 @@ export {
 export type {
   HandlerContext,
   HandlerFn,
+  HandlerRequest,
   HandlerResponse,
+  HandlerResponseMeta,
   HandlerReturn,
 } from './handlers/index.js';
 export { executeHandler } from './handlers/index.js';
@@ -76,6 +78,7 @@ export type {
   ResponseLogEntry,
   ServerEvent,
   SimulationConfig,
+  SimulationState,
   WebSocketHub,
 } from './websocket/index.js';
 export { createWebSocketHub } from './websocket/index.js';
