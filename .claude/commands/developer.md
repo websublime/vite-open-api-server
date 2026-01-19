@@ -57,7 +57,7 @@ git status
 
 ### 1.2 Decision Tree
 
-First read the history/PRODUCT-REQUIREMENTS-SPECIFICATION.md document.
+First read the history/PRODUCT-REQUIREMENTS-DOC.md and history/TECHNICAL-SPECIFICATION.md document.
 
 **If there's a task in_progress:**
 - Continue from where it left off

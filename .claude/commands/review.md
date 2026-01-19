@@ -33,7 +33,7 @@ bd show <task-id> --json
 
 Before reviewing, read the project context:
 
-1. **Read the Requirements**: `history/PRODUCT-REQUIREMENTS-SPECIFICATION.md` - Understand the product goals
+1. **Read the Requirements**: `history/PRODUCT-REQUIREMENTS-DOC.md` and `history/TECHNICAL-SPECIFICATION.md` - Understand the product goals
 2. **Read the Plan**: `history/PLAN.md` - Understand the implementation details (use line references from task description)
 3. **Read CLAUDE.md**: Check for project-specific coding standards
 
