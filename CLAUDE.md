@@ -8,37 +8,35 @@ See AGENTS.md for workflow details.
 
 ## Project Overview
 
-The `@websublime/vite-plugin-open-api-server` is a Vite plugin that integrates the Scalar Mock Server into the development workflow. It automatically spawns a mock API server based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
+The `@websublime/vite-plugin-open-api-server` is a Vite plugin that provides a local OpenAPI server for frontend development. It automatically creates API endpoints based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
 
 ### Key Capabilities
 
-- Parse OpenAPI 3.x specifications (YAML/JSON)
-- Generate realistic mock responses based on schema
-- Support custom request handlers for endpoint customization
-- Provide seed data support with optional Faker.js integration
-- Hot reload handlers and seeds on file changes
-- Proxy API requests through Vite's dev server
+- Parse and process OpenAPI 2.0/3.x specifications (bundle, upgrade to 3.1, dereference)
+- Custom Hono-based HTTP server with automatic route generation
+- In-memory data store with CRUD operations per schema
+- Custom request handlers for endpoint customization
+- Seed data system for populating store with test data
+- Automatic fake data generation with Faker.js
+- Hot reload for handlers and seeds
+- Vue DevTools integration via iframe SPA
+- Real-time WebSocket communication for DevTools
+- Error/delay simulation for testing edge cases
 
 ## Repository Structure
 
 ```
 vite-open-api-server/
 ├── packages/
-│   └── vite-plugin-open-api-server/    # Main plugin (published to npm)
-│       ├── src/
-│       │   ├── core/                   # OpenAPI parsing, path resolution
-│       │   ├── handlers/               # Handler loading and management
-│       │   ├── mock/                   # Mock server integration
-│       │   ├── registry/               # Endpoint registry
-│       │   ├── types/                  # TypeScript type definitions
-│       │   └── utils/                  # Utility functions
-│       └── tsdown.config.ts            # Build configuration
-├── playground/
-│   └── petstore-app/                   # Vue 3 test application
-├── history/                            # Planning and architecture docs
-├── .github/workflows/                  # CI/CD workflows
-├── .changesets/                        # Pending version changesets
-└── biome.json, tsconfig.json, etc.     # Configuration files
+│   ├── core/                         # Core server logic (Hono, store, generator)
+│   ├── devtools-client/              # Vue SPA for DevTools
+│   ├── vite-plugin/                  # Vite plugin wrapper
+│   └── playground/                   # Demo application
+├── history/                          # Planning and architecture docs
+│   ├── PRODUCT-REQUIREMENTS-DOC.md   # Product Requirements Document
+│   └── TECHNICAL-SPECIFICATION.md   # Technical Specification
+├── .github/workflows/                # CI/CD workflows
+└── biome.json, tsconfig.json, etc.   # Configuration files
 ```
 
 ## Technology Stack
@@ -46,25 +44,29 @@ vite-open-api-server/
 | Technology | Purpose |
 |------------|---------|
 | **pnpm** | Package manager with workspace support |
-| **TypeScript 5.9+** | Language (strict mode enabled) |
-| **Vite 6+** | Development server and build tool |
-| **tsdown** | Plugin bundler (outputs ESM + CJS) |
+| **TypeScript 5.x** | Language (strict mode enabled) |
+| **Vite 5+** | Development server and build tool |
+| **Hono** | HTTP server framework |
+| **@scalar/openapi-parser** | OpenAPI parsing and dereferencing |
+| **@scalar/json-magic** | External reference bundling |
+| **@scalar/openapi-upgrader** | OpenAPI version upgrade (2.0/3.0 → 3.1) |
+| **@faker-js/faker** | Fake data generation |
+| **Vue 3** | DevTools client framework |
+| **Pinia** | State management for DevTools |
+| **tsup** | Library bundler |
 | **Vitest** | Testing framework |
 | **Biome** | Linting and formatting |
-| **Vue 3** | Playground application framework |
-| **workspace-tools** | Version management and changesets |
 
 ## Development Commands
 
 ```bash
 pnpm install        # Install dependencies
-pnpm dev            # Watch mode for plugin
-pnpm build          # Build plugin
+pnpm dev            # Watch mode for packages
+pnpm build          # Build all packages
 pnpm test           # Run tests
 pnpm lint           # Check with Biome
 pnpm typecheck      # TypeScript validation
 pnpm playground     # Run playground app
-pnpm changeset      # Create changeset
 ```
 
 ## Beads Version Compatibility (bd)
