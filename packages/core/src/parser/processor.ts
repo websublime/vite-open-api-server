@@ -114,6 +114,7 @@ function createEmptyDocument(): OpenAPIV3_1.Document {
  *
  * @param input - The input to check
  * @returns True if input is empty/undefined
+ * @throws ProcessorError if input is an array literal '[]' (invalid OpenAPI document)
  */
 function isEmptyInput(input: string | Record<string, unknown> | undefined | null): boolean {
   if (!input) {
@@ -122,7 +123,17 @@ function isEmptyInput(input: string | Record<string, unknown> | undefined | null
 
   if (typeof input === 'string') {
     const trimmed = input.trim();
-    return trimmed === '' || trimmed === '{}' || trimmed === '[]';
+
+    // Array literals are not valid OpenAPI documents - throw validation error
+    if (trimmed === '[]') {
+      throw new ProcessorError(
+        'Invalid OpenAPI document: array literal "[]" is not a valid document',
+        'validation',
+      );
+    }
+
+    // Empty string or empty object literal treated as empty input
+    return trimmed === '' || trimmed === '{}';
   }
 
   if (typeof input === 'object') {
@@ -263,15 +274,18 @@ function validateDocument(document: OpenAPIV3_1.Document): void {
  * 2. Upgrade - convert to OpenAPI 3.1
  * 3. Dereference - inline all $ref pointers
  *
- * @param input - OpenAPI document as file path, URL, YAML string, JSON string, or object
+ * @param input - OpenAPI document as file path, URL, YAML string, JSON string, object, null, or undefined
  * @param _options - Processing options (reserved for future use)
  * @returns Fully dereferenced OpenAPI 3.1 document
  * @throws ProcessorError if processing fails at any step
  *
  * @remarks
- * When input is empty, undefined, or an empty object, a minimal valid OpenAPI 3.1
+ * When input is empty, undefined, null, or an empty object, a minimal valid OpenAPI 3.1
  * document is returned instead of throwing an error. This allows graceful handling
  * of missing or placeholder specifications.
+ *
+ * Array literals (e.g., '[]') are not valid OpenAPI documents and will throw a
+ * ProcessorError with step 'validation'.
  *
  * @example
  * ```typescript
@@ -287,19 +301,26 @@ function validateDocument(document: OpenAPIV3_1.Document): void {
  *   info: { title: 'My API', version: '1.0.0' },
  *   paths: {}
  * });
+ *
+ * // Null/undefined returns minimal document
+ * const doc = await processOpenApiDocument(null);
  * ```
  */
 export async function processOpenApiDocument(
-  input: string | Record<string, unknown>,
+  input: string | Record<string, unknown> | null | undefined,
   _options?: ProcessorOptions,
 ): Promise<OpenAPIV3_1.Document> {
-  // Handle empty/undefined input by returning minimal valid document
+  // Handle empty/undefined/null input by returning minimal valid document
   if (isEmptyInput(input)) {
     return createEmptyDocument();
   }
 
+  // At this point, input is guaranteed to be a non-empty string or object
+  // (isEmptyInput returns true for null/undefined and throws for '[]')
+  const validInput = input as string | Record<string, unknown>;
+
   // Execute pipeline: bundle -> upgrade -> dereference -> validate
-  const bundled = await bundleDocument(input);
+  const bundled = await bundleDocument(validInput);
   const upgraded = upgradeDocument(bundled);
   const dereferenced = await dereferenceDocument(upgraded);
 

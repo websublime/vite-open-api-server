@@ -16,7 +16,7 @@ const fixturesDir = resolve(__dirname, 'fixtures');
 describe('processOpenApiDocument', () => {
   describe('empty input handling', () => {
     it('should return minimal document for undefined input', async () => {
-      const result = await processOpenApiDocument(undefined as unknown as string);
+      const result = await processOpenApiDocument(undefined);
 
       expect(result).toEqual({
         openapi: '3.1.0',
@@ -26,7 +26,7 @@ describe('processOpenApiDocument', () => {
     });
 
     it('should return minimal document for null input', async () => {
-      const result = await processOpenApiDocument(null as unknown as string);
+      const result = await processOpenApiDocument(null);
 
       expect(result).toEqual({
         openapi: '3.1.0',
@@ -55,14 +55,17 @@ describe('processOpenApiDocument', () => {
       });
     });
 
-    it('should return minimal document for empty array string "[]"', async () => {
-      const result = await processOpenApiDocument('[]');
+    it('should throw ProcessorError for array literal string "[]"', async () => {
+      await expect(processOpenApiDocument('[]')).rejects.toThrow(ProcessorError);
 
-      expect(result).toEqual({
-        openapi: '3.1.0',
-        info: { title: 'OpenAPI Server', version: '1.0.0' },
-        paths: {},
-      });
+      try {
+        await processOpenApiDocument('[]');
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProcessorError);
+        expect((error as ProcessorError).step).toBe('validation');
+        expect((error as ProcessorError).message).toContain('array literal');
+      }
     });
 
     it('should return minimal document for empty object', async () => {
