@@ -31,12 +31,11 @@
  * @module
  */
 
-import { setupDevToolsPlugin } from '@vue/devtools-api';
+import { addCustomTab, setupDevToolsPlugin } from '@vue/devtools-api';
 import type { App, Plugin } from 'vue';
 import { DEVTOOLS_INSPECTOR_ID, DEVTOOLS_PLUGIN_ID, GLOBAL_STATE_KEY } from './devtools-plugin.js';
 import { installFetchInterceptor } from './fetch-interceptor.js';
 import { registerTimelineLayer } from './request-timeline.js';
-import { registerSimulationTab } from './simulation-tab.js';
 
 // ============================================================================
 // Constants
@@ -815,6 +814,24 @@ function registerDevToolsInspector(app: App, proxyPath: string, verbose: boolean
       registerTimelineLayer(api);
       log('Timeline layer registered', verbose);
 
+      // Register the simulation tab (inside setupDevToolsPlugin callback)
+      // Using iframe pointing to server endpoint that serves the simulation panel HTML
+      // Need full URL because DevTools runs in extension context
+      // Pass proxyPath as query parameter so the HTML knows the correct path for API calls
+      const simulationUrl = `${window.location.origin}${proxyPath}/_openapiserver/simulation?proxyPath=${encodeURIComponent(proxyPath)}`;
+
+      addCustomTab({
+        name: 'openapi-simulation',
+        title: 'Simulation',
+        icon: 'science',
+        view: {
+          type: 'iframe',
+          src: simulationUrl,
+        },
+        category: 'app',
+      });
+      log('Simulation tab registered', verbose);
+
       // Add custom inspector for endpoints
       api.addInspector({
         id: DEVTOOLS_INSPECTOR_ID,
@@ -994,10 +1011,6 @@ export function createOpenApiDevTools(
       // Install fetch interceptor to log requests to timeline
       installFetchInterceptor({ proxyPath, verbose });
       log('Fetch interceptor installed', verbose);
-
-      // Register simulation tab (P6-02)
-      registerSimulationTab({ proxyPath, verbose });
-      log('Simulation tab registered', verbose);
 
       log('OpenAPI DevTools plugin installed', verbose);
 

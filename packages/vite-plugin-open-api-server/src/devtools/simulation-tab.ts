@@ -124,62 +124,87 @@ let registeredOptions: SimulationTabOptions | null = null;
  * ```
  */
 export function registerSimulationTab(options: SimulationTabOptions = {}): void {
-  const { proxyPath = '/api/v3', verbose = false } = options;
+  const { proxyPath = '/api/v3' } = options;
+
+  // Always log for debugging during development
+  log(`registerSimulationTab called with proxyPath: ${proxyPath}`);
 
   // Guard against duplicate registration (e.g., on HMR)
   if (tabRegistered) {
-    if (verbose) {
-      log('Simulation tab already registered, skipping duplicate registration');
-    }
+    log('Simulation tab already registered, skipping duplicate registration');
     return;
   }
 
   // Check if we're in a browser environment
   if (typeof window === 'undefined') {
-    if (verbose) {
-      log('Not in browser environment, skipping simulation tab registration');
-    }
+    log('Not in browser environment, skipping simulation tab registration');
     return;
   }
 
+  log('Browser environment detected, attempting to register simulation tab...');
+
   // Dynamic import to avoid bundling issues and check for availability
   importDevToolsApi()
-    .then(({ addCustomTab }) => {
+    .then(({ addCustomTab, onDevToolsClientConnected }) => {
+      log(`DevTools API imported - addCustomTab: ${typeof addCustomTab}, onDevToolsClientConnected: ${typeof onDevToolsClientConnected}`);
+
       if (!addCustomTab) {
-        if (verbose) {
-          log('addCustomTab not available from @vue/devtools-api');
-        }
+        log('ERROR: addCustomTab not available from @vue/devtools-api');
         return;
       }
 
-      // Generate the SFC with the configured proxy path
-      const sfcCode = generateSimulationPanelSfc(proxyPath);
+      // Function to actually register the tab
+      const doRegisterTab = () => {
+        if (tabRegistered) {
+          log('Tab already registered (race condition guard)');
+          return;
+        }
 
-      // Register the tab
-      const tabOptions: CustomTabOptions = {
-        name: SIMULATION_TAB_ID,
-        title: SIMULATION_TAB_TITLE,
-        icon: SIMULATION_TAB_ICON,
-        view: {
-          type: 'sfc',
-          sfc: sfcCode,
-        },
-        category: 'app',
+        log('Registering simulation tab now...');
+
+        // Generate the SFC with the configured proxy path
+        const sfcCode = generateSimulationPanelSfc(proxyPath);
+        log(`Generated SFC code length: ${sfcCode.length} chars`);
+
+        // Register the tab
+        const tabOptions: CustomTabOptions = {
+          name: SIMULATION_TAB_ID,
+          title: SIMULATION_TAB_TITLE,
+          icon: SIMULATION_TAB_ICON,
+          view: {
+            type: 'sfc',
+            sfc: sfcCode,
+          },
+          category: 'app',
+        };
+
+        log(`Calling addCustomTab with options: ${JSON.stringify({ name: tabOptions.name, title: tabOptions.title, icon: tabOptions.icon, category: tabOptions.category })}`);
+
+        try {
+          addCustomTab(tabOptions);
+          tabRegistered = true;
+          registeredOptions = options;
+          log(`✓ Simulation tab registered successfully with proxyPath: ${proxyPath}`);
+        } catch (err) {
+          log(`ERROR calling addCustomTab: ${err instanceof Error ? err.message : String(err)}`);
+        }
       };
 
-      addCustomTab(tabOptions);
-
-      tabRegistered = true;
-      registeredOptions = options;
-
-      if (verbose) {
-        log(`Simulation tab registered with proxyPath: ${proxyPath}`);
+      // If onDevToolsClientConnected is available, wait for connection
+      if (onDevToolsClientConnected) {
+        log('Using onDevToolsClientConnected to wait for DevTools...');
+        onDevToolsClientConnected(() => {
+          log('DevTools client connected callback fired');
+          doRegisterTab();
+        });
+      } else {
+        // Fallback: register immediately
+        log('onDevToolsClientConnected not available, registering immediately');
+        doRegisterTab();
       }
     })
     .catch((error) => {
-      if (verbose) {
-        log(`Failed to register simulation tab: ${error.message}`);
-      }
+      log(`ERROR importing DevTools API: ${error instanceof Error ? error.message : String(error)}`);
     });
 }
 
@@ -223,16 +248,19 @@ export function resetSimulationTab(): void {
  */
 async function importDevToolsApi(): Promise<{
   addCustomTab: ((options: CustomTabOptions) => void) | null;
+  onDevToolsClientConnected: ((callback: () => void) => void) | null;
 }> {
   try {
     // Dynamic import to allow tree-shaking in production
     const devtoolsApi = await import('@vue/devtools-api');
     return {
       addCustomTab: devtoolsApi.addCustomTab as (options: CustomTabOptions) => void,
+      onDevToolsClientConnected: devtoolsApi.onDevToolsClientConnected as ((callback: () => void) => void) | null,
     };
-  } catch {
+  } catch (err) {
+    log(`Failed to import @vue/devtools-api: ${err instanceof Error ? err.message : String(err)}`);
     // @vue/devtools-api not available
-    return { addCustomTab: null };
+    return { addCustomTab: null, onDevToolsClientConnected: null };
   }
 }
 
@@ -259,32 +287,13 @@ function log(message: string): void {
  * @param options - Configuration options for the simulation tab
  */
 export function registerSimulationTabOnConnect(options: SimulationTabOptions = {}): void {
-  const { verbose = false } = options;
-
   // Check for browser environment
   if (typeof window === 'undefined') {
     return;
   }
 
-  // Try to use onDevToolsClientConnected if available
-  importOnDevToolsClientConnected()
-    .then(({ onDevToolsClientConnected }) => {
-      if (onDevToolsClientConnected) {
-        onDevToolsClientConnected(() => {
-          if (verbose) {
-            log('DevTools client connected, registering simulation tab');
-          }
-          registerSimulationTab(options);
-        });
-      } else {
-        // Fallback: register immediately
-        registerSimulationTab(options);
-      }
-    })
-    .catch(() => {
-      // Fallback: register immediately
-      registerSimulationTab(options);
-    });
+  // registerSimulationTab now handles onDevToolsClientConnected internally
+  registerSimulationTab(options);
 }
 
 /**
@@ -292,17 +301,3 @@ export function registerSimulationTabOnConnect(options: SimulationTabOptions = {
  *
  * @returns Promise resolving to the function or null
  */
-async function importOnDevToolsClientConnected(): Promise<{
-  onDevToolsClientConnected: ((callback: () => void) => void) | null;
-}> {
-  try {
-    const devtoolsApi = await import('@vue/devtools-api');
-    return {
-      onDevToolsClientConnected: devtoolsApi.onDevToolsClientConnected as (
-        callback: () => void,
-      ) => void,
-    };
-  } catch {
-    return { onDevToolsClientConnected: null };
-  }
-}

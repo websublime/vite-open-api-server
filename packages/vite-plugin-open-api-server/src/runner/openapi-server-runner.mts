@@ -42,6 +42,7 @@ import { Hono } from 'hono';
 import type { OpenAPIV3_1 } from 'openapi-types';
 
 import { loadOpenApiSpec } from '../core/parser/index.js';
+import { generateSimulationPanelHtml } from '../devtools/simulation-panel-html.js';
 import { enhanceDocument } from '../enhancer/index.js';
 import { loadHandlers, loadSeeds } from '../loaders/index.js';
 import { printRegistryTable } from '../logging/index.js';
@@ -325,6 +326,26 @@ async function main(): Promise<void> {
     });
 
     return c.json(serialized, 200);
+  });
+
+  /**
+   * Simulation Panel Endpoint
+   *
+   * GET /_openapiserver/simulation
+   *
+   * Returns the Simulation Panel HTML page for Vue DevTools integration.
+   * This provides an interactive UI for configuring API simulation parameters.
+   *
+   * Query parameters:
+   * - proxyPath: The proxy path used by Vite (e.g., '/api/v3')
+   *
+   * @returns HTML page for simulation panel
+   */
+  app.get('/_openapiserver/simulation', (c) => {
+    // Get proxyPath from query parameter (passed by DevTools iframe URL)
+    const proxyPath = c.req.query('proxyPath') || '';
+    const html = generateSimulationPanelHtml(proxyPath);
+    return c.html(html);
   });
 
   // Create Scalar mock server with enhanced document (returns a Hono app with all routes configured)

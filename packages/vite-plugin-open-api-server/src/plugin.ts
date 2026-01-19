@@ -25,20 +25,20 @@
 import type { ChildProcess } from 'node:child_process';
 import type { Logger, Plugin, ProxyOptions, ResolvedConfig, ViteDevServer } from 'vite';
 import type {
-  FileChangeEvent,
-  FileWatcher,
-  HotReloadContext,
-  HotReloadState,
+    FileChangeEvent,
+    FileWatcher,
+    HotReloadContext,
+    HotReloadState,
 } from './hot-reload/index.js';
 import { createFileWatcher, createHotReloadState, handleFileChange } from './hot-reload/index.js';
 import { printErrorBanner, printLoadingBanner, printSuccessBanner } from './logging/index.js';
 import {
-  attachIpcHandler,
-  coordinateStartup,
-  StartupError,
-  StartupTimeoutError,
-  shutdownMockServer,
-  spawnMockServer,
+    attachIpcHandler,
+    coordinateStartup,
+    shutdownMockServer,
+    spawnMockServer,
+    StartupError,
+    StartupTimeoutError,
 } from './process/index.js';
 import type { InputPluginOptions, ResolvedPluginOptions } from './types/plugin-options.js';
 

@@ -86,7 +86,7 @@ async function fetchPets(): Promise<void> {
   apiResponse.value = null;
   apiError.value = null;
 
-  const url = '/api/v3/pet/findByStatus?status=available';
+  const url = '/api/v3/pet/findByStatus?status=sold';
   lastRequestInfo.value = {
     url,
     timestamp: new Date().toISOString(),
