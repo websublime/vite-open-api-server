@@ -1,0 +1,29 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-z5y.1-project-setup",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core"
+    ],
+    "changes": [
+      "c247b8691d8153e33ce763586e0d253cce5e078e",
+      "1342857ff78135ed0673683e77540ff7c8d62659",
+      "52d48ebd3d7a48480352f5c16fc3d57ebb0b6750",
+      "7a732bf91399e371429cacaa07e1583af3b80339",
+      "99e8650296c06ee9d490508d9389d5e5511a6eca"
+    ],
+    "created_at": "2026-01-19T15:17:09.359005Z",
+    "updated_at": "2026-01-19T15:51:54.307577Z"
+  },
+  "release_info": {
+    "applied_at": "2026-01-19T16:10:03.959591174Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "3e34b5a47be98164f81bb2fe0cd48a113bb72026",
+    "versions": {
+      "@websublime/vite-open-api-core": "0.1.0"
+    }
+  }
+}
