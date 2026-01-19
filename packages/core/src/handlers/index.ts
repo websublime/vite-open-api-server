@@ -8,6 +8,12 @@
  * @module handlers
  */
 
-export type { HandlerContext, HandlerFn, HandlerReturn } from './context.js';
+export type {
+  HandlerContext,
+  HandlerFn,
+  HandlerRequest,
+  HandlerResponseMeta,
+  HandlerReturn,
+} from './context.js';
 // TODO: Will be implemented in Task 2.1
 export { executeHandler, type HandlerResponse } from './executor.js';

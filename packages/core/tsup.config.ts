@@ -19,6 +19,12 @@ export default defineConfig({
   target: 'node20',
   outDir: 'dist',
   external: [
-    // Peer dependencies that consumers should provide
+    // Runtime dependencies - consumers provide via package.json dependencies
+    '@faker-js/faker',
+    '@scalar/openapi-parser',
+    '@scalar/json-magic',
+    '@scalar/openapi-types',
+    '@scalar/openapi-upgrader',
+    'hono',
   ],
 });
