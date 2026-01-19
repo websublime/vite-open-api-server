@@ -19,7 +19,10 @@
     "forceConsistentCasingInFileNames": true,
     "composite": true
   },
-  "references": [{ "path": "./packages/vite-plugin-open-api-server" }],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/vite-plugin-open-api-server" }
+  ],
   "include": [],
   "exclude": ["node_modules", "dist"]
 }

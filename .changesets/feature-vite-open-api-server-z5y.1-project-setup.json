@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-open-api-server-z5y.1-project-setup",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@voas/core"
+  ],
+  "changes": [],
+  "created_at": "2026-01-19T15:17:09.359005Z",
+  "updated_at": "2026-01-19T15:17:09.359945Z"
+}
