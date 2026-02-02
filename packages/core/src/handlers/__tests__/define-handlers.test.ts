@@ -78,7 +78,7 @@ describe('defineHandlers', () => {
   describe('handler return types', () => {
     it('should support raw return type', () => {
       const handlers = defineHandlers({
-        rawHandler: (): HandlerReturn => ({
+        rawHandler: (_ctx: HandlerContext): HandlerReturn => ({
           type: 'raw',
           data: { message: 'hello' },
         }),
@@ -95,7 +95,7 @@ describe('defineHandlers', () => {
 
     it('should support status return type', () => {
       const handlers = defineHandlers({
-        notFoundHandler: (): HandlerReturn => ({
+        notFoundHandler: (_ctx: HandlerContext): HandlerReturn => ({
           type: 'status',
           status: 404,
           data: { error: 'Not found' },
@@ -114,7 +114,7 @@ describe('defineHandlers', () => {
 
     it('should support full return type with headers', () => {
       const handlers = defineHandlers({
-        fullHandler: (): HandlerReturn => ({
+        fullHandler: (_ctx: HandlerContext): HandlerReturn => ({
           type: 'full',
           status: 200,
           data: { id: 1 },
@@ -137,7 +137,7 @@ describe('defineHandlers', () => {
   describe('async handlers', () => {
     it('should support async handlers', async () => {
       const handlers = defineHandlers({
-        asyncHandler: async (): Promise<HandlerReturn> => {
+        asyncHandler: async (_ctx: HandlerContext): Promise<HandlerReturn> => {
           await new Promise((resolve) => setTimeout(resolve, 1));
           return { type: 'raw', data: { async: true } };
         },
