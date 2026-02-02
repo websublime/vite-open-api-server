@@ -12,6 +12,7 @@ import path from 'node:path';
 import type { HandlerDefinition, HandlerFn, Logger } from '@websublime/vite-open-api-core';
 import fg from 'fast-glob';
 import type { ViteDevServer } from 'vite';
+import { directoryExists } from './utils.js';
 
 /**
  * Result of loading handlers
@@ -154,22 +155,6 @@ async function loadHandlerFile(
       error instanceof Error ? error.message : error,
     );
     return {};
-  }
-}
-
-/**
- * Check if a directory exists
- *
- * @param dirPath - Path to check
- * @returns Promise resolving to true if directory exists
- */
-async function directoryExists(dirPath: string): Promise<boolean> {
-  try {
-    const fs = await import('node:fs/promises');
-    const stats = await fs.stat(dirPath);
-    return stats.isDirectory();
-  } catch {
-    return false;
   }
 }
 

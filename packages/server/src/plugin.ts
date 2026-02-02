@@ -193,7 +193,7 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
    * Set up file watching for hot reload
    */
   async function setupFileWatching(): Promise<void> {
-    if (!server) return;
+    if (!server || !vite) return;
 
     // Debounce reload functions to prevent rapid-fire reloads
     const debouncedHandlerReload = debounce(reloadHandlers, 100);
@@ -225,18 +225,27 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
 
   /**
    * Reload seeds when files change
+   *
+   * Note: This operation is not fully atomic - there's a brief window between
+   * clearing the store and repopulating it where requests may see empty data.
+   * For development tooling, this tradeoff is acceptable.
    */
   async function reloadSeeds(): Promise<void> {
     if (!server || !vite) return;
 
     try {
+      // Load seeds first (before clearing) to minimize the window where store is empty
       const seedsResult = await loadSeeds(resolvedOptions.seedsDir, vite, cwd);
 
-      // Clear store and re-execute seeds
-      server.store.clearAll();
-
+      // Only clear and repopulate if we successfully loaded seeds
+      // This prevents clearing the store on load errors
       if (seedsResult.seeds.size > 0) {
+        // Clear and immediately repopulate - minimizes empty window
+        server.store.clearAll();
         await executeSeeds(seedsResult.seeds, server.store, server.document);
+      } else {
+        // User removed all seed files - clear the store
+        server.store.clearAll();
       }
 
       // Notify via WebSocket

@@ -197,12 +197,17 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
 }
 
 /**
- * Debounce a function
+ * Debounce a function with async execution guard
  *
  * Useful for preventing multiple rapid reloads when
  * multiple files change at once (e.g., during save all).
  *
- * @param fn - Function to debounce
+ * This implementation prevents overlapping async executions:
+ * - If the function is already running, the call is queued
+ * - When the running function completes, it executes with the latest args
+ * - Multiple calls during execution are coalesced into one
+ *
+ * @param fn - Function to debounce (can be sync or async)
  * @param delay - Debounce delay in milliseconds
  * @returns Debounced function
  */
@@ -211,14 +216,46 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
   delay: number,
 ): (...args: Parameters<T>) => void {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let isRunning = false;
+  let pendingArgs: Parameters<T> | null = null;
+
+  const execute = async (...args: Parameters<T>): Promise<void> => {
+    if (isRunning) {
+      // Queue the latest args for execution after current run completes
+      pendingArgs = args;
+      return;
+    }
+
+    isRunning = true;
+    try {
+      // Wrap in try-catch to handle sync throws, then await for async rejections
+      // This prevents both sync errors and async rejections from propagating
+      try {
+        await fn(...args);
+      } catch {
+        // Silently catch errors - the caller is responsible for error handling
+        // This prevents unhandled rejections from breaking the debounce chain
+      }
+    } finally {
+      isRunning = false;
+
+      // If there were calls during execution, run with the latest args
+      if (pendingArgs !== null) {
+        const nextArgs = pendingArgs;
+        pendingArgs = null;
+        // Use setTimeout to avoid deep recursion
+        setTimeout(() => execute(...nextArgs), 0);
+      }
+    }
+  };
 
   return (...args: Parameters<T>): void => {
     if (timeoutId !== null) {
       clearTimeout(timeoutId);
     }
     timeoutId = setTimeout(() => {
-      fn(...args);
       timeoutId = null;
+      execute(...args);
     }, delay);
   };
 }
