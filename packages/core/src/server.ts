@@ -225,7 +225,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   }
 
   // Current handlers (mutable for hot reload)
-  let currentHandlers = handlers;
+  const currentHandlers = handlers;
   let currentSeeds = seeds;
 
   // Build routes from OpenAPI document
@@ -258,7 +258,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
         exposeHeaders: ['Content-Length', 'X-Request-Id'],
         maxAge: 86400,
-        credentials: true,
+        // Browsers reject credentials: true with origin: '*'
+        // Only enable credentials when a specific origin is configured
+        credentials: corsOrigin !== '*',
       }),
     );
   }
@@ -327,13 +329,10 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
 
     async start(): Promise<void> {
       // Dynamic import to avoid bundling node-server when not needed
+      let serve: typeof import('@hono/node-server').serve;
       try {
-        const { serve } = await import('@hono/node-server');
-        serverInstance = serve({
-          fetch: app.fetch,
-          port,
-        });
-        logger.info(`[vite-open-api-core] Server started on http://localhost:${port}`);
+        const nodeServer = await import('@hono/node-server');
+        serve = nodeServer.serve;
       } catch (_error) {
         // @hono/node-server not installed - provide helpful message
         logger.error(
@@ -344,6 +343,29 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
           '@hono/node-server is required for standalone mode. Install with: npm install @hono/node-server',
         );
       }
+
+      // Start the server outside the import try/catch
+      serverInstance = serve({
+        fetch: app.fetch,
+        port,
+      });
+
+      // Handle runtime server errors (e.g., EADDRINUSE)
+      (serverInstance as { on?: (event: string, handler: (err: Error) => void) => void }).on?.(
+        'error',
+        (err: Error) => {
+          const errorCode = (err as NodeJS.ErrnoException).code;
+          if (errorCode === 'EADDRINUSE') {
+            logger.error(
+              `[vite-open-api-core] Port ${port} is already in use. Choose a different port or stop the other process.`,
+            );
+          } else {
+            logger.error(`[vite-open-api-core] Server error: ${err.message}`);
+          }
+        },
+      );
+
+      logger.info(`[vite-open-api-core] Server started on http://localhost:${port}`);
     },
 
     async stop(): Promise<void> {
@@ -358,7 +380,12 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     },
 
     updateHandlers(newHandlers: Map<string, HandlerFn>): void {
-      currentHandlers = newHandlers;
+      // Mutate the existing Map in-place so route closures see the updates
+      // (reassigning currentHandlers would break closures that captured the original Map)
+      currentHandlers.clear();
+      for (const [key, value] of newHandlers) {
+        currentHandlers.set(key, value);
+      }
 
       // Update registry with new handler info
       const handlerOperationIds = new Set(newHandlers.keys());

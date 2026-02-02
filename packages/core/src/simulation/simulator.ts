@@ -152,7 +152,9 @@ export function createSimulationManager(): SimulationManager {
 
   return {
     get(path: string): Simulation | undefined {
-      return simulations.get(path);
+      const simulation = simulations.get(path);
+      // Return a copy to prevent external mutation (consistent with set/list)
+      return simulation ? { ...simulation } : undefined;
     },
 
     set(simulation: Simulation): void {
