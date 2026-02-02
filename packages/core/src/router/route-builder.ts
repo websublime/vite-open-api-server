@@ -269,7 +269,7 @@ export function buildRoutes(
             }
           } else if (endpoint.responseSchema && seeds.has(endpoint.responseSchema)) {
             // 2. Seed data
-            response = getSeedResponse(endpoint, operation, seeds, context);
+            response = getSeedResponse(endpoint, operation, seeds, context, store);
           } else {
             // 3. Example or 4. Generated
             response = getExampleOrGeneratedResponse(endpoint, operation, document);
@@ -400,6 +400,7 @@ async function executeHandlerSafe(
  * @param operation - OpenAPI operation
  * @param seeds - Seed data map
  * @param context - Handler context
+ * @param store - Store instance for ID field configuration
  * @returns Response with seed data
  */
 function getSeedResponse(
@@ -407,6 +408,7 @@ function getSeedResponse(
   operation: OpenAPIV3_1.OperationObject,
   seeds: Map<string, unknown[]>,
   context: HandlerContext,
+  store: Store,
 ): HandlerResponse {
   const schemaName = endpoint.responseSchema;
   if (!schemaName) {
@@ -427,13 +429,24 @@ function getSeedResponse(
   }
 
   // For single item, try to find by ID from params
-  const idParam = context.req.params.id ?? context.req.params[`${schemaName.toLowerCase()}Id`];
+  // Use store's configured ID field for this schema
+  const idField = store.getIdField(schemaName);
+  const idParam =
+    context.req.params.id ??
+    context.req.params[`${schemaName.toLowerCase()}Id`] ??
+    context.req.params[idField];
+
   if (idParam) {
-    // Try to find matching item
+    // Try to find matching item using the configured ID field
     const item = seedData.find((item) => {
       if (typeof item === 'object' && item !== null) {
         const record = item as Record<string, unknown>;
-        return String(record.id) === idParam || String(record.ID) === idParam;
+        // Check the configured ID field, plus common fallbacks
+        return (
+          String(record[idField]) === idParam ||
+          String(record.id) === idParam ||
+          String(record.ID) === idParam
+        );
       }
       return false;
     });
@@ -462,7 +475,8 @@ function isArrayResponse(operation: OpenAPIV3_1.OperationObject): boolean {
 
   const response =
     (responses['200'] as OpenAPIV3_1.ResponseObject) ??
-    (responses['201'] as OpenAPIV3_1.ResponseObject);
+    (responses['201'] as OpenAPIV3_1.ResponseObject) ??
+    (responses.default as OpenAPIV3_1.ResponseObject);
   if (!response) return false;
 
   const content = response.content;
