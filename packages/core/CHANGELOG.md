@@ -1,3 +1,23 @@
+## [0.7.1] - 2026-02-02
+
+### Bug Fixes
+
+- add missing has and count methods to simulationManager mock (9ad8d9d)
+- empty seed arrays now fall through to example response (c6f6712)
+
+
+### Tests
+
+- add integration tests for response priority chain (324d123)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-det.3-response-priority (caa9b28)
+- sync changeset for feature/vite-open-api-server-det.3-response-priority (b372c1f)
+
+
+
 ## [0.7.0] - 2026-02-02
 
 ### Features
