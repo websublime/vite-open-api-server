@@ -311,8 +311,6 @@ bd show <task-id> --json
 # Add needs-review label for PR review
 bd label add <task-id> needs-review
 
-# Close task with summary
-bd close <task-id> --reason "<summary of all work completed>" --json
 bd sync
 ```
 
