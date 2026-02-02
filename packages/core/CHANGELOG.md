@@ -1,3 +1,31 @@
+## [0.5.0] - 2026-02-02
+
+### Features
+
+- implement createOpenApiServer factory function (d2f195f)
+
+
+### Bug Fixes
+
+- address PR review comments (567f90c)
+- import version from package.json instead of hardcoding (2ae788c)
+
+
+### Code Refactoring
+
+- address code review findings (38cac49) (#1, #2, #3, #4, #5)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (bd71095)
+- remove obsolete TODO comments from completed tasks (7702489)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (870cba3)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (329d03e)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (47f6b7e)
+
+
+
 ## [0.4.0] - 2026-02-02
 
 ### Features
