@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-open-api-server-z5y.4-hono-router",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-02-02T09:55:45.296556Z",
+  "updated_at": "2026-02-02T09:55:45.296977Z"
+}

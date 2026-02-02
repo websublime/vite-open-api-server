@@ -10,9 +10,15 @@
 
 export { convertOpenApiPath } from './path-converter.js';
 export {
+  buildRegistry,
+  type RegistryBuilderOptions,
+  updateRegistryHandlers,
+  updateRegistrySeeds,
+} from './registry-builder.js';
+export {
   buildRoutes,
-  RouteBuilderNotImplementedError,
   type RouteBuilderOptions,
+  type RouteBuilderResult,
 } from './route-builder.js';
 export type {
   EndpointEntry,
