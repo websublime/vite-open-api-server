@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-open-api-server-det.3-response-priority",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-02-02T14:05:58.780754Z",
+  "updated_at": "2026-02-02T14:05:58.781499Z"
+}
