@@ -76,7 +76,16 @@ describe('EndpointKey utilities', () => {
     });
 
     it('should handle all HTTP methods', () => {
-      const methods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
+      const methods = [
+        'get',
+        'post',
+        'put',
+        'patch',
+        'delete',
+        'options',
+        'head',
+        'trace',
+      ] as const;
       for (const method of methods) {
         const result = parseEndpointKey(`${method}:/test`);
         expect(result.method).toBe(method);
