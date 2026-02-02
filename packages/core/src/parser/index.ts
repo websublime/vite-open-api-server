@@ -8,5 +8,4 @@
  * @module parser
  */
 
-// TODO: Will be implemented in Task 1.2
 export { ProcessorError, type ProcessorOptions, processOpenApiDocument } from './processor.js';

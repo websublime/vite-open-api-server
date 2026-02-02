@@ -4,9 +4,9 @@
  * What: Converts OpenAPI path format to Hono path format
  * How: Replaces {param} with :param
  * Why: OpenAPI uses {petId} but Hono uses :petId
+ *
+ * @module router/path-converter
  */
-
-// TODO: Will be implemented in Task 1.4: Hono Router
 
 /**
  * Convert OpenAPI path to Hono path format
