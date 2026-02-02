@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-det.2-seed-system",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core"
+    ],
+    "changes": [
+      "776fce4b54859adacff279e602c3b3ec3ba46b39",
+      "796d17fd5a6b359f2df968f180cf0116cbd95e05",
+      "9fcdc026d2615a777504d33d49cb7ac2ec5e7a84"
+    ],
+    "created_at": "2026-02-02T12:58:19.177059Z",
+    "updated_at": "2026-02-02T13:47:39.019698Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-02T13:59:33.657955146Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "4410c7a251aa519be8c87792b1dda8b0f857d026",
+    "versions": {
+      "@websublime/vite-open-api-core": "0.7.0"
+    }
+  }
+}

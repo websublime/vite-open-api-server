@@ -1,3 +1,29 @@
+## [0.7.0] - 2026-02-02
+
+### Features
+
+- implement seed system with context injection (5d7ed33)
+
+
+### Bug Fixes
+
+- address PR review comments for seed system tests (4410c7a)
+- make Logger debug/info methods optional for consistency (805ec8a)
+
+
+### Code Refactoring
+
+- unify Logger type and remove deprecated exports (741e63b)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (d515e81)
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (9b8b2e7)
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (745d70a)
+
+
+
 ## [0.6.0] - 2026-02-02
 
 ### Features
