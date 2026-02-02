@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/task-2.1-handler-system",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core"
+    ],
+    "changes": [
+      "a9a5111821e009c0babfadef26d4a1c3f984ee46",
+      "e33dbc40553151cda6372020e5061278591e3ea9",
+      "2a098eb739bd330e3cf4a0a1ade56bb612461ff0"
+    ],
+    "created_at": "2026-02-02T12:11:58.087015Z",
+    "updated_at": "2026-02-02T12:24:12.669622Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-02T12:49:34.318044844Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "43e7432d8c814b736992537c1956e7f69cc10aea",
+    "versions": {
+      "@websublime/vite-open-api-core": "0.6.0"
+    }
+  }
+}

@@ -1,3 +1,28 @@
+## [0.6.0] - 2026-02-02
+
+### Features
+
+- implement handler execution system with error handling (4505a77)
+
+
+### Bug Fixes
+
+- add status code validation and improve executor robustness (43e7432)
+- add context parameter to test handler signatures (7b1b3d2)
+
+
+### Documentation
+
+- update developer workflow documentation (693608f)
+
+
+### Other Changes
+
+- sync changeset for feature/task-2.1-handler-system (d0c1877)
+- sync changeset for feature/task-2.1-handler-system (15ebe7e)
+
+
+
 ## [0.5.0] - 2026-02-02
 
 ### Features
