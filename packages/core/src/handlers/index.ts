@@ -24,5 +24,6 @@ export {
   ExecutorError,
   executeHandler,
   type HandlerResponse,
+  type NormalizeOptions,
   normalizeResponse,
 } from './executor.js';
