@@ -1,0 +1,26 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-z5y.5-data-generator",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core"
+    ],
+    "changes": [
+      "bc3d7e8de8c0db85cd652cc48c8a381fd83fd8bb",
+      "e4be5191bd0ec81821ba9bac8c8a0d5b62cdfdb0"
+    ],
+    "created_at": "2026-02-02T10:28:02.375724Z",
+    "updated_at": "2026-02-02T10:45:19.068018Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-02T11:19:24.230565399Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "23a119ba8dc908ef6f705b409487c66b2a397e90",
+    "versions": {
+      "@websublime/vite-open-api-core": "0.4.0"
+    }
+  }
+}

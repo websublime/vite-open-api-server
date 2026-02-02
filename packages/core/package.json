@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-open-api-core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Core server logic for vite-open-api-server - OpenAPI processing, routing, store, and data generation",
   "keywords": [
     "openapi",
@@ -22,17 +22,17 @@
     "directory": "packages/core"
   },
   "scripts": {
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "dev": "tsup --watch",
-    "build": "tsup"
+    "dev": "tsup --watch"
   },
   "dependencies": {
-    "@scalar/openapi-upgrader": "^0.1.7",
-    "@scalar/json-magic": "^0.9.1",
-    "hono": "^4.11.4",
     "@scalar/openapi-parser": "^0.24.1",
+    "hono": "^4.11.4",
     "@faker-js/faker": "^10.2.0",
-    "@scalar/openapi-types": "^0.5.3"
+    "@scalar/openapi-types": "^0.5.3",
+    "@scalar/json-magic": "^0.9.1",
+    "@scalar/openapi-upgrader": "^0.1.7"
   },
   "devDependencies": {
     "tsup": "^8.5.0",

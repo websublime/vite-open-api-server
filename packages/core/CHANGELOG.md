@@ -1,3 +1,23 @@
+## [0.4.0] - 2026-02-02
+
+### Features
+
+- implement data generator with OpenAPI schema-based fake data generation (ac832e8)
+
+
+### Bug Fixes
+
+- address code review findings from /coder analysis (23a119b)
+- address edge cases in schema data generation (5946179)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (153612c)
+- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (a4f0eca)
+
+
+
 ## [0.3.0] - 2026-02-02
 
 ### Features
