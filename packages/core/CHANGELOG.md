@@ -1,3 +1,23 @@
+## [0.3.0] - 2026-02-02
+
+### Features
+
+- implement Hono router with dynamic route generation (2efa0b7)
+
+
+### Bug Fixes
+
+- address code review findings (e88e283)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8cd2acd)
+- fix formatting in test file (db60a45)
+- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8aadcd8)
+
+
+
 ## [0.2.0] - 2026-02-02
 
 ### Features
