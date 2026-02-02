@@ -374,6 +374,26 @@ describe('createStore', () => {
     it('should throw StoreError for non-string field name', () => {
       expect(() => store.setIdField('User', null as unknown as string)).toThrow(StoreError);
     });
+
+    it('should throw StoreError when schema already has data', () => {
+      store.create('Pet', { id: 1, name: 'Buddy' });
+
+      expect(() => store.setIdField('Pet', 'petId')).toThrow(StoreError);
+      expect(() => store.setIdField('Pet', 'petId')).toThrow(/already contains/);
+    });
+
+    it('should allow setting ID field after clearing schema data', () => {
+      store.create('Pet', { id: 1, name: 'Buddy' });
+      store.clear('Pet');
+
+      // Should not throw after clear
+      expect(() => store.setIdField('Pet', 'petId')).not.toThrow();
+      expect(store.getIdField('Pet')).toBe('petId');
+
+      // New items should use new ID field
+      store.create('Pet', { petId: 2, name: 'Max' });
+      expect(store.get('Pet', 2)).toEqual({ petId: 2, name: 'Max' });
+    });
   });
 
   describe('getIdField', () => {
