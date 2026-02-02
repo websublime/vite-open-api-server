@@ -77,6 +77,7 @@ export {
 
 export type {
   HandlerContext,
+  HandlerDefinition,
   HandlerFn,
   HandlerRequest,
   HandlerResponse,
@@ -87,7 +88,12 @@ export type {
   HandlerReturnWithStatus,
   Logger,
 } from './handlers/index.js';
-export { ExecutorError, executeHandler } from './handlers/index.js';
+export {
+  defineHandlers,
+  ExecutorError,
+  executeHandler,
+  normalizeResponse,
+} from './handlers/index.js';
 
 // =============================================================================
 // WebSocket Module - Real-time Communication
