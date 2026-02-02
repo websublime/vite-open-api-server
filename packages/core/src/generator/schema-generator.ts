@@ -31,6 +31,11 @@ export function generateFromSchema(
   faker: Faker,
   propertyName?: string,
 ): unknown {
+  // Defensive check for invalid schema input
+  if (!schema || typeof schema !== 'object') {
+    return undefined;
+  }
+
   // Handle nullable schemas
   if (schema.nullable && faker.datatype.boolean({ probability: 0.1 })) {
     return null;
@@ -184,8 +189,13 @@ function isNumberConstraintsSatisfied(value: number, schema: OpenAPIV3_1.SchemaO
   if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum) {
     return false;
   }
-  if (schema.multipleOf !== undefined && value % schema.multipleOf !== 0) {
-    return false;
+  if (schema.multipleOf !== undefined) {
+    const remainder = Math.abs(value % schema.multipleOf);
+    const epsilon = 1e-10;
+    // Check if remainder is effectively zero (accounting for floating-point precision)
+    if (remainder > epsilon && Math.abs(remainder - schema.multipleOf) > epsilon) {
+      return false;
+    }
   }
   return true;
 }
@@ -290,29 +300,34 @@ function generateFallback(schema: OpenAPIV3_1.SchemaObject, faker: Faker): unkno
 }
 
 /**
+ * Suffix patterns for field name matching.
+ * Defined at module level for performance (avoid recreating on each call).
+ * @internal
+ */
+const SUFFIX_PATTERNS: ReadonlyArray<{
+  suffixes: readonly string[];
+  generate: (faker: Faker) => unknown;
+}> = [
+  { suffixes: ['email', 'mail'], generate: (f) => f.internet.email() },
+  { suffixes: ['url', 'uri', 'link'], generate: (f) => f.internet.url() },
+  { suffixes: ['phone', 'mobile', 'tel'], generate: (f) => f.phone.number() },
+  { suffixes: ['time', 'datetime'], generate: (f) => f.date.recent().toISOString() },
+  { suffixes: ['date'], generate: (f) => f.date.recent().toISOString().split('T')[0] },
+  { suffixes: ['name'], generate: (f) => f.person.fullName() },
+  { suffixes: ['description', 'desc'], generate: (f) => f.lorem.paragraph() },
+  { suffixes: ['image', 'img', 'photo'], generate: (f) => f.image.url() },
+  { suffixes: ['address'], generate: (f) => f.location.streetAddress() },
+  { suffixes: ['price', 'cost', 'amount'], generate: (f) => Number.parseFloat(f.commerce.price()) },
+] as const;
+
+/**
  * Match field name by common suffixes.
  * @internal
  */
 function matchFieldNameSuffix(normalized: string, faker: Faker): unknown | undefined {
-  // Define suffix patterns and their generators
-  const suffixPatterns: Array<{ suffixes: string[]; generate: () => unknown }> = [
-    { suffixes: ['email', 'mail'], generate: () => faker.internet.email() },
-    { suffixes: ['url', 'uri', 'link'], generate: () => faker.internet.url() },
-    { suffixes: ['phone', 'mobile', 'tel'], generate: () => faker.phone.number() },
-    { suffixes: ['date', 'time'], generate: () => faker.date.recent().toISOString() },
-    { suffixes: ['name'], generate: () => faker.person.fullName() },
-    { suffixes: ['description', 'desc'], generate: () => faker.lorem.paragraph() },
-    { suffixes: ['image', 'img', 'photo'], generate: () => faker.image.url() },
-    { suffixes: ['address'], generate: () => faker.location.streetAddress() },
-    {
-      suffixes: ['price', 'cost', 'amount'],
-      generate: () => Number.parseFloat(faker.commerce.price()),
-    },
-  ];
-
-  for (const pattern of suffixPatterns) {
+  for (const pattern of SUFFIX_PATTERNS) {
     if (pattern.suffixes.some((suffix) => normalized.endsWith(suffix))) {
-      return pattern.generate();
+      return pattern.generate(faker);
     }
   }
 
@@ -354,11 +369,22 @@ function generateString(
 /**
  * Generate string matching a regex pattern.
  * Attempts bounded sampling, falls back to best candidate if no match found.
+ *
+ * Includes ReDoS protection by skipping overly complex patterns.
+ *
  * @internal
  */
 function generateStringWithPattern(schema: OpenAPIV3_1.SchemaObject, faker: Faker): string {
   const pattern = schema.pattern;
   if (!pattern) {
+    return generateStringWithLength(schema, faker);
+  }
+
+  // ReDoS protection: skip overly complex patterns that could cause exponential backtracking
+  // - Patterns longer than 200 chars are likely complex
+  // - Nested quantifiers like (a+)+ or (a*)*b are classic ReDoS patterns
+  // - Lookbehind assertions (?<) can be expensive in some engines
+  if (pattern.length > 200 || /(\.\*){3,}|([+*])\)\2|\(\?</.test(pattern)) {
     return generateStringWithLength(schema, faker);
   }
 
@@ -540,12 +566,17 @@ function generateNumber(
 
 /**
  * Generate an array value based on schema items.
+ *
+ * Note: maxItems is capped at 10 to prevent excessive data generation.
+ * This is an intentional safeguard for mock data scenarios.
+ *
  * @internal
  */
 function generateArray(schema: OpenAPIV3_1.SchemaObject, faker: Faker): unknown[] {
   const items = schema.items as OpenAPIV3_1.SchemaObject | undefined;
   const minItems = schema.minItems ?? 1;
   const rawMax = schema.maxItems ?? 5;
+  // Cap maxItems at 10 to prevent excessive data generation in mock scenarios
   const capMax = Math.min(rawMax, 10);
   // Ensure min ≤ max to avoid invalid range errors
   const finalMax = Math.max(minItems, capMax);
