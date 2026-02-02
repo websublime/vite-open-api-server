@@ -94,7 +94,7 @@ pnpm dev
 
 The mock server will start automatically and you'll see a startup banner:
 
-```
+```text
 ╭──────────────────────────────────────────────────────╮
 │              🚀 OpenAPI Mock Server                  │
 ╰──────────────────────────────────────────────────────╯
@@ -123,6 +123,7 @@ The mock server will start automatically and you'll see a startup banner:
 | `timelineLimit` | `number` | `500` | Max timeline events |
 | `devtools` | `boolean` | `true` | Enable DevTools |
 | `cors` | `boolean` | `true` | Enable CORS |
+| `corsOrigin` | `string \| string[]` | `'*'` | CORS origin configuration |
 | `silent` | `boolean` | `false` | Suppress startup banner |
 
 ## Handler Context

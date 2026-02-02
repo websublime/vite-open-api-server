@@ -191,6 +191,13 @@ export interface ResolvedOptions {
  * @returns Resolved options with all defaults applied
  */
 export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
+  // Validate required spec option
+  if (!options.spec || typeof options.spec !== 'string' || options.spec.trim() === '') {
+    throw new Error(
+      'spec is required and must be a non-empty string (path or URL to OpenAPI spec)',
+    );
+  }
+
   return {
     spec: options.spec,
     port: options.port ?? 4000,
