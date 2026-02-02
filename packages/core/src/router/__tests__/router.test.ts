@@ -1032,4 +1032,152 @@ describe('buildRoutes', () => {
     expect(response.status).toBe(200);
     expect(body.status).toBe('available');
   });
+
+  it('should handle multi-value query parameters', async () => {
+    const doc = createMinimalDoc({
+      '/pets': {
+        get: {
+          operationId: 'getPets',
+          responses: { '200': { description: 'Success' } },
+        },
+      },
+    });
+
+    const handlers = new Map([
+      [
+        'getPets',
+        (ctx: { req: { query: Record<string, string | string[]> } }) => ({
+          type: 'raw' as const,
+          data: { statuses: ctx.req.query.status },
+        }),
+      ],
+    ]);
+
+    const store = createStore();
+    const { app } = buildRoutes(doc, { store, handlers });
+
+    const response = await app.request('/pets?status=available&status=pending', { method: 'GET' });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.statuses).toEqual(['available', 'pending']);
+  });
+
+  it('should use seed data with custom ID field from store', async () => {
+    const doc = createMinimalDoc({
+      '/orders/{orderId}': {
+        get: {
+          operationId: 'getOrderById',
+          responses: {
+            '200': {
+              description: 'Success',
+              content: {
+                'application/json': {
+                  schema: { title: 'Order', type: 'object' },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    // Store configured with custom ID field for Order
+    const store = createStore({ idFields: { Order: 'orderId' } });
+
+    // Seed data uses orderId as the ID field
+    const seeds = new Map([
+      [
+        'Order',
+        [
+          { orderId: 'ORD-001', total: 100 },
+          { orderId: 'ORD-002', total: 200 },
+        ],
+      ],
+    ]);
+
+    const { app } = buildRoutes(doc, { store, seeds });
+
+    const response = await app.request('/orders/ORD-001', { method: 'GET' });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ orderId: 'ORD-001', total: 100 });
+  });
+
+  it('should return 404 when seed item with custom ID not found', async () => {
+    const doc = createMinimalDoc({
+      '/orders/{orderId}': {
+        get: {
+          operationId: 'getOrderById',
+          responses: {
+            '200': {
+              description: 'Success',
+              content: {
+                'application/json': {
+                  schema: { title: 'Order', type: 'object' },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const store = createStore({ idFields: { Order: 'orderId' } });
+    const seeds = new Map([['Order', [{ orderId: 'ORD-001', total: 100 }]]]);
+
+    const { app } = buildRoutes(doc, { store, seeds });
+
+    const response = await app.request('/orders/NONEXISTENT', { method: 'GET' });
+    const body = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(body.error).toBe('Not found');
+  });
+
+  it('should detect array response from default response', async () => {
+    const doc = createMinimalDoc({
+      '/items': {
+        get: {
+          operationId: 'getItems',
+          responses: {
+            default: {
+              description: 'Default response',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'array',
+                    items: { title: 'Item', type: 'object' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const seeds = new Map([
+      [
+        'Item',
+        [
+          { id: 1, name: 'Item 1' },
+          { id: 2, name: 'Item 2' },
+        ],
+      ],
+    ]);
+
+    const store = createStore();
+    const { app } = buildRoutes(doc, { store, seeds });
+
+    const response = await app.request('/items', { method: 'GET' });
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual([
+      { id: 1, name: 'Item 1' },
+      { id: 2, name: 'Item 2' },
+    ]);
+  });
 });
