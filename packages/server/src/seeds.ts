@@ -2,16 +2,16 @@
  * Seed Loading
  *
  * What: Loads seed files from a directory using glob patterns
- * How: Uses fast-glob to find files, then dynamically imports them
- * Why: Enables users to define seed data for schemas
+ * How: Uses Vite's ssrLoadModule to transform and load TypeScript files
+ * Why: Enables users to define seed data for schemas in TypeScript
  *
  * @module seeds
  */
 
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { AnySeedFn, Logger, SeedDefinition } from '@websublime/vite-open-api-core';
 import fg from 'fast-glob';
+import type { ViteDevServer } from 'vite';
 
 /**
  * Result of loading seeds
@@ -32,6 +32,8 @@ export interface LoadSeedsResult {
  * in the specified directory. Each file should export an object with
  * schema name keys and seed functions as values.
  *
+ * Uses Vite's ssrLoadModule to transform TypeScript files on-the-fly.
+ *
  * @example
  * ```typescript
  * // mocks/seeds/pets.seeds.ts
@@ -49,12 +51,14 @@ export interface LoadSeedsResult {
  * ```
  *
  * @param seedsDir - Directory to search for seed files
+ * @param viteServer - Vite dev server instance for ssrLoadModule
  * @param cwd - Current working directory (defaults to process.cwd())
  * @param logger - Optional logger for warnings/errors
  * @returns Promise resolving to loaded seeds
  */
 export async function loadSeeds(
   seedsDir: string,
+  viteServer: ViteDevServer,
   cwd: string = process.cwd(),
   logger: Logger = console,
 ): Promise<LoadSeedsResult> {
@@ -71,7 +75,7 @@ export async function loadSeeds(
     };
   }
 
-  // Find seed files
+  // Find seed files (supports TypeScript via Vite's transform)
   const pattern = '**/*.seeds.{ts,js,mjs}';
   const files = await fg(pattern, {
     cwd: absoluteDir,
@@ -80,10 +84,10 @@ export async function loadSeeds(
     ignore: ['node_modules/**', 'dist/**'],
   });
 
-  // Load each file
+  // Load each file using Vite's ssrLoadModule
   for (const file of files) {
     const absolutePath = path.join(absoluteDir, file);
-    const fileSeeds = await loadSeedFile(absolutePath, logger);
+    const fileSeeds = await loadSeedFile(absolutePath, viteServer, logger);
 
     // Merge seeds
     for (const [schemaName, seedFn] of Object.entries(fileSeeds)) {
@@ -104,19 +108,28 @@ export async function loadSeeds(
 }
 
 /**
- * Load a single seed file
+ * Load a single seed file using Vite's ssrLoadModule
  *
  * @param filePath - Absolute path to the seed file
+ * @param viteServer - Vite dev server instance
  * @param logger - Logger for warnings/errors
  * @returns Promise resolving to seed definition object
  */
-async function loadSeedFile(filePath: string, logger: Logger): Promise<SeedDefinition> {
-  // Add cache-busting query param for hot reload
-  const cacheBuster = `?t=${Date.now()}`;
-  const fileUrl = pathToFileURL(filePath).href + cacheBuster;
-
+async function loadSeedFile(
+  filePath: string,
+  viteServer: ViteDevServer,
+  logger: Logger,
+): Promise<SeedDefinition> {
   try {
-    const module = await import(fileUrl);
+    // Invalidate module cache for hot reload
+    const moduleNode = viteServer.moduleGraph.getModuleById(filePath);
+    if (moduleNode) {
+      viteServer.moduleGraph.invalidateModule(moduleNode);
+    }
+
+    // Use Vite's ssrLoadModule to transform and load the file
+    // This handles TypeScript, ESM, and other transforms automatically
+    const module = await viteServer.ssrLoadModule(filePath);
 
     // Support both default export and named export
     const seeds = module.default ?? module.seeds ?? module;
