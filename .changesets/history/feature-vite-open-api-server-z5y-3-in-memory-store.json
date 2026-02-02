@@ -1,0 +1,26 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-z5y-3-in-memory-store",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core"
+    ],
+    "changes": [
+      "20c2ede649cc96d0a1d5431703a4f925f608df42",
+      "d7653a0895fd15052676f32ee4b4081e8830937b"
+    ],
+    "created_at": "2026-01-19T16:52:22.471505Z",
+    "updated_at": "2026-02-02T09:27:44.207544Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-02T09:42:06.059414116Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "7d9e4012dbb419d73c91cb8496ff378c835c3d32",
+    "versions": {
+      "@websublime/vite-open-api-core": "0.2.0"
+    }
+  }
+}

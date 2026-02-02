@@ -1,3 +1,23 @@
+## [0.2.0] - 2026-02-02
+
+### Features
+
+- implement in-memory store with CRUD operations (45d56e3)
+
+
+### Bug Fixes
+
+- prevent mutation in create() and restrict setIdField usage (7d9e401)
+- address PR review comments for in-memory store (3d93497)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (5261e2c)
+- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (c264e19)
+
+
+
 ## [0.1.1] - 2026-01-19
 
 ### Features
