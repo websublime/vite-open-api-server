@@ -58,11 +58,16 @@ export {
 // Generator Module - Fake Data Generation
 // =============================================================================
 
-// Internal/experimental exports - consumers should not use until Task 1.5 is complete
+// Public API - main generator functions
+// Mapping constants for advanced customization
+// Internal/deprecated exports for backward compatibility
 export {
   _generateFromFieldName,
   _generateFromSchema,
+  DATE_FORMAT_POST_PROCESSING,
   FIELD_NAME_MAPPING,
+  generateFromFieldName,
+  generateFromSchema,
   TYPE_FORMAT_MAPPING,
 } from './generator/index.js';
 
