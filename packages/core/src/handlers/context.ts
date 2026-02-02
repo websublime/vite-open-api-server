@@ -6,8 +6,6 @@
  * Why: Provides type-safe handler development
  */
 
-// TODO: Will be implemented in Task 2.1: Handler System
-
 import type { Faker } from '@faker-js/faker';
 
 import type { Store } from '../store/index.js';

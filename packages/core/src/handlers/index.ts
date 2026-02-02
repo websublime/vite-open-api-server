@@ -19,5 +19,10 @@ export type {
   HandlerReturnWithStatus,
   Logger,
 } from './context.js';
-// TODO: Will be implemented in Task 2.1
-export { ExecutorError, executeHandler, type HandlerResponse } from './executor.js';
+export { defineHandlers, type HandlerDefinition } from './define-handlers.js';
+export {
+  ExecutorError,
+  executeHandler,
+  type HandlerResponse,
+  normalizeResponse,
+} from './executor.js';
