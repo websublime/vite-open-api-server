@@ -267,8 +267,12 @@ export function buildRoutes(
                 data: { error: 'Handler execution failed', message: errorMessage },
               };
             }
-          } else if (endpoint.responseSchema && seeds.has(endpoint.responseSchema)) {
-            // 2. Seed data
+          } else if (
+            endpoint.responseSchema &&
+            seeds.has(endpoint.responseSchema) &&
+            (seeds.get(endpoint.responseSchema)?.length ?? 0) > 0
+          ) {
+            // 2. Seed data (only if seed array is not empty)
             response = getSeedResponse(endpoint, operation, seeds, context, store);
           } else {
             // 3. Example or 4. Generated
