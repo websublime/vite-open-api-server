@@ -35,16 +35,23 @@ export { createStore, StoreError } from './store/index.js';
 
 export type {
   EndpointEntry,
+  EndpointKey,
   EndpointRegistry,
   HttpMethod,
+  RegistryBuilderOptions,
   RegistryStats,
   RouteBuilderOptions,
+  RouteBuilderResult,
   SecurityRequirement,
 } from './router/index.js';
 export {
+  buildRegistry,
   buildRoutes,
   convertOpenApiPath,
-  RouteBuilderNotImplementedError,
+  createEndpointKey,
+  parseEndpointKey,
+  updateRegistryHandlers,
+  updateRegistrySeeds,
 } from './router/index.js';
 
 // =============================================================================
