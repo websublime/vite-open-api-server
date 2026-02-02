@@ -20,6 +20,19 @@ import type {
 import { ExecutorError, executeHandler, normalizeResponse } from '../executor.js';
 
 /**
+ * Create a mock logger for testing
+ */
+function createMockLogger() {
+  return {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+}
+
+/**
  * Create a mock handler context for testing
  */
 function createMockContext(overrides: Partial<HandlerContext> = {}): HandlerContext {
@@ -76,6 +89,20 @@ describe('normalizeResponse', () => {
       expect(response).toEqual({
         status: 200,
         data: null,
+      });
+    });
+
+    it('should handle undefined data', () => {
+      const result: HandlerReturnRaw = {
+        type: 'raw',
+        data: undefined,
+      };
+
+      const response = normalizeResponse(result);
+
+      expect(response).toEqual({
+        status: 200,
+        data: undefined,
       });
     });
 
@@ -213,6 +240,131 @@ describe('normalizeResponse', () => {
         data: { id: 1 },
         headers: {},
       });
+    });
+  });
+
+  describe('status code validation', () => {
+    it('should accept valid status codes (100-599)', () => {
+      const validCodes = [100, 200, 201, 204, 301, 400, 404, 500, 503, 599];
+
+      for (const status of validCodes) {
+        const result: HandlerReturnWithStatus = {
+          type: 'status',
+          status,
+          data: { test: true },
+        };
+
+        const response = normalizeResponse(result);
+
+        expect(response.status).toBe(status);
+      }
+    });
+
+    it('should default to 500 for negative status codes', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: -1,
+        data: { error: 'test' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Invalid HTTP status code: -1'),
+      );
+    });
+
+    it('should default to 500 for status code 0', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: 0,
+        data: { error: 'test' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should default to 500 for status codes below 100', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: 99,
+        data: { error: 'test' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should default to 500 for status codes above 599', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: 600,
+        data: { error: 'test' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should default to 500 for non-integer status codes', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: 200.5,
+        data: { error: 'test' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should validate status codes in full type responses', () => {
+      const mockLogger = createMockLogger();
+
+      const result: HandlerReturnWithHeaders = {
+        type: 'full',
+        status: 9999,
+        data: { error: 'test' },
+        headers: { 'X-Custom': 'value' },
+      };
+
+      const response = normalizeResponse(result, { logger: mockLogger });
+
+      expect(response.status).toBe(500);
+      expect(response.headers).toEqual({ 'X-Custom': 'value' });
+      expect(mockLogger.warn).toHaveBeenCalled();
+    });
+
+    it('should not warn when no logger is provided', () => {
+      const result: HandlerReturnWithStatus = {
+        type: 'status',
+        status: -1,
+        data: { error: 'test' },
+      };
+
+      // Should not throw when logger is not provided
+      const response = normalizeResponse(result);
+
+      expect(response.status).toBe(500);
     });
   });
 });
@@ -465,5 +617,21 @@ describe('ExecutorError', () => {
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toBeInstanceOf(ExecutorError);
+  });
+
+  it('should be usable for catching handler-specific errors', () => {
+    // Demonstrates the intended use case for ExecutorError
+    function simulateErrorHandling(): string {
+      try {
+        throw new ExecutorError('Handler failed', new Error('Original'));
+      } catch (error) {
+        if (error instanceof ExecutorError) {
+          return 'handled-executor-error';
+        }
+        return 'handled-generic-error';
+      }
+    }
+
+    expect(simulateErrorHandling()).toBe('handled-executor-error');
   });
 });

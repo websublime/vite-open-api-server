@@ -87,6 +87,7 @@ export type {
   HandlerReturnWithHeaders,
   HandlerReturnWithStatus,
   Logger,
+  NormalizeOptions,
 } from './handlers/index.js';
 export {
   defineHandlers,
