@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-open-api-server-c4l.1-plugin-core",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-02T14:50:29.255371Z",
+  "updated_at": "2026-02-02T14:50:29.256408Z"
+}
