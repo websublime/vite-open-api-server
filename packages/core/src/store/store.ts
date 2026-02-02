@@ -40,7 +40,7 @@ export interface Store {
   clear(schema: string): void;
   /** Clear all data across all schemas */
   clearAll(): void;
-  /** Configure identifier field for a schema */
+  /** Configure identifier field for a schema (must be called before creating records) */
   setIdField(schema: string, field: string): void;
   /** Get the configured ID field for a schema */
   getIdField(schema: string): string;
@@ -191,8 +191,19 @@ export function createStore(options?: StoreOptions): Store {
         throw new StoreError(`Item with ID '${id}' already exists in schema '${schema}'`);
       }
 
-      schemaData.set(id, item);
-      return item;
+      // Create shallow copy to prevent external mutation of store state
+      // Arrays get sliced, objects get spread, primitives stay as-is
+      let copiedItem: unknown;
+      if (Array.isArray(item)) {
+        copiedItem = [...item];
+      } else if (typeof item === 'object' && item !== null) {
+        copiedItem = { ...(item as object) };
+      } else {
+        copiedItem = item;
+      }
+
+      schemaData.set(id, copiedItem);
+      return copiedItem;
     },
 
     update(schema: string, id: string | number, updates: Record<string, unknown>): unknown | null {
@@ -239,10 +250,28 @@ export function createStore(options?: StoreOptions): Store {
       data.clear();
     },
 
+    /**
+     * Configure the ID field for a schema.
+     *
+     * This is a configuration-time operation and must be called before
+     * creating any records for the schema. Throws if the schema already
+     * contains data to prevent key/data mismatch with existing records.
+     *
+     * @throws {StoreError} If the schema already has records or field is invalid
+     */
     setIdField(schema: string, field: string): void {
       if (!field || typeof field !== 'string') {
         throw new StoreError('ID field must be a non-empty string');
       }
+
+      // Prevent changing ID field when schema already has data
+      const schemaData = data.get(schema);
+      if (schemaData && schemaData.size > 0) {
+        throw new StoreError(
+          `Cannot change ID field for schema '${schema}': schema already contains ${schemaData.size} record(s)`,
+        );
+      }
+
       idFields.set(schema, field);
     },
 
