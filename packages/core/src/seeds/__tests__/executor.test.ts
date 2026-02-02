@@ -10,6 +10,7 @@ import { faker } from '@faker-js/faker';
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Logger } from '../../handlers/context.js';
 import { createStore } from '../../store/index.js';
 import type { SeedContext } from '../context.js';
 import {
@@ -22,8 +23,9 @@ import {
 
 /**
  * Create a mock logger for testing
+ * Returns a Logger-compatible mock with vi.fn() for each method
  */
-function createMockLogger() {
+function createMockLogger(): Logger {
   return {
     log: vi.fn(),
     info: vi.fn(),
