@@ -94,6 +94,25 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
   const handlerPattern = '**/*.handlers.{ts,js,mjs}';
   const seedPattern = '**/*.seeds.{ts,js,mjs}';
 
+  /**
+   * Wrapper to safely invoke async callbacks and log errors
+   * Prevents unhandled promise rejections from file watcher events
+   */
+  const safeInvoke = (
+    callback: (filePath: string) => Promise<void> | void,
+    filePath: string,
+    context: string,
+  ): void => {
+    Promise.resolve()
+      .then(() => callback(filePath))
+      .catch((error) => {
+        logger.error(
+          `[vite-plugin-open-api-server] ${context} callback error for ${filePath}:`,
+          error,
+        );
+      });
+  };
+
   // Watch handlers directory
   if (handlersDir && onHandlerChange) {
     const absoluteHandlersDir = path.resolve(cwd, handlersDir);
@@ -110,17 +129,17 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
 
     handlerWatcher.on('add', (file) => {
       const absolutePath = path.join(absoluteHandlersDir, file);
-      onHandlerChange(absolutePath);
+      safeInvoke(onHandlerChange, absolutePath, 'Handler add');
     });
 
     handlerWatcher.on('change', (file) => {
       const absolutePath = path.join(absoluteHandlersDir, file);
-      onHandlerChange(absolutePath);
+      safeInvoke(onHandlerChange, absolutePath, 'Handler change');
     });
 
     handlerWatcher.on('unlink', (file) => {
       const absolutePath = path.join(absoluteHandlersDir, file);
-      onHandlerChange(absolutePath);
+      safeInvoke(onHandlerChange, absolutePath, 'Handler unlink');
     });
 
     handlerWatcher.on('error', (error) => {
@@ -146,17 +165,17 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
 
     seedWatcher.on('add', (file) => {
       const absolutePath = path.join(absoluteSeedsDir, file);
-      onSeedChange(absolutePath);
+      safeInvoke(onSeedChange, absolutePath, 'Seed add');
     });
 
     seedWatcher.on('change', (file) => {
       const absolutePath = path.join(absoluteSeedsDir, file);
-      onSeedChange(absolutePath);
+      safeInvoke(onSeedChange, absolutePath, 'Seed change');
     });
 
     seedWatcher.on('unlink', (file) => {
       const absolutePath = path.join(absoluteSeedsDir, file);
-      onSeedChange(absolutePath);
+      safeInvoke(onSeedChange, absolutePath, 'Seed unlink');
     });
 
     seedWatcher.on('error', (error) => {
