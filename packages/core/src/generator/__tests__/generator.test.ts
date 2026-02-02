@@ -913,5 +913,143 @@ describe('edge cases', () => {
       const result = generateFromSchema(schema, faker);
       expect(typeof result).toBe('string');
     });
+
+    it('should skip overly complex patterns for ReDoS protection', () => {
+      // Pattern with nested quantifiers that could cause ReDoS
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'string',
+        pattern: '(a+)+b',
+      };
+      // Should not throw, falls back to length-based generation
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('string');
+    });
+
+    it('should skip excessively long patterns', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'string',
+        pattern: 'a'.repeat(250),
+      };
+      // Should not throw, falls back to length-based generation
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('string');
+    });
+  });
+
+  describe('nullable handling', () => {
+    it('should sometimes return null for nullable schema', () => {
+      const schema: OpenAPIV3_1.SchemaObject = { type: 'string', nullable: true };
+      // Generate many samples to increase probability of getting null (10% chance)
+      const results: unknown[] = [];
+      for (let i = 0; i < 200; i++) {
+        faker.seed(i); // Different seed each iteration
+        results.push(generateFromSchema(schema, faker));
+      }
+      // With 10% probability over 200 samples, we should get at least one null
+      const nullCount = results.filter((r) => r === null).length;
+      const nonNullCount = results.filter((r) => r !== null).length;
+      expect(nullCount).toBeGreaterThan(0);
+      expect(nonNullCount).toBeGreaterThan(0);
+    });
+
+    it('should return string or null for nullable string schema', () => {
+      const schema: OpenAPIV3_1.SchemaObject = { type: 'string', nullable: true };
+      const result = generateFromSchema(schema, faker);
+      expect(result === null || typeof result === 'string').toBe(true);
+    });
+  });
+
+  describe('default value handling', () => {
+    it('should sometimes use default value when provided', () => {
+      const schema: OpenAPIV3_1.SchemaObject = { type: 'string', default: 'defaultValue' };
+      // Generate many samples to increase probability of getting default (30% chance)
+      const results: unknown[] = [];
+      for (let i = 0; i < 100; i++) {
+        faker.seed(i); // Different seed each iteration
+        results.push(generateFromSchema(schema, faker));
+      }
+      // With 30% probability over 100 samples, we should get at least one default
+      const defaultCount = results.filter((r) => r === 'defaultValue').length;
+      expect(defaultCount).toBeGreaterThan(0);
+    });
+
+    it('should use default value for number schema', () => {
+      const schema: OpenAPIV3_1.SchemaObject = { type: 'integer', default: 42 };
+      const results: unknown[] = [];
+      for (let i = 0; i < 100; i++) {
+        faker.seed(i);
+        results.push(generateFromSchema(schema, faker));
+      }
+      const defaultCount = results.filter((r) => r === 42).length;
+      expect(defaultCount).toBeGreaterThan(0);
+    });
+  });
+
+  describe('union types (OpenAPI 3.1)', () => {
+    it('should handle array type notation with first type', () => {
+      // OpenAPI 3.1 allows type as array: ["string", "null"]
+      const schema = { type: ['string', 'null'] } as unknown as OpenAPIV3_1.SchemaObject;
+      const result = generateFromSchema(schema, faker);
+      // The implementation takes the first type from the array
+      expect(typeof result === 'string').toBe(true);
+    });
+
+    it('should handle single type in array notation', () => {
+      const schema = { type: ['integer'] } as unknown as OpenAPIV3_1.SchemaObject;
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('number');
+      expect(Number.isInteger(result)).toBe(true);
+    });
+  });
+
+  describe('defensive input validation', () => {
+    it('should return undefined for null schema', () => {
+      const result = generateFromSchema(null as unknown as OpenAPIV3_1.SchemaObject, faker);
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for undefined schema', () => {
+      const result = generateFromSchema(undefined as unknown as OpenAPIV3_1.SchemaObject, faker);
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for non-object schema', () => {
+      const result = generateFromSchema('string' as unknown as OpenAPIV3_1.SchemaObject, faker);
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined for number as schema', () => {
+      const result = generateFromSchema(123 as unknown as OpenAPIV3_1.SchemaObject, faker);
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('floating-point multipleOf precision', () => {
+    it('should handle multipleOf with floating-point values correctly', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'number',
+        minimum: 0,
+        maximum: 1,
+        multipleOf: 0.1,
+      };
+      const result = generateFromSchema(schema, faker) as number;
+      expect(typeof result).toBe('number');
+      expect(result).toBeGreaterThanOrEqual(0);
+      expect(result).toBeLessThanOrEqual(1);
+    });
+
+    it('should validate field name shortcut against multipleOf constraint', () => {
+      // Field name "quantity" generates int 1-100, which should pass multipleOf: 1
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          quantity: { type: 'integer', multipleOf: 1 },
+        },
+        required: ['quantity'],
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(typeof result.quantity).toBe('number');
+      expect(Number.isInteger(result.quantity)).toBe(true);
+    });
   });
 });
