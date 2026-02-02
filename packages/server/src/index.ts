@@ -1,0 +1,60 @@
+/**
+ * @websublime/vite-plugin-open-api-server
+ *
+ * What: Vite plugin for OpenAPI mock server with DevTools integration
+ * How: Integrates with Vite dev server to provide mock API endpoints
+ * Why: Enables rapid frontend development without backend dependencies
+ *
+ * @module @websublime/vite-plugin-open-api-server
+ */
+
+// =============================================================================
+// Main Plugin Export
+// =============================================================================
+
+export { openApiServer } from './plugin.js';
+
+// =============================================================================
+// Type Exports
+// =============================================================================
+
+export type { OpenApiServerOptions, ResolvedOptions } from './types.js';
+
+// =============================================================================
+// Handler Loading (for advanced use cases)
+// =============================================================================
+
+export type { LoadHandlersResult } from './handlers.js';
+export { getHandlerFiles, loadHandlers } from './handlers.js';
+
+// =============================================================================
+// Seed Loading (for advanced use cases)
+// =============================================================================
+
+export type { LoadSeedsResult } from './seeds.js';
+export { getSeedFiles, loadSeeds } from './seeds.js';
+
+// =============================================================================
+// Hot Reload (for advanced use cases)
+// =============================================================================
+
+export type { FileWatcher, FileWatcherOptions } from './hot-reload.js';
+export { createFileWatcher, debounce } from './hot-reload.js';
+
+// =============================================================================
+// Re-exports from Core Package (convenience)
+// =============================================================================
+
+// Type re-exports for handler/seed authoring
+export type {
+  HandlerContext,
+  HandlerDefinition,
+  HandlerFn,
+  HandlerReturn,
+  SeedContext,
+  SeedDefinition,
+  SeedFn,
+  SeedHelper,
+} from '@websublime/vite-open-api-core';
+// Handler and seed definition utilities
+export { defineHandlers, defineSeeds } from '@websublime/vite-open-api-core';
