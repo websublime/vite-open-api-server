@@ -4,9 +4,9 @@
  * What: Type definitions for endpoint registry and routing
  * How: Interfaces for endpoint metadata and registry
  * Why: Provides type safety for route management
+ *
+ * @module router/types
  */
-
-// TODO: Full implementation in Task 1.4: Hono Router
 
 /**
  * HTTP methods supported by the router
