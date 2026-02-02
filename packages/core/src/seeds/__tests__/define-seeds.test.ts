@@ -9,9 +9,11 @@
 import { faker } from '@faker-js/faker';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { Logger } from '../../handlers/context.js';
 import { createStore } from '../../store/index.js';
-import type { SeedContext, SeedHelper } from '../context.js';
+import type { SeedContext } from '../context.js';
 import { defineSeeds, type SeedDefinition } from '../define-seeds.js';
+import { createSeedHelper } from '../executor.js';
 
 describe('defineSeeds', () => {
   describe('basic functionality', () => {
@@ -326,39 +328,22 @@ describe('defineSeeds', () => {
 
 /**
  * Helper to create a minimal mock context for testing
+ * Uses production createSeedHelper to ensure tests stay aligned with implementation
  */
 function createMinimalContext(): SeedContext {
-  const seedHelper = Object.assign(
-    (dataOrFactory: unknown[] | (() => unknown)): unknown[] => {
-      if (Array.isArray(dataOrFactory)) {
-        return dataOrFactory;
-      }
-      if (typeof dataOrFactory === 'function') {
-        return [dataOrFactory()];
-      }
-      return [];
-    },
-    {
-      count: (n: number, factory: (index: number) => unknown): unknown[] => {
-        if (n <= 0 || !Number.isInteger(n)) {
-          return [];
-        }
-        return Array.from({ length: n }, (_, i) => factory(i));
-      },
-    },
-  ) as SeedHelper;
+  const mockLogger: Logger = {
+    log: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
 
   return {
-    seed: seedHelper,
+    seed: createSeedHelper(),
     store: createStore(),
     faker,
     schema: { type: 'object' },
-    logger: {
-      log: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    },
+    logger: mockLogger,
   };
 }
