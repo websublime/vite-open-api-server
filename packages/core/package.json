@@ -35,8 +35,17 @@
     "@scalar/openapi-upgrader": "^0.1.7"
   },
   "devDependencies": {
+    "@hono/node-server": "^1.14.3",
     "tsup": "^8.5.0",
     "typescript": "^5.9.0"
+  },
+  "peerDependencies": {
+    "@hono/node-server": "^1.14.0"
+  },
+  "peerDependenciesMeta": {
+    "@hono/node-server": {
+      "optional": true
+    }
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
