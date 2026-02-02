@@ -1704,6 +1704,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
           if (path === '/pets') {
             return {
               path: '/pets',
+              operationId: 'getPets',
               status: 500,
               body: { error: 'Simulated server error' },
             };
@@ -1714,6 +1715,8 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         remove: vi.fn(),
         list: vi.fn(),
         clear: vi.fn(),
+        has: (path: string) => path === '/pets',
+        count: () => 1,
       };
 
       const store = createStore();
