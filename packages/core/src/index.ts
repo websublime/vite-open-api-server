@@ -125,3 +125,27 @@ export { createSimulationManager } from './simulation/index.js';
 
 export type { InternalApiDeps, TimelineEntry } from './internal-api.js';
 export { mountInternalApi } from './internal-api.js';
+
+// =============================================================================
+// Seeds Module - Seed Loading and Execution
+// =============================================================================
+
+export type {
+  AnySeedFn,
+  AsyncSeedFn,
+  ExecuteSeedsOptions,
+  ExecuteSeedsResult,
+  SeedContext,
+  SeedDefinition,
+  SeedFn,
+  SeedFnMap,
+  SeedHelper,
+} from './seeds/index.js';
+export {
+  createSeedContext,
+  createSeedHelper,
+  defineSeeds,
+  executeSeedDefinition,
+  executeSeeds,
+  SeedExecutorError,
+} from './seeds/index.js';
