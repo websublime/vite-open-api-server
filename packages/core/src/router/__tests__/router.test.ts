@@ -1818,7 +1818,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
       expect(body).toEqual([]);
     });
 
-    it('should skip seed and use example when seed array is empty', async () => {
+    it('should fall through to example when seed array is empty', async () => {
       const doc = createMinimalDoc({
         '/pets': {
           get: {
@@ -1841,7 +1841,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         },
       });
 
-      // Empty seed array - should fall through to example
+      // Empty seed array - should fall through to example per priority chain
       const seeds = new Map([['Pet', []]]);
 
       const store = createStore();
@@ -1851,11 +1851,8 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      // When seed array is empty, getSeedResponse returns null, which triggers example fallback
-      // But actually looking at the code, it returns { status: 200, data: null } when empty
-      // Let me check the actual behavior - if seeds.has() is true but array is empty
-      // The current implementation returns null for empty seed arrays
-      expect(body).toBeNull();
+      // Empty seed arrays fall through to example (Handler > Seed > Example > Generated)
+      expect(body).toEqual([{ id: 100, name: 'Example Pet', source: 'example' }]);
     });
 
     it('should handle multiple endpoints with different priority sources', async () => {
