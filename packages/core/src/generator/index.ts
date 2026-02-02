@@ -8,15 +8,19 @@
  * @module generator
  */
 
+// Mapping constants
 export {
   DATE_FORMAT_POST_PROCESSING,
   FIELD_NAME_MAPPING,
   TYPE_FORMAT_MAPPING,
 } from './field-mapping.js';
-
-// Internal/experimental exports - these throw until Task 1.5 is implemented
-// Consumers should not call these directly until they are fully implemented
+// Public API - main generator functions
+// Internal/deprecated exports for backward compatibility
+// These are aliased to the public functions but prefixed with underscore
+// to indicate they should not be used in new code
 export {
   _generateFromFieldName,
   _generateFromSchema,
+  generateFromFieldName,
+  generateFromSchema,
 } from './schema-generator.js';
