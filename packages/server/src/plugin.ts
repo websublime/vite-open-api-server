@@ -56,6 +56,9 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
   // Server instance (created in configureServer)
   let server: OpenApiServer | null = null;
 
+  // Vite dev server reference (needed for ssrLoadModule)
+  let vite: ViteDevServer | null = null;
+
   // File watcher for hot reload
   let fileWatcher: FileWatcher | null = null;
 
@@ -77,8 +80,9 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
      * 2. Configure the Vite proxy to forward API requests
      * 3. Set up file watching for hot reload
      */
-    async configureServer(vite: ViteDevServer): Promise<void> {
-      cwd = vite.config.root;
+    async configureServer(viteServer: ViteDevServer): Promise<void> {
+      vite = viteServer;
+      cwd = viteServer.config.root;
 
       // Check if plugin is disabled
       if (!resolvedOptions.enabled) {
@@ -86,11 +90,11 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
       }
 
       try {
-        // Load handlers from handlers directory
-        const handlersResult = await loadHandlers(resolvedOptions.handlersDir, cwd);
+        // Load handlers from handlers directory (using Vite's ssrLoadModule for TS support)
+        const handlersResult = await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd);
 
-        // Load seeds from seeds directory
-        const seedsResult = await loadSeeds(resolvedOptions.seedsDir, cwd);
+        // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
+        const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
 
         // Create the OpenAPI mock server
         server = await createOpenApiServer({
@@ -115,7 +119,7 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
         await server.start();
 
         // Configure Vite proxy
-        configureProxy(vite, resolvedOptions.proxyPath, resolvedOptions.port);
+        configureProxy(viteServer, resolvedOptions.proxyPath, resolvedOptions.port);
 
         // Print startup banner
         const bannerInfo = extractBannerInfo(
@@ -208,10 +212,10 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
    * Reload handlers when files change
    */
   async function reloadHandlers(): Promise<void> {
-    if (!server) return;
+    if (!server || !vite) return;
 
     try {
-      const handlersResult = await loadHandlers(resolvedOptions.handlersDir, cwd);
+      const handlersResult = await loadHandlers(resolvedOptions.handlersDir, vite, cwd);
       server.updateHandlers(handlersResult.handlers);
       printReloadNotification('handlers', handlersResult.handlers.size, resolvedOptions);
     } catch (error) {
@@ -223,10 +227,10 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
    * Reload seeds when files change
    */
   async function reloadSeeds(): Promise<void> {
-    if (!server) return;
+    if (!server || !vite) return;
 
     try {
-      const seedsResult = await loadSeeds(resolvedOptions.seedsDir, cwd);
+      const seedsResult = await loadSeeds(resolvedOptions.seedsDir, vite, cwd);
 
       // Clear store and re-execute seeds
       server.store.clearAll();
@@ -262,5 +266,7 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
       await server.stop();
       server = null;
     }
+
+    vite = null;
   }
 }

@@ -2,16 +2,16 @@
  * Handler Loading
  *
  * What: Loads handler files from a directory using glob patterns
- * How: Uses fast-glob to find files, then dynamically imports them
- * Why: Enables users to define custom handlers for operationIds
+ * How: Uses Vite's ssrLoadModule to transform and load TypeScript files
+ * Why: Enables users to define custom handlers for operationIds in TypeScript
  *
  * @module handlers
  */
 
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import type { HandlerDefinition, HandlerFn, Logger } from '@websublime/vite-open-api-core';
 import fg from 'fast-glob';
+import type { ViteDevServer } from 'vite';
 
 /**
  * Result of loading handlers
@@ -32,6 +32,8 @@ export interface LoadHandlersResult {
  * in the specified directory. Each file should export an object with
  * operationId keys and handler functions as values.
  *
+ * Uses Vite's ssrLoadModule to transform TypeScript files on-the-fly.
+ *
  * @example
  * ```typescript
  * // mocks/handlers/pets.handlers.ts
@@ -46,12 +48,14 @@ export interface LoadHandlersResult {
  * ```
  *
  * @param handlersDir - Directory to search for handler files
+ * @param viteServer - Vite dev server instance for ssrLoadModule
  * @param cwd - Current working directory (defaults to process.cwd())
  * @param logger - Optional logger for warnings/errors
  * @returns Promise resolving to loaded handlers
  */
 export async function loadHandlers(
   handlersDir: string,
+  viteServer: ViteDevServer,
   cwd: string = process.cwd(),
   logger: Logger = console,
 ): Promise<LoadHandlersResult> {
@@ -68,7 +72,7 @@ export async function loadHandlers(
     };
   }
 
-  // Find handler files
+  // Find handler files (supports TypeScript via Vite's transform)
   const pattern = '**/*.handlers.{ts,js,mjs}';
   const files = await fg(pattern, {
     cwd: absoluteDir,
@@ -77,10 +81,10 @@ export async function loadHandlers(
     ignore: ['node_modules/**', 'dist/**'],
   });
 
-  // Load each file
+  // Load each file using Vite's ssrLoadModule
   for (const file of files) {
     const absolutePath = path.join(absoluteDir, file);
-    const fileHandlers = await loadHandlerFile(absolutePath, logger);
+    const fileHandlers = await loadHandlerFile(absolutePath, viteServer, logger);
 
     // Merge handlers
     for (const [operationId, handler] of Object.entries(fileHandlers)) {
@@ -101,19 +105,28 @@ export async function loadHandlers(
 }
 
 /**
- * Load a single handler file
+ * Load a single handler file using Vite's ssrLoadModule
  *
  * @param filePath - Absolute path to the handler file
+ * @param viteServer - Vite dev server instance
  * @param logger - Logger for warnings/errors
  * @returns Promise resolving to handler definition object
  */
-async function loadHandlerFile(filePath: string, logger: Logger): Promise<HandlerDefinition> {
-  // Add cache-busting query param for hot reload
-  const cacheBuster = `?t=${Date.now()}`;
-  const fileUrl = pathToFileURL(filePath).href + cacheBuster;
-
+async function loadHandlerFile(
+  filePath: string,
+  viteServer: ViteDevServer,
+  logger: Logger,
+): Promise<HandlerDefinition> {
   try {
-    const module = await import(fileUrl);
+    // Invalidate module cache for hot reload
+    const moduleNode = viteServer.moduleGraph.getModuleById(filePath);
+    if (moduleNode) {
+      viteServer.moduleGraph.invalidateModule(moduleNode);
+    }
+
+    // Use Vite's ssrLoadModule to transform and load the file
+    // This handles TypeScript, ESM, and other transforms automatically
+    const module = await viteServer.ssrLoadModule(filePath);
 
     // Support both default export and named export
     const handlers = module.default ?? module.handlers ?? module;
