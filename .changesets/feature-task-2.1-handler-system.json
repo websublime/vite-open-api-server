@@ -7,7 +7,9 @@
   "packages": [
     "@websublime/vite-open-api-core"
   ],
-  "changes": [],
+  "changes": [
+    "a9a5111821e009c0babfadef26d4a1c3f984ee46"
+  ],
   "created_at": "2026-02-02T12:11:58.087015Z",
-  "updated_at": "2026-02-02T12:11:58.087766Z"
+  "updated_at": "2026-02-02T12:12:58.358456Z"
 }
