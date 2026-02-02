@@ -159,7 +159,7 @@ describe('createOpenApiServer', () => {
       });
 
       expect(server.document.openapi).toBe('3.1.0');
-      expect(server.document.info.title).toBe('Test API');
+      expect(server.document.info?.title).toBe('Test API');
     });
 
     it('should build registry from document', async () => {
@@ -452,6 +452,17 @@ describe('createOpenApiServer', () => {
         const data = await response.json();
         expect(data.success).toBe(true);
         expect(server.simulationManager.count()).toBe(0);
+      });
+
+      it('should return error for malformed URI encoding', async () => {
+        // %E0%A4%A is an incomplete/invalid UTF-8 sequence
+        const response = await server.app.request('/_api/simulations/%E0%A4%A', {
+          method: 'DELETE',
+        });
+        expect(response.status).toBe(400);
+
+        const data = await response.json();
+        expect(data.error).toBe('Invalid path encoding');
       });
     });
 
@@ -786,3 +797,18 @@ describe('createSimulationManager', () => {
     expect(manager.count()).toBe(0);
   });
 });
+
+// =============================================================================
+// TODO: Integration Tests for Server Lifecycle
+// =============================================================================
+// The start() and stop() methods require @hono/node-server and actual port
+// binding, which makes them difficult to test in unit tests.
+//
+// Consider adding a separate integration test file: server.integration.test.ts
+// that tests:
+// - Server starts and listens on configured port
+// - Server responds to HTTP requests when started
+// - Server stops gracefully and releases the port
+// - Error handling when port is already in use
+// - Error handling when @hono/node-server is not installed
+// =============================================================================
