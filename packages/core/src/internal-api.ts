@@ -10,16 +10,16 @@
 
 import type { Hono } from 'hono';
 
+import packageJson from '../package.json' with { type: 'json' };
 import type { EndpointRegistry } from './router/index.js';
 import type { SimulationManager } from './simulation/index.js';
 import type { Store } from './store/index.js';
 import type { WebSocketHub } from './websocket/index.js';
 
 /**
- * Package version for health endpoint
- * TODO: Consider importing from package.json at build time
+ * Package version from package.json
  */
-const PACKAGE_VERSION = '2.0.0';
+const PACKAGE_VERSION = packageJson.version;
 
 /**
  * Timeline entry for request/response logging

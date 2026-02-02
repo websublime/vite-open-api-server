@@ -7,6 +7,7 @@
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import packageJson from '../../package.json' with { type: 'json' };
 import type { HandlerFn } from '../handlers/index.js';
 import { createOpenApiServer, type OpenApiServer } from '../server.js';
 
@@ -511,7 +512,7 @@ describe('createOpenApiServer', () => {
         const data = await response.json();
         expect(data.status).toBe('ok');
         expect(data.endpoints).toBe(3);
-        expect(data.version).toBe('2.0.0');
+        expect(data.version).toBe(packageJson.version);
         expect(data.timestamp).toBeDefined();
       });
     });
