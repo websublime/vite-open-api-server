@@ -33,20 +33,15 @@ import type { Faker } from '@faker-js/faker';
 import type { Store } from '../store/index.js';
 
 /**
- * Logger interface for handler context
+ * Logger interface for handler and seed contexts
  * Allows injection of custom or test loggers
- *
- * @remarks
- * The `debug` and `info` methods are optional to support minimal loggers
- * that only implement core logging (log, warn, error). Code using Logger
- * should use optional chaining when calling these methods (e.g., `logger.debug?.(...)`).
  */
 export interface Logger {
   log(...args: unknown[]): void;
-  info?(...args: unknown[]): void;
+  info(...args: unknown[]): void;
   warn(...args: unknown[]): void;
   error(...args: unknown[]): void;
-  debug?(...args: unknown[]): void;
+  debug(...args: unknown[]): void;
 }
 
 /**

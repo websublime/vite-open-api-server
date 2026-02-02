@@ -12,7 +12,7 @@ import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import type { HandlerFn } from './handlers/index.js';
+import type { HandlerFn, Logger } from './handlers/index.js';
 import { mountInternalApi, type TimelineEntry } from './internal-api.js';
 import { processOpenApiDocument } from './parser/index.js';
 import { buildRoutes, type EndpointRegistry } from './router/index.js';
@@ -75,7 +75,7 @@ export interface OpenApiServerConfig {
    * Custom logger instance
    * @default console
    */
-  logger?: Console;
+  logger?: Logger;
 }
 
 /**
