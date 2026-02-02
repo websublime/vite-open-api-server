@@ -114,6 +114,28 @@ describe('createStore', () => {
       expect(() => store.create('Pet', pet)).toThrow(StoreError);
       expect(() => store.create('Pet', pet)).toThrow(/must be a string or number/);
     });
+
+    it('should support ID with value 0 (falsy but valid)', () => {
+      const pet = { id: 0, name: 'Zero' };
+
+      store.create('Pet', pet);
+
+      expect(store.get('Pet', 0)).toEqual(pet);
+      expect(store.has('Pet', 0)).toBe(true);
+      expect(store.update('Pet', 0, { name: 'Updated' })).toEqual({ id: 0, name: 'Updated' });
+      expect(store.delete('Pet', 0)).toBe(true);
+    });
+
+    it('should support empty string as ID', () => {
+      const pet = { id: '', name: 'Empty' };
+
+      store.create('Pet', pet);
+
+      expect(store.get('Pet', '')).toEqual(pet);
+      expect(store.has('Pet', '')).toBe(true);
+      expect(store.update('Pet', '', { name: 'Updated' })).toEqual({ id: '', name: 'Updated' });
+      expect(store.delete('Pet', '')).toBe(true);
+    });
   });
 
   describe('get', () => {
@@ -216,6 +238,32 @@ describe('createStore', () => {
 
       expect(retrieved).toEqual({ id: 1, name: 'Max' });
     });
+
+    it('should preserve the original ID when update attempts to change it', () => {
+      store.create('Pet', { id: 1, name: 'Buddy' });
+
+      const result = store.update('Pet', 1, { id: 2, name: 'Max' });
+
+      // ID should remain 1 (the lookup key), not 2
+      expect(result).toEqual({ id: 1, name: 'Max' });
+      expect(store.get('Pet', 1)).toEqual({ id: 1, name: 'Max' });
+      expect(store.get('Pet', 2)).toBeNull();
+    });
+
+    it('should preserve custom ID field when update attempts to change it', () => {
+      const store = createStore({ idFields: { User: 'username' } });
+      store.create('User', { username: 'john', email: 'john@example.com' });
+
+      const result = store.update('User', 'john', {
+        username: 'jane',
+        email: 'updated@example.com',
+      });
+
+      // Username should remain 'john', email should be updated
+      expect(result).toEqual({ username: 'john', email: 'updated@example.com' });
+      expect(store.get('User', 'john')).toEqual({ username: 'john', email: 'updated@example.com' });
+      expect(store.get('User', 'jane')).toBeNull();
+    });
   });
 
   describe('delete', () => {
@@ -274,6 +322,17 @@ describe('createStore', () => {
     it('should handle clearing non-existent schema', () => {
       // Should not throw
       expect(() => store.clear('NonExistent')).not.toThrow();
+    });
+
+    it('should remove schema from hasSchema and getSchemas after clear', () => {
+      store.create('Pet', { id: 1, name: 'Buddy' });
+      expect(store.hasSchema('Pet')).toBe(true);
+      expect(store.getSchemas()).toContain('Pet');
+
+      store.clear('Pet');
+
+      expect(store.hasSchema('Pet')).toBe(false);
+      expect(store.getSchemas()).not.toContain('Pet');
     });
   });
 

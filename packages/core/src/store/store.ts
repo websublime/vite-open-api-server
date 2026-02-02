@@ -31,9 +31,9 @@ export interface Store {
   /** Get item by ID */
   get(schema: string, id: string | number): unknown | null;
   /** Create new item (must have the ID field defined for this schema) */
-  create(schema: string, data: unknown): unknown;
+  create(schema: string, item: unknown): unknown;
   /** Update existing item (merge with existing data) */
-  update(schema: string, id: string | number, data: Record<string, unknown>): unknown | null;
+  update(schema: string, id: string | number, updates: Record<string, unknown>): unknown | null;
   /** Delete item by ID */
   delete(schema: string, id: string | number): boolean;
   /** Clear all items of a schema */
@@ -163,7 +163,10 @@ export function createStore(options?: StoreOptions): Store {
       if (!schemaData) {
         return [];
       }
-      return Array.from(schemaData.values());
+      // Return shallow copies to prevent external mutation of store state
+      return Array.from(schemaData.values()).map((item) =>
+        typeof item === 'object' && item !== null ? { ...(item as object) } : item,
+      );
     },
 
     get(schema: string, id: string | number): unknown | null {
@@ -172,7 +175,11 @@ export function createStore(options?: StoreOptions): Store {
         return null;
       }
       const item = schemaData.get(id);
-      return item ?? null;
+      if (item === undefined) {
+        return null;
+      }
+      // Return shallow copy to prevent external mutation of store state
+      return typeof item === 'object' && item !== null ? { ...(item as object) } : item;
     },
 
     create(schema: string, item: unknown): unknown {
@@ -199,10 +206,16 @@ export function createStore(options?: StoreOptions): Store {
         return null;
       }
 
-      // Merge existing data with updates
+      const idField = getIdFieldForSchema(schema);
+
+      // Create a shallow copy of updates without the ID field to prevent key/data mismatch
+      // The ID field must always match the storage key
+      const { [idField]: _ignoredId, ...safeUpdates } = updates;
+
+      // Merge existing data with sanitized updates
       const updated = {
         ...(existing as object),
-        ...(updates as object),
+        ...safeUpdates,
       };
 
       schemaData.set(id, updated);
@@ -218,10 +231,8 @@ export function createStore(options?: StoreOptions): Store {
     },
 
     clear(schema: string): void {
-      const schemaData = data.get(schema);
-      if (schemaData) {
-        schemaData.clear();
-      }
+      // Remove schema entirely from data map for consistency with hasSchema/getSchemas
+      data.delete(schema);
     },
 
     clearAll(): void {
