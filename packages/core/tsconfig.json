@@ -8,7 +8,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "composite": false,
+    "composite": true,
     "declaration": true,
     "declarationMap": true
   },
