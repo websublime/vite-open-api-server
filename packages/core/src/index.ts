@@ -111,3 +111,10 @@ export { createWebSocketHub } from './websocket/index.js';
 
 export type { Simulation, SimulationManager } from './simulation/index.js';
 export { createSimulationManager } from './simulation/index.js';
+
+// =============================================================================
+// Internal API Module - DevTools and Management Routes
+// =============================================================================
+
+export type { InternalApiDeps, TimelineEntry } from './internal-api.js';
+export { mountInternalApi } from './internal-api.js';
