@@ -165,7 +165,7 @@ function addWarning(
   if (schemaName) {
     result.skippedSchemas.push(schemaName);
   }
-  logger.warn?.(`[Seed Executor] ${warning}`);
+  logger.warn(`[Seed Executor] ${warning}`);
 }
 
 /**
@@ -244,7 +244,7 @@ async function processSchemaSeed(
   result.totalItems += itemCount;
   result.itemsPerSchema[schemaName] = itemCount;
 
-  logger.debug?.(`[Seed Executor] Seeded ${itemCount} items for schema '${schemaName}'`);
+  logger.debug(`[Seed Executor] Seeded ${itemCount} items for schema '${schemaName}'`);
 }
 
 /**
@@ -296,7 +296,7 @@ export async function executeSeeds(
 
   if (clearBeforeSeeding) {
     store.clearAll();
-    logger.debug?.('[Seed Executor] Cleared store before seeding');
+    logger.debug('[Seed Executor] Cleared store before seeding');
   }
 
   for (const [schemaName, seedFn] of seeds) {
@@ -316,7 +316,7 @@ export async function executeSeeds(
     }
   }
 
-  logger.info?.(
+  logger.info(
     `[Seed Executor] Completed: ${result.totalItems} items across ${result.schemaCount} schemas`,
   );
 

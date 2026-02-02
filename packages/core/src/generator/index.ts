@@ -14,13 +14,6 @@ export {
   FIELD_NAME_MAPPING,
   TYPE_FORMAT_MAPPING,
 } from './field-mapping.js';
+
 // Public API - main generator functions
-// Internal/deprecated exports for backward compatibility
-// These are aliased to the public functions but prefixed with underscore
-// to indicate they should not be used in new code
-export {
-  _generateFromFieldName,
-  _generateFromSchema,
-  generateFromFieldName,
-  generateFromSchema,
-} from './schema-generator.js';
+export { generateFromFieldName, generateFromSchema } from './schema-generator.js';

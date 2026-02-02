@@ -854,9 +854,3 @@ function mergePropertyConstraints(
     merged.additionalProperties = schema.additionalProperties;
   }
 }
-
-// Re-export for backward compatibility with internal API
-export {
-  generateFromFieldName as _generateFromFieldName,
-  generateFromSchema as _generateFromSchema,
-};
