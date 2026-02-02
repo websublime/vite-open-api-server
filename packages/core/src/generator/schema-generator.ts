@@ -49,9 +49,10 @@ export function generateFromSchema(
   }
 
   // Try field name mapping first (e.g., "email" field → email generator)
+  // Only use field name shortcut if the generated value is compatible with schema constraints
   if (propertyName) {
     const fieldValue = generateFromFieldName(propertyName, faker);
-    if (fieldValue !== undefined) {
+    if (fieldValue !== undefined && isValueCompatibleWithSchema(fieldValue, schema)) {
       return fieldValue;
     }
   }
@@ -83,6 +84,111 @@ export function generateFromFieldName(fieldName: string, faker: Faker): unknown 
 
 // =============================================================================
 // Internal Helper Functions
+
+/**
+ * Check if a generated value is compatible with schema constraints.
+ * Used to validate field-name shortcut results against declared schema.
+ * @internal
+ */
+function isValueCompatibleWithSchema(value: unknown, schema: OpenAPIV3_1.SchemaObject): boolean {
+  // If schema has enum, value must be in enum
+  if (schema.enum && !schema.enum.includes(value)) {
+    return false;
+  }
+
+  // Check type compatibility
+  if (!isTypeCompatible(value, schema.type)) {
+    return false;
+  }
+
+  // Check string constraints
+  if (typeof value === 'string' && !isStringConstraintsSatisfied(value, schema)) {
+    return false;
+  }
+
+  // Check number/integer constraints
+  if (typeof value === 'number' && !isNumberConstraintsSatisfied(value, schema)) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Check if a value's type matches the schema type.
+ * @internal
+ */
+function isTypeCompatible(value: unknown, schemaType: OpenAPIV3_1.SchemaObject['type']): boolean {
+  if (!schemaType) {
+    return true;
+  }
+
+  const valueType = typeof value;
+
+  switch (schemaType) {
+    case 'string':
+      return valueType === 'string';
+    case 'integer':
+      return valueType === 'number' && Number.isInteger(value);
+    case 'number':
+      return valueType === 'number';
+    case 'boolean':
+      return valueType === 'boolean';
+    case 'array':
+      return Array.isArray(value);
+    case 'object':
+      return valueType === 'object' && value !== null && !Array.isArray(value);
+    default:
+      return true;
+  }
+}
+
+/**
+ * Check if a string value satisfies schema constraints.
+ * @internal
+ */
+function isStringConstraintsSatisfied(value: string, schema: OpenAPIV3_1.SchemaObject): boolean {
+  if (schema.minLength !== undefined && value.length < schema.minLength) {
+    return false;
+  }
+  if (schema.maxLength !== undefined && value.length > schema.maxLength) {
+    return false;
+  }
+  if (schema.pattern) {
+    try {
+      const regex = new RegExp(schema.pattern);
+      if (!regex.test(value)) {
+        return false;
+      }
+    } catch {
+      // Invalid pattern, skip check
+    }
+  }
+  return true;
+}
+
+/**
+ * Check if a number value satisfies schema constraints.
+ * @internal
+ */
+function isNumberConstraintsSatisfied(value: number, schema: OpenAPIV3_1.SchemaObject): boolean {
+  if (schema.minimum !== undefined && value < schema.minimum) {
+    return false;
+  }
+  if (schema.maximum !== undefined && value > schema.maximum) {
+    return false;
+  }
+  if (typeof schema.exclusiveMinimum === 'number' && value <= schema.exclusiveMinimum) {
+    return false;
+  }
+  if (typeof schema.exclusiveMaximum === 'number' && value >= schema.exclusiveMaximum) {
+    return false;
+  }
+  if (schema.multipleOf !== undefined && value % schema.multipleOf !== 0) {
+    return false;
+  }
+  return true;
+}
 // =============================================================================
 
 /**
@@ -229,7 +335,7 @@ function generateString(
 ): string {
   // Check for pattern - try to generate matching string
   if (schema.pattern) {
-    return generateStringWithLength(schema, faker);
+    return generateStringWithPattern(schema, faker);
   }
 
   // Use type:format mapping
@@ -243,6 +349,46 @@ function generateString(
 
   // Generate with length constraints
   return generateStringWithLength(schema, faker);
+}
+
+/**
+ * Generate string matching a regex pattern.
+ * Attempts bounded sampling, falls back to best candidate if no match found.
+ * @internal
+ */
+function generateStringWithPattern(schema: OpenAPIV3_1.SchemaObject, faker: Faker): string {
+  const pattern = schema.pattern;
+  if (!pattern) {
+    return generateStringWithLength(schema, faker);
+  }
+
+  let regex: RegExp;
+  try {
+    regex = new RegExp(pattern);
+  } catch {
+    // Invalid regex pattern, fall back to length-based generation
+    return generateStringWithLength(schema, faker);
+  }
+
+  // Try bounded number of attempts to generate a matching string
+  const maxAttempts = 20;
+  let bestCandidate = '';
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const candidate = generateStringWithLength(schema, faker);
+    if (regex.test(candidate)) {
+      return candidate;
+    }
+    // Keep the first candidate as fallback
+    if (attempt === 0) {
+      bestCandidate = candidate;
+    }
+  }
+
+  // No match found after attempts, return best candidate
+  // (This is a controlled fallback - pattern matching with random generation
+  // is inherently probabilistic)
+  return bestCandidate;
 }
 
 /**
@@ -279,7 +425,11 @@ function generateInteger(
 
   // Handle multipleOf constraint
   if (schema.multipleOf !== undefined && schema.multipleOf > 0) {
-    return generateMultipleOf(min, max, schema.multipleOf, faker);
+    const multipleResult = generateMultipleOf(min, max, schema.multipleOf, faker);
+    if (multipleResult !== undefined) {
+      return multipleResult;
+    }
+    // No valid multiple in range, fall back to unconstrained generation
   }
 
   return faker.number.int({ min, max });
@@ -325,10 +475,25 @@ function getIntegerBounds(
  * Generate a number that is a multiple of the given value.
  * @internal
  */
-function generateMultipleOf(min: number, max: number, multiple: number, faker: Faker): number {
+function generateMultipleOf(
+  min: number,
+  max: number,
+  multiple: number,
+  faker: Faker,
+): number | undefined {
   const minMultiple = Math.ceil(min / multiple) * multiple;
   const maxMultiple = Math.floor(max / multiple) * multiple;
+
+  // Check if any valid multiple exists in the range
+  if (minMultiple > maxMultiple) {
+    return undefined;
+  }
+
   const count = Math.floor((maxMultiple - minMultiple) / multiple) + 1;
+  if (count <= 0) {
+    return undefined;
+  }
+
   const randomIndex = faker.number.int({ min: 0, max: count - 1 });
   return minMultiple + randomIndex * multiple;
 }
@@ -363,7 +528,11 @@ function generateNumber(
 
   // Handle multipleOf constraint
   if (schema.multipleOf !== undefined && schema.multipleOf > 0) {
-    return generateMultipleOf(min, max, schema.multipleOf, faker);
+    const multipleResult = generateMultipleOf(min, max, schema.multipleOf, faker);
+    if (multipleResult !== undefined) {
+      return multipleResult;
+    }
+    // No valid multiple in range, fall back to unconstrained generation
   }
 
   return faker.number.float({ min, max, fractionDigits });
@@ -376,10 +545,14 @@ function generateNumber(
 function generateArray(schema: OpenAPIV3_1.SchemaObject, faker: Faker): unknown[] {
   const items = schema.items as OpenAPIV3_1.SchemaObject | undefined;
   const minItems = schema.minItems ?? 1;
-  const maxItems = schema.maxItems ?? 5;
+  const rawMax = schema.maxItems ?? 5;
+  const capMax = Math.min(rawMax, 10);
+  // Ensure min ≤ max to avoid invalid range errors
+  const finalMax = Math.max(minItems, capMax);
+  const finalMin = Math.min(minItems, finalMax);
 
   // Determine array length
-  const count = faker.number.int({ min: minItems, max: Math.min(maxItems, 10) });
+  const count = faker.number.int({ min: finalMin, max: finalMax });
 
   // If no items schema, return empty array
   if (!items) {
@@ -488,22 +661,101 @@ function applyPropertyConstraints(
   const minProperties = schema.minProperties ?? 0;
   const maxProperties = schema.maxProperties ?? Number.POSITIVE_INFINITY;
 
-  // Add more properties if needed
-  while (Object.keys(result).length < minProperties) {
-    const key = faker.lorem.word();
-    if (!(key in result)) {
-      result[key] = faker.lorem.word();
-    }
-  }
+  // First, fill any missing defined properties from the schema
+  fillMissingDefinedProperties(result, schema, minProperties, faker);
+
+  // Only add random keys if additionalProperties is not false and we still need more
+  fillWithAdditionalProperties(result, schema, minProperties, faker);
 
   // Remove optional properties if needed
-  const keys = Object.keys(result);
-  if (keys.length > maxProperties) {
-    const optionalKeys = keys.filter((k) => !required.has(k));
-    const keysToRemove = optionalKeys.slice(0, keys.length - maxProperties);
-    for (const key of keysToRemove) {
-      delete result[key];
+  trimExcessProperties(result, maxProperties, required);
+}
+
+/**
+ * Fill missing defined properties to meet minProperties requirement.
+ * @internal
+ */
+function fillMissingDefinedProperties(
+  result: Record<string, unknown>,
+  schema: OpenAPIV3_1.SchemaObject,
+  minProperties: number,
+  faker: Faker,
+): void {
+  const properties = schema.properties ?? {};
+
+  if (Object.keys(result).length >= minProperties) {
+    return;
+  }
+
+  for (const [key, propSchema] of Object.entries(properties)) {
+    if (!(key in result)) {
+      result[key] = generateFromSchema(propSchema as OpenAPIV3_1.SchemaObject, faker, key);
+      if (Object.keys(result).length >= minProperties) {
+        break;
+      }
     }
+  }
+}
+
+/**
+ * Fill with additional properties to meet minProperties requirement.
+ * @internal
+ */
+function fillWithAdditionalProperties(
+  result: Record<string, unknown>,
+  schema: OpenAPIV3_1.SchemaObject,
+  minProperties: number,
+  faker: Faker,
+): void {
+  const additionalPropsAllowed = schema.additionalProperties !== false;
+  const properties = schema.properties ?? {};
+
+  if (!additionalPropsAllowed) {
+    return;
+  }
+
+  while (Object.keys(result).length < minProperties) {
+    const key = faker.lorem.word();
+    if (!(key in result) && !(key in properties)) {
+      result[key] = generateAdditionalPropertyValue(schema, key, faker);
+    }
+  }
+}
+
+/**
+ * Generate a value for an additional property based on additionalProperties schema.
+ * @internal
+ */
+function generateAdditionalPropertyValue(
+  schema: OpenAPIV3_1.SchemaObject,
+  key: string,
+  faker: Faker,
+): unknown {
+  if (schema.additionalProperties && typeof schema.additionalProperties === 'object') {
+    return generateFromSchema(schema.additionalProperties as OpenAPIV3_1.SchemaObject, faker, key);
+  }
+  // additionalProperties is true or absent, allow free values
+  return faker.lorem.word();
+}
+
+/**
+ * Remove optional properties to meet maxProperties requirement.
+ * @internal
+ */
+function trimExcessProperties(
+  result: Record<string, unknown>,
+  maxProperties: number,
+  required: Set<string>,
+): void {
+  const keys = Object.keys(result);
+  if (keys.length <= maxProperties) {
+    return;
+  }
+
+  const optionalKeys = keys.filter((k) => !required.has(k));
+  const keysToRemove = optionalKeys.slice(0, keys.length - maxProperties);
+  for (const key of keysToRemove) {
+    delete result[key];
   }
 }
 

@@ -664,3 +664,254 @@ describe('TYPE_FORMAT_MAPPING', () => {
     }
   });
 });
+
+describe('edge cases', () => {
+  beforeEach(() => {
+    faker.seed(12345);
+  });
+
+  describe('multipleOf with no valid multiples in range', () => {
+    it('should fall back to unconstrained generation when no multiple exists', () => {
+      // Range [5, 7] with multipleOf 10 has no valid multiples
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'integer',
+        minimum: 5,
+        maximum: 7,
+        multipleOf: 10,
+      };
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('number');
+      expect(Number.isInteger(result)).toBe(true);
+      // Should fall back to unconstrained generation within [5, 7]
+      expect(result).toBeGreaterThanOrEqual(5);
+      expect(result).toBeLessThanOrEqual(7);
+    });
+
+    it('should work correctly when valid multiples exist', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'integer',
+        minimum: 1,
+        maximum: 100,
+        multipleOf: 10,
+      };
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('number');
+      expect(Number.isInteger(result)).toBe(true);
+      expect((result as number) % 10).toBe(0);
+      expect(result).toBeGreaterThanOrEqual(10);
+      expect(result).toBeLessThanOrEqual(100);
+    });
+
+    it('should handle multipleOf for floats with no valid multiples', () => {
+      // Range [1.1, 1.4] with multipleOf 0.5 has no valid multiples
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'number',
+        minimum: 1.1,
+        maximum: 1.4,
+        multipleOf: 0.5,
+      };
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('number');
+      // Should fall back to unconstrained generation
+      expect(result).toBeGreaterThanOrEqual(1.1);
+      expect(result).toBeLessThanOrEqual(1.4);
+    });
+  });
+
+  describe('field name validation against schema constraints', () => {
+    it('should skip field name shortcut when type is incompatible', () => {
+      // "email" field name would generate a string, but schema expects integer
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          email: { type: 'integer', minimum: 1, maximum: 100 },
+        },
+        required: ['email'],
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(result.email).toBeDefined();
+      expect(typeof result.email).toBe('number');
+      expect(Number.isInteger(result.email)).toBe(true);
+    });
+
+    it('should skip field name shortcut when enum constraint is violated', () => {
+      // "status" field name would generate random status, but schema has specific enum
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          status: { type: 'string', enum: ['open', 'closed'] },
+        },
+        required: ['status'],
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(result.status).toBeDefined();
+      expect(['open', 'closed']).toContain(result.status);
+    });
+
+    it('should skip field name shortcut when length constraints are violated', () => {
+      // "name" field name would generate full name, but schema has maxLength of 5
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          name: { type: 'string', maxLength: 5 },
+        },
+        required: ['name'],
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(result.name).toBeDefined();
+      expect(typeof result.name).toBe('string');
+      expect((result.name as string).length).toBeLessThanOrEqual(5);
+    });
+
+    it('should use field name shortcut when compatible with schema', () => {
+      // "email" field name should be used when schema is compatible
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          email: { type: 'string' },
+        },
+        required: ['email'],
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(result.email).toBeDefined();
+      expect(typeof result.email).toBe('string');
+      expect(result.email).toMatch(/@/); // Should look like an email
+    });
+  });
+
+  describe('array bounds normalization', () => {
+    it('should handle minItems greater than default maxItems', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'array',
+        items: { type: 'string' },
+        minItems: 8,
+        // maxItems defaults to 5, but should adjust
+      };
+      const result = generateFromSchema(schema, faker) as unknown[];
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(8);
+    });
+
+    it('should handle minItems greater than capped maxItems', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'array',
+        items: { type: 'integer' },
+        minItems: 15,
+        maxItems: 20,
+      };
+      const result = generateFromSchema(schema, faker) as unknown[];
+      expect(Array.isArray(result)).toBe(true);
+      // Since cap is 10 but minItems is 15, should adjust finalMax to match minItems
+      expect(result.length).toBeGreaterThanOrEqual(15);
+    });
+
+    it('should work correctly with normal bounds', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'array',
+        items: { type: 'boolean' },
+        minItems: 2,
+        maxItems: 4,
+      };
+      const result = generateFromSchema(schema, faker) as unknown[];
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBeGreaterThanOrEqual(2);
+      expect(result.length).toBeLessThanOrEqual(4);
+    });
+  });
+
+  describe('minProperties with additionalProperties constraints', () => {
+    it('should fill defined properties before adding random keys', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+          name: { type: 'string' },
+          email: { type: 'string' },
+        },
+        minProperties: 3,
+        additionalProperties: false,
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(Object.keys(result).length).toBeGreaterThanOrEqual(3);
+      // Should only have defined properties since additionalProperties is false
+      for (const key of Object.keys(result)) {
+        expect(['id', 'name', 'email']).toContain(key);
+      }
+    });
+
+    it('should not add random keys when additionalProperties is false', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+        },
+        required: ['id'],
+        minProperties: 5,
+        additionalProperties: false,
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      // Can only have 'id' since additionalProperties is false
+      expect(result.id).toBeDefined();
+      // Should not have random keys even though minProperties is 5
+      expect(Object.keys(result)).toEqual(['id']);
+    });
+
+    it('should generate additional properties according to schema when provided', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'object',
+        properties: {
+          id: { type: 'integer' },
+        },
+        required: ['id'],
+        minProperties: 3,
+        additionalProperties: { type: 'integer', minimum: 100, maximum: 200 },
+      };
+      const result = generateFromSchema(schema, faker) as Record<string, unknown>;
+      expect(Object.keys(result).length).toBeGreaterThanOrEqual(3);
+      expect(result.id).toBeDefined();
+      // Additional properties should be integers in range
+      for (const [key, value] of Object.entries(result)) {
+        if (key !== 'id') {
+          expect(typeof value).toBe('number');
+          expect(value).toBeGreaterThanOrEqual(100);
+          expect(value).toBeLessThanOrEqual(200);
+        }
+      }
+    });
+  });
+
+  describe('pattern-based string generation', () => {
+    it('should attempt to match simple patterns', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'string',
+        pattern: '^[a-z]+$',
+      };
+      // Pattern matching is probabilistic, so we just verify it returns a string
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('string');
+    });
+
+    it('should respect length constraints with pattern', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'string',
+        pattern: '.*',
+        minLength: 5,
+        maxLength: 10,
+      };
+      const result = generateFromSchema(schema, faker) as string;
+      expect(typeof result).toBe('string');
+      expect(result.length).toBeGreaterThanOrEqual(5);
+      expect(result.length).toBeLessThanOrEqual(10);
+    });
+
+    it('should handle invalid regex patterns gracefully', () => {
+      const schema: OpenAPIV3_1.SchemaObject = {
+        type: 'string',
+        pattern: '[invalid(regex',
+      };
+      // Should not throw, falls back to length-based generation
+      const result = generateFromSchema(schema, faker);
+      expect(typeof result).toBe('string');
+    });
+  });
+});
