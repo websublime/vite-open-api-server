@@ -278,12 +278,9 @@ Closes: <subtask-id>"
 
 **Scope**: Use subtask ID (e.g., `P0-03.2`)
 
-### 2.8 Close Subtask
+### 2.8 Sync Subtask
 
 ```bash
-# Close with descriptive reason
-bd close <subtask-id> --reason "<what was accomplished>" --json
-
 # Sync bd
 bd sync
 ```
@@ -305,7 +302,7 @@ When all subtasks are closed:
 bd show <task-id> --json
 ```
 
-### 3.2 Close Parent Task and Mark for Review
+### 3.2 Mark for Review
 
 ```bash
 # Add needs-review label for PR review
