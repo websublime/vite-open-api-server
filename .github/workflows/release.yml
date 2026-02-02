@@ -71,5 +71,13 @@ jobs:
         run: |
           workspace bump --execute --git-commit --git-tag --force
           git push origin main --follow-tags
-          # TODO: Uncomment when ready to publish to npm
-          # pnpm -r --filter='./packages/*' publish --access public --no-git-checks
+
+      - name: Publish to npm
+        if: steps.changesets.outputs.count > 0
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # Publish packages in topological order (dependencies first)
+          # This ensures @websublime/vite-open-api-core is published before
+          # @websublime/vite-plugin-open-api-server which depends on it
+          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
