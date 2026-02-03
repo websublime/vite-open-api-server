@@ -99,13 +99,18 @@ export {
 
 export type {
   ClientCommand,
+  ClientCommandData,
+  CommandHandler,
   RequestLogEntry,
   ResponseLogEntry,
   ServerEvent,
+  ServerEventData,
   SimulationBase,
   SimulationConfig,
   SimulationState,
+  WebSocketClient,
   WebSocketHub,
+  WebSocketHubOptions,
 } from './websocket/index.js';
 export { createWebSocketHub } from './websocket/index.js';
 

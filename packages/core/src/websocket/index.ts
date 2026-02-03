@@ -8,13 +8,21 @@
  * @module websocket
  */
 
-// TODO: Will be implemented in Task 4.1
-export { createWebSocketHub, type WebSocketHub } from './hub.js';
+export {
+  type CommandHandler,
+  createWebSocketHub,
+  type WebSocketClient,
+  type WebSocketHub,
+  type WebSocketHubOptions,
+} from './hub.js';
+
 export type {
   ClientCommand,
+  ClientCommandData,
   RequestLogEntry,
   ResponseLogEntry,
   ServerEvent,
+  ServerEventData,
   SimulationBase,
   SimulationConfig,
   SimulationState,

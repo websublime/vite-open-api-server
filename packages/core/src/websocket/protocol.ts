@@ -4,9 +4,9 @@
  * What: Type definitions for WebSocket message protocol
  * How: Defines server events and client commands
  * Why: Ensures type-safe communication between server and DevTools
+ *
+ * @module websocket/protocol
  */
-
-// TODO: Will be implemented in Task 4.1: WebSocket Hub
 
 /**
  * Request log entry for timeline
@@ -53,34 +53,98 @@ export interface SimulationBase {
 export type SimulationState = SimulationBase;
 
 /**
- * Server to client events
- */
-export type ServerEvent =
-  | { type: 'connected'; data: { serverVersion: string } }
-  | { type: 'request'; data: RequestLogEntry }
-  | { type: 'response'; data: ResponseLogEntry }
-  | { type: 'store:updated'; data: { schema: string; action: string } }
-  | { type: 'handler:reloaded'; data: { file: string } }
-  | { type: 'handlers:updated'; data: { count: number } }
-  | { type: 'seeds:updated'; data: { count: number } }
-  | { type: 'simulation:active'; data: SimulationState[] };
-
-/**
  * Simulation configuration (alias for SimulationBase)
  * Used in client commands for setting simulations
  */
 export type SimulationConfig = SimulationBase;
 
 /**
+ * Server to client events
+ *
+ * These events are sent from the server to connected DevTools clients.
+ * Each event has a type and associated data payload.
+ */
+export type ServerEvent =
+  // Connection events
+  | { type: 'connected'; data: { serverVersion: string } }
+
+  // Timeline events (real-time request/response tracking)
+  | { type: 'request'; data: RequestLogEntry }
+  | { type: 'response'; data: ResponseLogEntry }
+  | { type: 'timeline:cleared'; data: { count: number } }
+
+  // Store events
+  | { type: 'store:updated'; data: { schema: string; action: string; count?: number } }
+
+  // Handler hot-reload events
+  | { type: 'handler:reloaded'; data: { file: string } }
+  | { type: 'handlers:updated'; data: { count: number } }
+
+  // Seed hot-reload events
+  | { type: 'seed:reloaded'; data: { file: string } }
+  | { type: 'seeds:updated'; data: { count: number } }
+
+  // Simulation events
+  | { type: 'simulation:active'; data: SimulationState[] }
+  | { type: 'simulation:added'; data: { path: string } }
+  | { type: 'simulation:removed'; data: { path: string } }
+  | { type: 'simulations:cleared'; data: { count: number } }
+
+  // Response events for client commands
+  | { type: 'registry'; data: unknown }
+  | { type: 'timeline'; data: { entries: unknown[]; count: number; total: number } }
+  | { type: 'store'; data: { schema: string; items: unknown[]; count: number } }
+  | { type: 'store:set'; data: { schema: string; success: boolean; count: number } }
+  | { type: 'store:cleared'; data: { schema: string; success: boolean } }
+  | { type: 'simulation:set'; data: { path: string; success: boolean } }
+  | { type: 'simulation:cleared'; data: { path: string; success: boolean } }
+  | { type: 'reseeded'; data: { success: boolean; schemas: string[] } }
+
+  // Error event for command failures
+  | { type: 'error'; data: { command: string; message: string } };
+
+/**
  * Client to server commands
+ *
+ * These commands are sent from DevTools clients to the server.
+ * The server processes each command and may respond with a ServerEvent.
  */
 export type ClientCommand =
+  // Query commands
   | { type: 'get:registry' }
   | { type: 'get:timeline'; data?: { limit?: number } }
   | { type: 'get:store'; data: { schema: string } }
+
+  // Mutation commands
   | { type: 'set:store'; data: { schema: string; items: unknown[] } }
   | { type: 'clear:store'; data: { schema: string } }
   | { type: 'set:simulation'; data: SimulationConfig }
   | { type: 'clear:simulation'; data: { path: string } }
   | { type: 'clear:timeline' }
   | { type: 'reseed' };
+
+/**
+ * Extract the data type for a specific server event type
+ *
+ * @example
+ * ```typescript
+ * type ConnectedData = ServerEventData<'connected'>;
+ * // { serverVersion: string }
+ * ```
+ */
+export type ServerEventData<T extends ServerEvent['type']> = Extract<
+  ServerEvent,
+  { type: T }
+>['data'];
+
+/**
+ * Extract the data type for a specific client command type
+ *
+ * @example
+ * ```typescript
+ * type GetStoreData = ClientCommandData<'get:store'>;
+ * // { schema: string }
+ * ```
+ */
+export type ClientCommandData<T extends ClientCommand['type']> =
+  Extract<ClientCommand, { type: T }> extends { data: infer D } ? D : undefined;

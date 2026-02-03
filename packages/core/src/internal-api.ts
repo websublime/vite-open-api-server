@@ -281,10 +281,10 @@ export function mountInternalApi(app: Hono, deps: InternalApiDeps): void {
 
       wsHub.broadcast({
         type: 'simulation:added',
-        data: { path: sim.path },
+        data: { path: String(sim.path) },
       });
 
-      return c.json({ success: true, path: sim.path });
+      return c.json({ success: true, path: String(sim.path) });
     } catch (error) {
       return c.json(
         { error: error instanceof Error ? error.message : 'Failed to add simulation' },
