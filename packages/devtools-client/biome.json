@@ -24,7 +24,8 @@
         "noExplicitAny": "off",
         "noSkippedTests": "off",
         "useAwait": "off",
-        "noAssignInExpressions": "off"
+        "noAssignInExpressions": "off",
+        "noConsole": "off"
       },
       "performance": {
         "noBarrelFile": "off",
