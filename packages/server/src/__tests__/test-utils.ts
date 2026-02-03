@@ -6,7 +6,7 @@
  * Why: Reduces code duplication and ensures consistent test setup
  */
 
-import type { Logger } from '@websublime/vite-open-api-core';
+import type { Logger, WebSocketHub } from '@websublime/vite-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
@@ -79,5 +79,68 @@ export function createMockLogger(): MockLogger {
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
+  };
+}
+
+/**
+ * Mock WebSocket hub interface for testing
+ *
+ * Extends the WebSocketHub interface to add mock-specific properties
+ * while maintaining compatibility with functions expecting WebSocketHub
+ */
+export interface MockWebSocketHub extends WebSocketHub {
+  addClient: Mock<(ws: unknown) => void>;
+  removeClient: Mock<(ws: unknown) => void>;
+  broadcast: Mock<(event: unknown) => void>;
+  handleMessage: Mock<(ws: unknown, message: unknown) => void>;
+  /** Get all broadcast calls for assertions */
+  getBroadcastCalls: () => unknown[];
+  /** Clear all mock call history */
+  clearMocks: () => void;
+}
+
+/**
+ * Creates a mock WebSocket hub with all methods as vi.fn() spies
+ *
+ * Useful for testing hot reload WebSocket event broadcasts
+ * and other WebSocket-related functionality.
+ *
+ * @returns Mock WebSocket hub instance with spy functions
+ *
+ * @example
+ * ```typescript
+ * const mockWsHub = createMockWebSocketHub();
+ *
+ * // Simulate broadcast
+ * mockWsHub.broadcast({ type: 'handlers:updated', data: { count: 5 } });
+ *
+ * // Assert broadcast was called correctly
+ * expect(mockWsHub.broadcast).toHaveBeenCalledWith({
+ *   type: 'handlers:updated',
+ *   data: { count: 5 }
+ * });
+ *
+ * // Get all broadcast events
+ * const events = mockWsHub.getBroadcastCalls();
+ * expect(events).toHaveLength(1);
+ * ```
+ */
+export function createMockWebSocketHub(): MockWebSocketHub {
+  const broadcastMock = vi.fn();
+
+  return {
+    addClient: vi.fn(),
+    removeClient: vi.fn(),
+    broadcast: broadcastMock,
+    handleMessage: vi.fn(),
+    getBroadcastCalls(): unknown[] {
+      return broadcastMock.mock.calls.map((call) => call[0]);
+    },
+    clearMocks(): void {
+      broadcastMock.mockClear();
+      this.addClient.mockClear();
+      this.removeClient.mockClear();
+      this.handleMessage.mockClear();
+    },
   };
 }
