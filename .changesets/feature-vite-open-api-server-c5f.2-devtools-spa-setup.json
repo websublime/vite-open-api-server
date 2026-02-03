@@ -1,16 +1,14 @@
 {
   "branch": "feature/vite-open-api-server-c5f.2-devtools-spa-setup",
-  "bump": "minor",
+  "bump": "patch",
   "environments": [
     "production"
   ],
   "packages": [
-    "@websublime/vite-open-api-devtools"
+    "@websublime/vite-open-api-devtools",
+    "@websublime/vite-open-api-core"
   ],
-  "changes": [
-    "b94676194e43445a2fe9d11523224efc20e62a8d",
-    "c2480d126658ef015eadedcc226cffbdd2529fef"
-  ],
-  "created_at": "2026-02-03T16:51:27.832549Z",
-  "updated_at": "2026-02-03T16:54:26.873098Z"
+  "changes": [],
+  "created_at": "2026-02-03T17:17:11.835018Z",
+  "updated_at": "2026-02-03T17:17:11.835395Z"
 }
