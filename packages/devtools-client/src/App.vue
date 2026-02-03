@@ -45,7 +45,11 @@ const iconMap: Record<string, typeof Route> = {
 
 // Get icon with fallback for unknown icon names
 function getIcon(iconName: string): typeof Route {
-  return iconMap[iconName] ?? Route;
+  const icon = iconMap[iconName];
+  if (!icon && import.meta.env.DEV) {
+    console.warn(`[DevTools] Unknown icon name: "${iconName}". Using fallback.`);
+  }
+  return icon ?? Route;
 }
 
 // TODO: Connection status will be provided by WebSocket composable

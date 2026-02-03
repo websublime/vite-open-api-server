@@ -6,7 +6,7 @@
  * Why: Allows users to switch between dark and light mode, respecting system preference
  */
 
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from 'vue';
 
 /**
  * Theme mode type
@@ -35,6 +35,14 @@ let currentMediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
  */
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
+}
+
+/**
+ * Check if we're inside a Vue component context
+ * This allows the composable to work both inside and outside components
+ */
+function hasComponentContext(): boolean {
+  return getCurrentInstance() !== null;
 }
 
 /**
@@ -201,15 +209,19 @@ export function useTheme() {
     applyTheme();
   });
 
-  // Initialize on mount
-  onMounted(() => {
-    initialize();
-  });
+  // Only register lifecycle hooks when inside a Vue component context
+  // This allows the composable to be used in tests without Vue warnings
+  if (hasComponentContext()) {
+    // Initialize on mount
+    onMounted(() => {
+      initialize();
+    });
 
-  // Clean up on unmount
-  onUnmounted(() => {
-    cleanupMediaQuery();
-  });
+    // Clean up on unmount
+    onUnmounted(() => {
+      cleanupMediaQuery();
+    });
+  }
 
   return {
     /**

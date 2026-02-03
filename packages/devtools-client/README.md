@@ -111,6 +111,58 @@ The DevTools expose CSS custom properties for customization:
 }
 ```
 
+## API Reference
+
+### `bootstrap()`
+
+Creates and mounts the Vue application. This function is idempotent - calling it multiple times has no effect after the first successful call.
+
+```typescript
+import { bootstrap } from '@websublime/vite-open-api-devtools';
+import '@websublime/vite-open-api-devtools/style.css';
+
+const app = bootstrap();
+```
+
+**Returns:** `App | null` - The Vue app instance on first call, or `null` if already bootstrapped.
+
+**Notes:**
+- Auto-bootstraps when `#app` element exists in DOM
+- Logs warning in development if called multiple times
+
+---
+
+### `useTheme()`
+
+Composable for theme management. Must be called within a Vue component's `setup()` function.
+
+```typescript
+import { useTheme } from '@websublime/vite-open-api-devtools';
+
+const { isDark, toggleTheme, setTheme, resetToSystem } = useTheme();
+```
+
+**Returns:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `themeMode` | `ComputedRef<ThemeMode>` | Current theme setting (`'light'`, `'dark'`, or `'system'`) |
+| `effectiveTheme` | `ComputedRef<'light' \| 'dark'>` | Resolved theme after applying system preference |
+| `isDark` | `ComputedRef<boolean>` | Whether dark mode is currently active |
+| `systemPrefersDark` | `ComputedRef<boolean>` | Whether system prefers dark mode |
+| `setTheme` | `(mode: ThemeMode) => void` | Set theme to `'light'`, `'dark'`, or `'system'` |
+| `toggleTheme` | `() => void` | Toggle between light and dark mode |
+| `resetToSystem` | `() => void` | Reset to follow system preference |
+| `initialize` | `() => void` | Manually initialize (for SSR hydration) |
+
+**Type:**
+
+```typescript
+type ThemeMode = 'light' | 'dark' | 'system';
+```
+
+**Persistence:** Theme preference is persisted to `localStorage` under the key `openapi-devtools-theme`.
+
 ## License
 
 MIT
