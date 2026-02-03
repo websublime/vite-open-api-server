@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-server",
-  "version": "0.19.0",
+  "version": "0.19.1",
   "description": "Vite plugin for OpenAPI mock server with DevTools integration",
   "keywords": [
     "vite",
@@ -17,29 +17,21 @@
     "README.md"
   ],
   "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/websublime/vite-open-api-server.git",
     "directory": "packages/server"
   },
   "scripts": {
+    "typecheck": "tsc --noEmit",
     "dev": "tsup --watch",
-    "build": "tsup",
-    "typecheck": "tsc --noEmit"
+    "build": "tsup"
   },
   "dependencies": {
-    "@websublime/vite-open-api-core": "workspace:*",
     "picocolors": "^1.1.1",
-    "chokidar": "^4.0.3",
-    "fast-glob": "^3.3.3"
+    "fast-glob": "^3.3.3",
+    "@websublime/vite-open-api-core": "workspace:*",
+    "chokidar": "^4.0.3"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
@@ -53,5 +45,13 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "private": false,
-  "type": "module"
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  }
 }

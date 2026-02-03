@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-c4l-2-file-loading-tests",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "65ba3e01b2992b15b1f5e5e3a3b0d0a97e136a05",
+      "1cd491d460efe74062794b41961bd3a2080cb8a7",
+      "c8dd593a902f481c26f64d4b6eec61346339d028"
+    ],
+    "created_at": "2026-02-02T16:00:22.818488Z",
+    "updated_at": "2026-02-03T09:10:30.755103Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-03T09:24:06.089564736Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "3f7cc27ebbf09976e6c1015822f0ba86ef5d2469",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.19.1"
+    }
+  }
+}
