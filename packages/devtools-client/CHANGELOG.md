@@ -1,307 +1,4 @@
-## [0.8.1] - 2026-02-03
-
-### Features
-
-- initialize DevTools SPA package (f6569cf)
-
-
-### Bug Fixes
-
-- address PR review comments (65df2d4)
-- simplify npm auth in release workflow (7a9812b)
-- apply code review recommendations (65314aa)
-- address PR review comments for devtools-client (0b2b911)
-- address code review recommendations (2b378e3)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (8e5dee1)
-- disable noConsole rule for development logging (3cca2b1)
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (585701f)
-- sync changeset for code review fixes (3a5a68e)
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (d7770dd)
-- update dependencies and sync changeset (56bfc4f)
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (03f6464)
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (07001e2)
-- sync changeset for code review fixes (f2b6f6a)
-- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (9c1c23b)
-
-
-
-## [0.8.0] - 2026-02-03
-
-### Features
-
-- implement WebSocket hub for bidirectional communication (8eb4228)
-
-
-### Bug Fixes
-
-- address code review findings - logger default and payload validation (53a6f18)
-- update MockWebSocketHub to include new interface methods (ac85b75)
-
-
-### Code Refactoring
-
-- address code review findings (8840464)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (bd29119)
-- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (9cf16b7)
-- fix import indentation in test-utils.ts (b694033)
-- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (b253c2c)
-- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (f427abb)
-
-
-
-## [0.7.2] - 2026-02-03
-
-### Features
-
-- complete hot reload implementation with WebSocket events (4fb3147)
-- implement Vite plugin core with proxy configuration (820c4bc)
-
-
-### Bug Fixes
-
-- make MockLogger extend Logger interface for type compatibility (3f7cc27)
-- address code review findings (21e2e70)
-- use tsc --build for typecheck with project references (46e9739)
-- add project reference to core for typecheck in CI (a65a30b)
-- use Vite ssrLoadModule for TypeScript handler/seed files (64953c8)
-- revert composite mode and build before typecheck (9608b7c)
-- address review comments for types, hot-reload, and docs (d6c67f4)
-
-
-### Documentation
-
-- update developer workflow - remove close commands from subtask flow (06c6545)
-
-
-### Code Refactoring
-
-- extract shared test utilities for handler and seed tests (ee29f4c)
-
-
-### Continuous Integration
-
-- enable npm publishing for packages (3367273)
-- enable npm publishing for packages (05c31f3)
-
-
-### Tests
-
-- add WebSocket event broadcast tests (05c882c)
-- add unit tests for handler and seed file loading (c39e8d2)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-c4l.3-hot-reload (7de37d7)
-- bump @websublime/vite-plugin-open-api-server to 0.19.1 (e03a507)
-- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (70c117e)
-- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (f3dd1b8)
-- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (9162c0f)
-- update plugin server version (30378c0)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (0acaa63)
-- sync changeset for code review fixes (85a8384)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (bfb74da)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (483343e)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (cae309a)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (aed8463)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (e6f3b5c)
-- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (d2fb8f3)
-
-
-
-## [0.7.1] - 2026-02-02
-
-### Bug Fixes
-
-- add missing has and count methods to simulationManager mock (9ad8d9d)
-- empty seed arrays now fall through to example response (c6f6712)
-
-
-### Tests
-
-- add integration tests for response priority chain (324d123)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-det.3-response-priority (caa9b28)
-- sync changeset for feature/vite-open-api-server-det.3-response-priority (b372c1f)
-
-
-
-## [0.7.0] - 2026-02-02
-
-### Features
-
-- implement seed system with context injection (5d7ed33)
-
-
-### Bug Fixes
-
-- address PR review comments for seed system tests (4410c7a)
-- make Logger debug/info methods optional for consistency (805ec8a)
-
-
-### Code Refactoring
-
-- unify Logger type and remove deprecated exports (741e63b)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-det.2-seed-system (d515e81)
-- sync changeset for feature/vite-open-api-server-det.2-seed-system (9b8b2e7)
-- sync changeset for feature/vite-open-api-server-det.2-seed-system (745d70a)
-
-
-
-## [0.6.0] - 2026-02-02
-
-### Features
-
-- implement handler execution system with error handling (4505a77)
-
-
-### Bug Fixes
-
-- add status code validation and improve executor robustness (43e7432)
-- add context parameter to test handler signatures (7b1b3d2)
-
-
-### Documentation
-
-- update developer workflow documentation (693608f)
-
-
-### Other Changes
-
-- sync changeset for feature/task-2.1-handler-system (d0c1877)
-- sync changeset for feature/task-2.1-handler-system (15ebe7e)
-
-
-
-## [0.5.0] - 2026-02-02
-
-### Features
-
-- implement createOpenApiServer factory function (d2f195f)
-
-
-### Bug Fixes
-
-- address PR review comments (567f90c)
-- import version from package.json instead of hardcoding (2ae788c)
-
-
-### Code Refactoring
-
-- address code review findings (38cac49) (#1, #2, #3, #4, #5)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (bd71095)
-- remove obsolete TODO comments from completed tasks (7702489)
-- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (870cba3)
-- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (329d03e)
-- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (47f6b7e)
-
-
-
-## [0.4.0] - 2026-02-02
-
-### Features
-
-- implement data generator with OpenAPI schema-based fake data generation (ac832e8)
-
-
-### Bug Fixes
-
-- address code review findings from /coder analysis (23a119b)
-- address edge cases in schema data generation (5946179)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (153612c)
-- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (a4f0eca)
-
-
-
-## [0.3.0] - 2026-02-02
-
-### Features
-
-- implement Hono router with dynamic route generation (2efa0b7)
-
-
-### Bug Fixes
-
-- address code review findings (e88e283)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8cd2acd)
-- fix formatting in test file (db60a45)
-- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8aadcd8)
-
-
-
-## [0.2.0] - 2026-02-02
-
-### Features
-
-- implement in-memory store with CRUD operations (45d56e3)
-
-
-### Bug Fixes
-
-- prevent mutation in create() and restrict setIdField usage (7d9e401)
-- address PR review comments for in-memory store (3d93497)
-
-
-### Other Changes
-
-- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (5261e2c)
-- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (c264e19)
-
-
-
-## [0.1.1] - 2026-01-19
-
-### Features
-
-- implement OpenAPI processor pipeline (b11a770)
-
-
-### Bug Fixes
-
-- address PR review comments for processor (586bc51)
-
-
-### Code Refactoring
-
-- reduce processor complexity and improve test coverage (1045591)
-
-
-### Other Changes
-
-- sync changeset for feature/task-1-2-openapi-processor (29a157c)
-- update changeset for refactoring changes (8aa34d7)
-- sync changeset for feature/task-1-2-openapi-processor (e7a9966)
-
-
-
-## [0.1.0] - 2026-01-19
+## [0.1.1] - 2026-02-03
 
 ### Breaking Changes
 
@@ -330,32 +27,32 @@
 - unify POST and PUT handlers into single add_update_handler (c335e34)
 - add PATCH method support (d3bbc40)
 - add beads version compatibility skill (0a8498b)
-- create plugin package structure (025b274)
 - create GitHub workflows directory (9d44ba8)
 - create playground app structure (d09f717)
-- create pnpm-workspace.yaml (381a1ad)
+- create plugin package structure (025b274)
 - create .node-version file (60da63a)
 - create .npmrc configuration (8a5089e)
 - add preinstall script to root package.json (16b82b0)
-- configure all package dependencies (4877e41)
-- create package.json with npm metadata (492d9c5)
-- configure exports and files for package publishing (68e876b)
-- add scripts and engines configuration (c8f1b0b)
+- create pnpm-workspace.yaml (381a1ad)
 - create src/types/index.ts with type definitions (4af8404)
 - create src/index.ts entry point with exports (35ca02a)
 - create src/plugin.ts with Vite plugin stub (efdee92)
+- create package.json with npm metadata (492d9c5)
+- configure exports and files for package publishing (68e876b)
+- add scripts and engines configuration (c8f1b0b)
+- configure all package dependencies (4877e41)
 - create Vue playground app with workspace:* dependency (f5669c0)
 - add Swagger Petstore OpenAPI 3.0 spec with placeholder handlers and seeds (c14fe7f)
 - create parser directory structure (9b53244)
 - implement security scheme normalizer (70a1133)
 - integrate security normalizer into OpenAPI loading flow (084b50a)
+- create handlers.ts with handler API types (cce16bd)
 - create plugin-options.ts with OpenApiServerPluginOptions (ec91466)
 - create registry.ts with OpenAPI registry structures (4a9a279)
-- create handlers.ts with handler API types (cce16bd)
+- create security.ts with normalized security scheme types (ebb43ec)
 - create seeds.ts with seed data generator types (3181d42)
 - create ipc-messages.ts with IPC protocol types (abbbb39)
 - export all public types from types/index.ts (ad2ed24)
-- create security.ts with normalized security scheme types (ebb43ec)
 - implement plugin factory with option validation (d162f2b)
 - update index.ts exports and verify build (d4d7bfc)
 - implement mock server with Scalar and Hono integration (3013c0d)
@@ -363,9 +60,9 @@
 - integrate startup banners with plugin hooks (214a81b)
 - create handler-loader.ts module skeleton (72db5d1)
 - implement seed file loader with schema validation (da7eec0)
-- implement OpenAPI document enhancer with x-handler and x-seed injection (1b505cc)
 - implement registry builder with endpoint and schema tracking (e6f86e7)
 - add registry serializer for inspection endpoint (9a90594)
+- implement OpenAPI document enhancer with x-handler and x-seed injection (1b505cc)
 - add /_openapiserver/registry inspection endpoint (a3b28af)
 - add formatted registry table display for startup (2b7ed32)
 - implement Vite proxy configuration for mock server routing (c0fae58)
@@ -373,10 +70,10 @@
 - add IPC log message handler in parent process (244e7ac)
 - create example error simulation handler (e2b9421)
 - update add-pet handler with error simulation (264b2bd)
-- update get-pet-by-id handler with error simulation (d01c61a)
 - add error simulation test UI to playground (01c3f9c)
-- add security scheme logging on startup (315986d)
+- update get-pet-by-id handler with error simulation (d01c61a)
 - update delete-pet handler to demonstrate SecurityContext access (ae0a222)
+- add security scheme logging on startup (315986d)
 - implement process manager with fork, IPC, and graceful shutdown (787cf24)
 - implement IPC message handler with type-safe dispatch (628a5c2)
 - implement startup coordinator with ready-wait and timeout handling (09ecc0d)
@@ -398,6 +95,17 @@
 - integrate loaders and document enhancer (352cb45)
 - rewrite handler/seed examples to code-based format (545cb11)
 - initialize @voas/core package structure (0b819f6)
+- implement OpenAPI processor pipeline (b11a770)
+- implement in-memory store with CRUD operations (45d56e3)
+- implement Hono router with dynamic route generation (2efa0b7)
+- implement data generator with OpenAPI schema-based fake data generation (ac832e8)
+- implement createOpenApiServer factory function (d2f195f)
+- implement handler execution system with error handling (4505a77)
+- implement seed system with context injection (5d7ed33)
+- implement Vite plugin core with proxy configuration (820c4bc)
+- complete hot reload implementation with WebSocket events (4fb3147)
+- implement WebSocket hub for bidirectional communication (8eb4228)
+- initialize DevTools SPA package (f6569cf)
 
 
 ### Bug Fixes
@@ -407,9 +115,9 @@
 - resolve dead locks issues and post model find (3293654)
 - correct PATCH method routing to use patch() instead of put() (dc7769f)
 - remove explicit pnpm version to use packageManager from package.json (fed4d32)
+- exclude .changesets directory from Biome checks (a6d2e76)
 - correct root tsconfig.json to be base config only (fea3563)
 - add .js extensions to imports and configure project references (bc3c0d9)
-- exclude .changesets directory from Biome checks (a6d2e76)
 - correct jq path for workspace changeset list JSON response (cdd925d)
 - configure git user.name and user.email for release workflow (ab81143)
 - use GH_TOKEN for authenticated git push and configure remote URL (dc3ac38)
@@ -427,13 +135,41 @@
 - capture headers from Request objects in fetch interceptor (7f0cd53)
 - validate proxyPath to prevent global interception (83196cc)
 - reject whitespace-only proxyPath values (d1811fc)
-- use matched schema name as key for proper registry lookups (533dc06)
 - use default import for fast-glob CJS compatibility (4721158)
-- add missing type exports and externalize dependencies (58c11ee)
-- add DATE_FORMAT_POST_PROCESSING for RFC3339 date formatting (56eabcb)
-- address PR review feedback (846644e)
+- use matched schema name as key for proper registry lookups (533dc06)
 - rename package to @websublime/vite-open-api-core (1f4f87b)
+- add missing type exports and externalize dependencies (58c11ee)
+- address PR review feedback (846644e)
+- add DATE_FORMAT_POST_PROCESSING for RFC3339 date formatting (56eabcb)
 - address 4 PR review comments (3e34b5a)
+- address PR review comments for processor (586bc51)
+- address PR review comments for in-memory store (3d93497)
+- prevent mutation in create() and restrict setIdField usage (7d9e401)
+- address code review findings (e88e283)
+- address edge cases in schema data generation (5946179)
+- address code review findings from /coder analysis (23a119b)
+- import version from package.json instead of hardcoding (2ae788c)
+- address PR review comments (567f90c)
+- add context parameter to test handler signatures (7b1b3d2)
+- add status code validation and improve executor robustness (43e7432)
+- make Logger debug/info methods optional for consistency (805ec8a)
+- address PR review comments for seed system tests (4410c7a)
+- empty seed arrays now fall through to example response (c6f6712)
+- add missing has and count methods to simulationManager mock (9ad8d9d)
+- add project reference to core for typecheck in CI (a65a30b)
+- use tsc --build for typecheck with project references (46e9739)
+- revert composite mode and build before typecheck (9608b7c)
+- use Vite ssrLoadModule for TypeScript handler/seed files (64953c8)
+- address review comments for types, hot-reload, and docs (d6c67f4)
+- address code review findings (21e2e70)
+- make MockLogger extend Logger interface for type compatibility (3f7cc27)
+- update MockWebSocketHub to include new interface methods (ac85b75)
+- address code review findings - logger default and payload validation (53a6f18)
+- simplify npm auth in release workflow (7a9812b)
+- address PR review comments for devtools-client (0b2b911)
+- apply code review recommendations (65314aa)
+- address code review recommendations (2b378e3)
+- address PR review comments (65df2d4)
 
 
 ### Documentation
@@ -453,24 +189,24 @@
 - improve static files and HTTP methods examples (7a49482)
 - update routes description to include method pattern syntax (977a9d6)
 - fix repository URL in installation instructions (020bc50)
-- add GitHub Copilot instructions for bd workflow (3decd4f)
-- additional terminology fixes and consistency improvements (2f9a8a0)
-- rename terminology - gpme→pet, bff→api, mock server→openapi server (2250904)
 - add Vue DevTools detection strategy and global state exposure (67d27ad)
-- add CLAUDE.md with project guidance for Claude Code (60b51d9)
-- finalize v1.0.0 - mark specification as approved and ready for implementation (9f47429)
 - expand bd workflow documentation (71df810)
+- add CLAUDE.md with project guidance for Claude Code (60b51d9)
+- add GitHub Copilot instructions for bd workflow (3decd4f)
+- rename terminology - gpme→pet, bff→api, mock server→openapi server (2250904)
+- additional terminology fixes and consistency improvements (2f9a8a0)
+- finalize v1.0.0 - mark specification as approved and ready for implementation (9f47429)
 - enrich Phase 1 tasks P1-01 and P1-02 with comprehensive context (185a9d1)
-- enrich Phase 1 tasks P1-03 to P1-06 and Phase 2 tasks P2-01 to P2-08 with detailed implementation specs (b1d0a41)
 - complete PLAN enrichment with Phase 3, 4, and 5 detailed specs (050f286)
 - enrich Phase 0 tasks with comprehensive context and implementation details (af112a6)
+- enrich Phase 1 tasks P1-03 to P1-06 and Phase 2 tasks P2-01 to P2-08 with detailed implementation specs (b1d0a41)
 - add PROMPT.md with session workflow template (b952f4c)
 - add workspace changeset documentation to PROMPT.md (14b9071) (#8)
 - create plugin README with comprehensive documentation (85e8069)
 - create comprehensive project documentation (162dca0)
-- add error simulation pattern documentation (3ae84bf)
 - add delay simulation patterns and timeout testing (a59d1db)
 - document error response body format (75a97fd)
+- add error simulation pattern documentation (3ae84bf)
 - add Security Schemes documentation to README (dc69cc3)
 - add Phase 6 - Advanced DevTools Simulation (2e1159a)
 - add AI-assisted development workflow commands (f020161)
@@ -480,6 +216,8 @@
 - add development plan for v2.0 (6571b28)
 - update README for v2.0 (d342311)
 - update CLAUDE.md for v2.0 (dea29d3)
+- update developer workflow documentation (693608f)
+- update developer workflow - remove close commands from subtask flow (06c6545)
 
 
 ### Code Refactoring
@@ -489,16 +227,23 @@
 - add payload validation for critical IPC message types (f6491ab)
 - create Vue Plugin pattern with createOpenApiDevTools (780922d)
 - pass originalFetch as parameter to createInterceptedFetch (c9369da)
+- fix lint errors in loaders and tests (7423895)
+- address code review feedback (4ea00d8)
 - address review comments for handler and seed loaders (e9f25bc)
 - use shared error formatters for consistent messaging (49c8716)
 - remove unused extractBaseName and extractSchemaName functions (3b98830)
-- fix lint errors in loaders and tests (7423895)
-- address code review feedback (4ea00d8)
+- reduce processor complexity and improve test coverage (1045591)
+- address code review findings (38cac49) (#1, #2, #3, #4, #5)
+- unify Logger type and remove deprecated exports (741e63b)
+- extract shared test utilities for handler and seed tests (ee29f4c)
+- address code review findings (8840464)
 
 
 ### Continuous Integration
 
 - add GitHub Actions release workflow with workspace-tools (0b11543)
+- enable npm publishing for packages (3367273)
+- enable npm publishing for packages (05c31f3)
 
 
 ### Tests
@@ -512,6 +257,9 @@
 - add API proxy test functionality to demonstrate request proxying (523dd9a)
 - add comprehensive unit tests for hot reload handler (57a38c0)
 - add comprehensive tests for DevTools plugin (31683f0)
+- add integration tests for response priority chain (324d123)
+- add unit tests for handler and seed file loading (c39e8d2)
+- add WebSocket event broadcast tests (05c882c)
 
 
 ### Other Changes
@@ -532,48 +280,48 @@
 - init bead (de79219)
 - init claude settings (72f1a1d)
 - update claude settings (02fee61)
-- enable beads plugin (04b2aed)
 - move PRODUCT-REQUIREMENTS-SPECIFICATION to history directory (457c00f)
+- enable beads plugin (04b2aed)
 - configure sync-branch beads-sync (ed14ded)
 - add root package.json with workspace scripts (58a2f92)
-- create biome.json with  for IDE autocomplete (c08576d)
-- add .editorconfig for cross-editor consistency (f083e99)
-- install TypeScript 5.9.3 (56cf9a6)
-- test type checking and fix configuration (ec6de39)
-- create plugin tsconfig.json with Node.js types (0f4d38e)
 - create playground tsconfig.json with Vue/DOM types (e3e98f1)
+- create plugin tsconfig.json with Node.js types (0f4d38e)
+- create biome.json with  for IDE autocomplete (c08576d)
+- test type checking and fix configuration (ec6de39)
+- configure workspace-tools for changeset-based versioning (8a63f66)
 - install @biomejs/biome v2.3.11 (c94756a)
 - create root tsconfig.json with base compiler options (b31e048)
-- configure workspace-tools for changeset-based versioning (8a63f66)
+- install TypeScript 5.9.3 (56cf9a6)
+- add .editorconfig for cross-editor consistency (f083e99)
 - add typecheck job to CI workflow (d4702f5)
-- create CI workflow structure (fef9eb2)
 - add build job with dependencies to CI workflow (7bf083a)
+- create CI workflow structure (fef9eb2)
 - add lint job to CI workflow (6fa3e74)
 - add test job with vitest to CI workflow (3433595)
-- sync changeset for feature/p0-10-plugin-package-skeleton (d496b2a)
-- sync changeset for feature/p0-10-plugin-package-skeleton (87e56de)
-- add changeset for plugin package skeleton (01055c5)
-- temporarily disable npm publish in release workflow (578c25e)
-- sync changeset for feature/p0-10-plugin-package-skeleton (123eb70)
 - verify package structure and fix lint issues (45715e0)
+- add changeset for plugin package skeleton (01055c5)
+- sync changeset for feature/p0-10-plugin-package-skeleton (87e56de)
+- sync changeset for feature/p0-10-plugin-package-skeleton (d496b2a)
+- sync changeset for feature/p0-10-plugin-package-skeleton (123eb70)
 - sync changeset for feature/p0-10-plugin-package-skeleton (9d30607)
-- bump version to 0.1.0 and archive P0-10 changeset (5df123b)
+- temporarily disable npm publish in release workflow (578c25e)
 - configure tsdown bundler for ESM builds with declarations (4c623cc)
+- bump version to 0.1.0 and archive P0-10 changeset (5df123b)
 - sync changeset for feature/p0-11-configure-tsdown-for-build (3ac8d46)
-- move consumed changeset to history (9fa26aa)
 - sync changeset for feature/p0-12-create-playground-application (c7ece31)
+- move consumed changeset to history (9fa26aa)
 - update repo config (c4f1795)
 - update playground (2910b52)
 - move consumed changeset to history (d7ee147)
 - update changeset (b2fd309)
 - bump @websublime/vite-plugin-open-api-server to 0.1.1 (b9682cc)
 - sync changeset for feature/p0-14-create-documentation (ea6073a)
-- update beads (2e75662)
-- update changeset history (a6a12af)
 - sync changeset for feature/p0-14-create-documentation (0fdd494)
+- update changeset history (a6a12af)
+- update beads (2e75662)
 - move completed changeset to history (957f8c3)
-- sync changeset for feature/p1-01-openapi-parser (647816c)
 - sync changeset for feature/p1-01-openapi-parser (7f2e28b)
+- sync changeset for feature/p1-01-openapi-parser (647816c)
 - bump @websublime/vite-plugin-open-api-server to 0.2.0 (60afef4)
 - add changeset for security-normalizer feature (de7cd92)
 - bump @websublime/vite-plugin-open-api-server to 0.3.0 (ab42905)
@@ -594,8 +342,8 @@
 - sync changeset for feature/p2-03-document-enhancer (cd086de)
 - fix package.json trailing newline for biome format (3320d04)
 - bump @websublime/vite-plugin-open-api-server to 0.10.0 (8535a45)
-- add changeset for registry inspection endpoint feature (9ed9ac0)
 - sync changeset for feature/p2-07-registry-inspection-endpoint (85e18d0)
+- add changeset for registry inspection endpoint feature (9ed9ac0)
 - bump @websublime/vite-plugin-open-api-server to 0.11.0 (0e307a1)
 - bump @websublime/vite-plugin-open-api-server to 0.11.1 (abf7c29)
 - sync changeset for feature/p3-01-request-proxying (2521cf3)
@@ -636,22 +384,84 @@
 - sync changeset for feature/p6-01-request-timeline (d591471)
 - sync changeset for feature/p6-01-request-timeline (26adb1b)
 - bump @websublime/vite-plugin-open-api-server to 0.18.0 (453ee06)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (47888fd)
+- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (0f339cb)
 - sync changeset for fix/vite-open-api-server-thy-integrate-loaders (521bf2d)
 - sync changeset for fix/vite-open-api-server-thy-integrate-loaders (4b04d16)
 - sync changeset for fix/vite-open-api-server-thy-integrate-loaders (6262f55)
 - sync changeset for fix/vite-open-api-server-thy-integrate-loaders (e5b1d66)
-- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (47888fd)
-- sync changeset for fix/vite-open-api-server-thy-integrate-loaders (0f339cb)
 - bump @websublime/vite-plugin-open-api-server to 0.19.0 (9fb4fec)
 - remove v0.19.0 plugin package (0da34bd)
 - remove v0.19.0 playground (ffb04d7)
 - update claude command files (7d5673d)
 - update gitignore (c6cc5b5)
 - remove pnpm-lock.yaml (2bd6801)
-- sync changeset for feature/vite-open-api-server-z5y.1-project-setup (a669c8f)
 - sync changeset for feature/vite-open-api-server-z5y.1-project-setup (2dc9e9a)
 - sync changeset for feature/vite-open-api-server-z5y.1-project-setup (d4cda68)
+- sync changeset for feature/vite-open-api-server-z5y.1-project-setup (a669c8f)
 - sync changeset for feature/vite-open-api-server-z5y.1-project-setup (83f7f20)
 - sync changeset for feature/vite-open-api-server-z5y.1-project-setup (a6eff77)
+- bump @websublime/vite-open-api-core to 0.1.0 (725bb15)
+- sync changeset for feature/task-1-2-openapi-processor (29a157c)
+- update changeset for refactoring changes (8aa34d7)
+- sync changeset for feature/task-1-2-openapi-processor (e7a9966)
+- bump @websublime/vite-open-api-core to 0.1.1 (a065310)
+- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (5261e2c)
+- sync changeset for feature/vite-open-api-server-z5y-3-in-memory-store (c264e19)
+- bump @websublime/vite-open-api-core to 0.2.0 (404544a)
+- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8cd2acd)
+- fix formatting in test file (db60a45)
+- sync changeset for feature/vite-open-api-server-z5y.4-hono-router (8aadcd8)
+- bump @websublime/vite-open-api-core to 0.3.0 (8446e46)
+- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (153612c)
+- sync changeset for feature/vite-open-api-server-z5y.5-data-generator (a4f0eca)
+- bump @websublime/vite-open-api-core to 0.4.0 (703df1d)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (bd71095)
+- remove obsolete TODO comments from completed tasks (7702489)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (870cba3)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (329d03e)
+- sync changeset for feature/vite-open-api-server-z5y.6-server-factory (47f6b7e)
+- bump @websublime/vite-open-api-core to 0.5.0 (c79d889)
+- sync changeset for feature/task-2.1-handler-system (d0c1877)
+- sync changeset for feature/task-2.1-handler-system (15ebe7e)
+- bump @websublime/vite-open-api-core to 0.6.0 (3eef34a)
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (d515e81)
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (9b8b2e7)
+- sync changeset for feature/vite-open-api-server-det.2-seed-system (745d70a)
+- bump @websublime/vite-open-api-core to 0.7.0 (49f3079)
+- sync changeset for feature/vite-open-api-server-det.3-response-priority (caa9b28)
+- sync changeset for feature/vite-open-api-server-det.3-response-priority (b372c1f)
+- bump @websublime/vite-open-api-core to 0.7.1 (2f79486)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (483343e)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (e6f3b5c)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (cae309a)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (d2fb8f3)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (aed8463)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (0acaa63)
+- sync changeset for code review fixes (85a8384)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (bfb74da)
+- update plugin server version (30378c0)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (f3dd1b8)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (70c117e)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (9162c0f)
+- bump @websublime/vite-plugin-open-api-server to 0.19.1 (e03a507)
+- sync changeset for feature/vite-open-api-server-c4l.3-hot-reload (7de37d7)
+- bump versions (30cfede)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (bd29119)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (9cf16b7)
+- fix import indentation in test-utils.ts (b694033)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (b253c2c)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (f427abb)
+- bump @websublime/vite-open-api-core to 0.8.0 (ea00901)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (8e5dee1)
+- disable noConsole rule for development logging (3cca2b1)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (03f6464)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (585701f)
+- sync changeset for code review fixes (f2b6f6a)
+- sync changeset for code review fixes (3a5a68e)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (07001e2)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (d7770dd)
+- update dependencies and sync changeset (56bfc4f)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (9c1c23b)
 
 
