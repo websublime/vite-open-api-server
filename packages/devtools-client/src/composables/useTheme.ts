@@ -14,6 +14,18 @@ import { computed, getCurrentInstance, onMounted, onUnmounted, ref, watch } from
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 /**
+ * Valid theme modes for type guard validation
+ */
+const VALID_THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
+
+/**
+ * Type guard to check if a value is a valid ThemeMode
+ */
+function isThemeMode(value: unknown): value is ThemeMode {
+  return typeof value === 'string' && VALID_THEME_MODES.includes(value as ThemeMode);
+}
+
+/**
  * Storage key for persisting theme preference
  */
 const STORAGE_KEY = 'openapi-devtools-theme';
@@ -93,8 +105,7 @@ export function useTheme() {
    * Set the theme mode
    */
   function setTheme(mode: ThemeMode): void {
-    const validModes: ThemeMode[] = ['light', 'dark', 'system'];
-    if (!validModes.includes(mode)) {
+    if (!isThemeMode(mode)) {
       console.warn(`[DevTools] Invalid theme mode: ${mode}`);
       return;
     }
@@ -169,14 +180,13 @@ export function useTheme() {
     currentMediaHandler = handler;
 
     // Load saved preference from localStorage
-    let saved: ThemeMode | null = null;
     try {
-      saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (isThemeMode(saved)) {
+        themeMode.value = saved;
+      }
     } catch {
       // Storage unavailable (private browsing, etc.)
-    }
-    if (saved && ['light', 'dark', 'system'].includes(saved)) {
-      themeMode.value = saved;
     }
 
     // Apply initial theme

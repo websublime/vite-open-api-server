@@ -11,7 +11,6 @@
   ],
   "license": "MIT",
   "author": "Websublime",
-  "main": "index.js",
   "scripts": {
     "test:watch": "vitest",
     "lint": "biome check .",
