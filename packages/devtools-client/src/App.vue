@@ -66,10 +66,15 @@ const isConnected = computed(() => false);
       </div>
 
       <!-- Tab Navigation -->
-      <nav class="app-nav">
+      <nav class="app-nav" role="tablist" aria-label="DevTools navigation">
         <button
           v-for="tab in tabs"
           :key="tab.name"
+          role="tab"
+          :aria-selected="activeTab === tab.name"
+          :aria-current="activeTab === tab.name ? 'true' : undefined"
+          :aria-controls="`panel-${tab.name}`"
+          :tabindex="0"
           :class="[
             'app-nav__tab',
             { 'app-nav__tab--active': activeTab === tab.name },
@@ -192,9 +197,31 @@ const isConnected = computed(() => false);
   background-color: var(--devtools-surface-elevated);
 }
 
+.app-nav__tab:focus {
+  outline: none;
+}
+
+.app-nav__tab:focus-visible {
+  outline: 2px solid var(--devtools-primary);
+  outline-offset: -2px;
+  background-color: var(--devtools-surface-elevated);
+}
+
+/* High contrast mode support */
+@media (forced-colors: active) {
+  .app-nav__tab:focus-visible {
+    outline: 3px solid CanvasText;
+    outline-offset: 2px;
+  }
+}
+
 .app-nav__tab--active {
   color: var(--devtools-primary);
   border-bottom-color: var(--devtools-primary);
+}
+
+.app-nav__tab--active:focus-visible {
+  outline-color: var(--devtools-primary-hover);
 }
 
 .app-nav__icon {
