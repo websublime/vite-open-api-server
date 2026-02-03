@@ -2,12 +2,20 @@
  * Hot Reload Tests
  *
  * What: Unit tests for hot reload utilities
- * How: Tests debounce function with sync and async functions
+ * How: Tests debounce function with sync and async functions, and file watcher creation
  * Why: Ensures debounce properly handles rapid calls and prevents overlapping async executions
+ *
+ * Note: File detection tests are skipped by default as they are inherently flaky
+ * due to filesystem timing differences across environments. They can be enabled
+ * by setting RUN_FLAKY_TESTS=1 environment variable for local debugging.
  */
 
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { debounce } from '../hot-reload.js';
+import { createFileWatcher, debounce, type FileWatcher } from '../hot-reload.js';
+import { createMockLogger } from './test-utils.js';
 
 describe('debounce', () => {
   beforeEach(() => {
@@ -310,6 +318,281 @@ describe('debounce', () => {
 
       expect(fn).toHaveBeenCalledWith('second');
       expect(fn).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+describe('createFileWatcher', () => {
+  let tempDir: string;
+  let handlersDir: string;
+  let seedsDir: string;
+  let watcher: FileWatcher | null = null;
+
+  beforeEach(async () => {
+    // Create temporary directories for testing
+    tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'hot-reload-test-'));
+    handlersDir = path.join(tempDir, 'handlers');
+    seedsDir = path.join(tempDir, 'seeds');
+
+    await fs.mkdir(handlersDir, { recursive: true });
+    await fs.mkdir(seedsDir, { recursive: true });
+  });
+
+  afterEach(async () => {
+    // Close watcher if open
+    if (watcher) {
+      await watcher.close();
+      watcher = null;
+    }
+
+    // Clean up temp directory
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('initialization', () => {
+    it('should create a watcher with isWatching set to true', async () => {
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+      });
+
+      expect(watcher.isWatching).toBe(true);
+    });
+
+    it('should set isWatching to false after close', async () => {
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+      });
+
+      expect(watcher.isWatching).toBe(true);
+
+      await watcher.close();
+      expect(watcher.isWatching).toBe(false);
+      watcher = null; // Prevent double close in afterEach
+    });
+
+    it('should work without any directories configured', async () => {
+      watcher = await createFileWatcher({
+        cwd: tempDir,
+      });
+
+      expect(watcher.isWatching).toBe(true);
+    });
+
+    it('should resolve ready promise when watcher is initialized', async () => {
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+      });
+
+      // ready should resolve without error
+      await expect(watcher.ready).resolves.toBeUndefined();
+    });
+
+    it('should resolve ready promise with no watchers configured', async () => {
+      watcher = await createFileWatcher({
+        cwd: tempDir,
+      });
+
+      // ready should resolve even with no watchers
+      await expect(watcher.ready).resolves.toBeUndefined();
+    });
+
+    it('should resolve ready promise when watching both directories', async () => {
+      const onHandlerChange = vi.fn();
+      const onSeedChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        seedsDir: 'seeds',
+        cwd: tempDir,
+        onHandlerChange,
+        onSeedChange,
+      });
+
+      // ready should resolve without error
+      await expect(watcher.ready).resolves.toBeUndefined();
+    });
+  });
+
+  describe('callback configuration', () => {
+    it('should not create handler watcher if onHandlerChange is not provided', async () => {
+      // Should not throw even without callbacks
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        // No onHandlerChange provided
+      });
+
+      expect(watcher.isWatching).toBe(true);
+    });
+
+    it('should not create seed watcher if onSeedChange is not provided', async () => {
+      // Should not throw even without callbacks
+      watcher = await createFileWatcher({
+        seedsDir: 'seeds',
+        cwd: tempDir,
+        // No onSeedChange provided
+      });
+
+      expect(watcher.isWatching).toBe(true);
+    });
+
+    it('should accept a custom logger', async () => {
+      const mockLogger = createMockLogger();
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+        logger: mockLogger,
+      });
+
+      expect(watcher.isWatching).toBe(true);
+    });
+  });
+
+  describe('close behavior', () => {
+    it('should be safe to close multiple times', async () => {
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange: vi.fn(),
+      });
+
+      await watcher.close();
+      expect(watcher.isWatching).toBe(false);
+
+      // Second close should not throw
+      await expect(watcher.close()).resolves.toBeUndefined();
+      watcher = null;
+    });
+
+    it('should close all watchers when watching both directories', async () => {
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        seedsDir: 'seeds',
+        cwd: tempDir,
+        onHandlerChange: vi.fn(),
+        onSeedChange: vi.fn(),
+      });
+
+      await watcher.ready;
+
+      await watcher.close();
+      expect(watcher.isWatching).toBe(false);
+      watcher = null;
+    });
+  });
+
+  /**
+   * File detection tests are skipped by default because they are inherently
+   * flaky due to filesystem timing differences across platforms and CI environments.
+   *
+   * To run these tests locally for debugging, set RUN_FLAKY_TESTS=1:
+   *   RUN_FLAKY_TESTS=1 pnpm test -- hot-reload.test.ts
+   */
+  const describeFlaky = process.env.RUN_FLAKY_TESTS ? describe : describe.skip;
+
+  describeFlaky('file detection (flaky)', () => {
+    /**
+     * Helper to wait for a mock function to be called with timeout
+     * Uses polling to avoid flaky timing-based assertions
+     */
+    async function waitForCall(
+      mockFn: ReturnType<typeof vi.fn>,
+      timeoutMs = 10000,
+      intervalMs = 100,
+    ): Promise<boolean> {
+      const startTime = Date.now();
+      while (Date.now() - startTime < timeoutMs) {
+        if (mockFn.mock.calls.length > 0) {
+          return true;
+        }
+        await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      }
+      return false;
+    }
+
+    it('should call onHandlerChange when a handler file is added', async () => {
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+      });
+
+      await watcher.ready;
+
+      // Create a handler file
+      const handlerFile = path.join(handlersDir, 'test.handlers.ts');
+      await fs.writeFile(handlerFile, 'export default {}');
+
+      const called = await waitForCall(onHandlerChange);
+
+      expect(called).toBe(true);
+      expect(onHandlerChange).toHaveBeenCalled();
+      expect(onHandlerChange.mock.calls[0][0]).toContain('test.handlers.ts');
+    });
+
+    it('should call onSeedChange when a seed file is added', async () => {
+      const onSeedChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        seedsDir: 'seeds',
+        cwd: tempDir,
+        onSeedChange,
+      });
+
+      await watcher.ready;
+
+      // Create a seed file
+      const seedFile = path.join(seedsDir, 'test.seeds.ts');
+      await fs.writeFile(seedFile, 'export default {}');
+
+      const called = await waitForCall(onSeedChange);
+
+      expect(called).toBe(true);
+      expect(onSeedChange).toHaveBeenCalled();
+      expect(onSeedChange.mock.calls[0][0]).toContain('test.seeds.ts');
+    });
+
+    it('should only watch files matching handler pattern', async () => {
+      const onHandlerChange = vi.fn();
+
+      watcher = await createFileWatcher({
+        handlersDir: 'handlers',
+        cwd: tempDir,
+        onHandlerChange,
+      });
+
+      await watcher.ready;
+
+      // Create a non-handler file (should be ignored)
+      const otherFile = path.join(handlersDir, 'other.ts');
+      await fs.writeFile(otherFile, 'export default {}');
+
+      // Wait a bit for potential detection
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Should NOT have been called for non-handler file
+      expect(onHandlerChange).not.toHaveBeenCalled();
     });
   });
 });

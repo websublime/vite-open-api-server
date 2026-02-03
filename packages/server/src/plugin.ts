@@ -217,6 +217,13 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
     try {
       const handlersResult = await loadHandlers(resolvedOptions.handlersDir, vite, cwd);
       server.updateHandlers(handlersResult.handlers);
+
+      // Notify via WebSocket
+      server.wsHub.broadcast({
+        type: 'handlers:updated',
+        data: { count: handlersResult.handlers.size },
+      });
+
       printReloadNotification('handlers', handlersResult.handlers.size, resolvedOptions);
     } catch (error) {
       printError('Failed to reload handlers', error, resolvedOptions);

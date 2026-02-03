@@ -61,6 +61,8 @@ export type ServerEvent =
   | { type: 'response'; data: ResponseLogEntry }
   | { type: 'store:updated'; data: { schema: string; action: string } }
   | { type: 'handler:reloaded'; data: { file: string } }
+  | { type: 'handlers:updated'; data: { count: number } }
+  | { type: 'seeds:updated'; data: { count: number } }
   | { type: 'simulation:active'; data: SimulationState[] };
 
 /**
