@@ -1,0 +1,441 @@
+/**
+ * Main CSS Styles for DevTools SPA
+ *
+ * What: Global styles and CSS custom properties for the application
+ * How: Imports OpenProps for design tokens and defines app-specific styles
+ * Why: Provides consistent theming and responsive design across components
+ */
+
+/* OpenProps imports for design tokens */
+@import "open-props/style";
+@import "open-props/normalize";
+
+/* Custom CSS properties for the DevTools theme */
+:root {
+  /* Brand colors */
+  --devtools-primary: var(--blue-6);
+  --devtools-primary-hover: var(--blue-7);
+  --devtools-primary-active: var(--blue-8);
+
+  /* Semantic colors */
+  --devtools-success: var(--green-6);
+  --devtools-warning: var(--yellow-6);
+  --devtools-error: var(--red-6);
+  --devtools-info: var(--cyan-6);
+
+  /* Surface colors (light mode) */
+  --devtools-bg: var(--gray-0);
+  --devtools-surface: var(--gray-1);
+  --devtools-surface-elevated: var(--gray-2);
+  --devtools-border: var(--gray-4);
+
+  /* Text colors (light mode) */
+  --devtools-text: var(--gray-9);
+  --devtools-text-muted: var(--gray-6);
+  --devtools-text-inverted: var(--gray-0);
+
+  /* HTTP method colors */
+  --method-get: var(--green-6);
+  --method-post: var(--blue-6);
+  --method-put: var(--orange-6);
+  --method-patch: var(--yellow-6);
+  --method-delete: var(--red-6);
+  --method-options: var(--gray-6);
+  --method-head: var(--cyan-6);
+
+  /* Status code colors */
+  --status-1xx: var(--gray-6);
+  --status-2xx: var(--green-6);
+  --status-3xx: var(--blue-6);
+  --status-4xx: var(--orange-6);
+  --status-5xx: var(--red-6);
+
+  /* Spacing */
+  --devtools-space-xs: var(--size-1);
+  --devtools-space-sm: var(--size-2);
+  --devtools-space-md: var(--size-3);
+  --devtools-space-lg: var(--size-4);
+  --devtools-space-xl: var(--size-5);
+
+  /* Typography */
+  --devtools-font-mono: var(--font-mono);
+  --devtools-font-sans: var(--font-sans);
+
+  /* Border radius */
+  --devtools-radius-sm: var(--radius-2);
+  --devtools-radius-md: var(--radius-3);
+  --devtools-radius-lg: var(--radius-4);
+
+  /* Shadows */
+  --devtools-shadow-sm: var(--shadow-2);
+  --devtools-shadow-md: var(--shadow-3);
+  --devtools-shadow-lg: var(--shadow-4);
+
+  /* Transitions */
+  --devtools-transition-fast: 150ms var(--ease-3);
+  --devtools-transition-normal: 200ms var(--ease-3);
+  --devtools-transition-slow: 300ms var(--ease-3);
+
+  /* Layout */
+  --devtools-header-height: 48px;
+  --devtools-sidebar-width: 280px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Surface colors (dark mode) */
+    --devtools-bg: var(--gray-9);
+    --devtools-surface: var(--gray-8);
+    --devtools-surface-elevated: var(--gray-7);
+    --devtools-border: var(--gray-6);
+
+    /* Text colors (dark mode) */
+    --devtools-text: var(--gray-1);
+    --devtools-text-muted: var(--gray-4);
+    --devtools-text-inverted: var(--gray-9);
+  }
+}
+
+/* Manual dark mode class for programmatic control */
+.dark {
+  --devtools-bg: var(--gray-9);
+  --devtools-surface: var(--gray-8);
+  --devtools-surface-elevated: var(--gray-7);
+  --devtools-border: var(--gray-6);
+  --devtools-text: var(--gray-1);
+  --devtools-text-muted: var(--gray-4);
+  --devtools-text-inverted: var(--gray-9);
+}
+
+/* Global styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--devtools-font-sans);
+  background-color: var(--devtools-bg);
+  color: var(--devtools-text);
+}
+
+#app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography utilities */
+.font-mono {
+  font-family: var(--devtools-font-mono);
+}
+
+.text-muted {
+  color: var(--devtools-text-muted);
+}
+
+/* Method badge styles */
+.method-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--devtools-space-xs) var(--devtools-space-sm);
+  border-radius: var(--devtools-radius-sm);
+  font-family: var(--devtools-font-mono);
+  font-size: var(--font-size-0);
+  font-weight: var(--font-weight-6);
+  text-transform: uppercase;
+  min-width: 60px;
+}
+
+.method-badge--get {
+  background-color: color-mix(in srgb, var(--method-get) 15%, transparent);
+  color: var(--method-get);
+}
+
+.method-badge--post {
+  background-color: color-mix(in srgb, var(--method-post) 15%, transparent);
+  color: var(--method-post);
+}
+
+.method-badge--put {
+  background-color: color-mix(in srgb, var(--method-put) 15%, transparent);
+  color: var(--method-put);
+}
+
+.method-badge--patch {
+  background-color: color-mix(in srgb, var(--method-patch) 15%, transparent);
+  color: var(--method-patch);
+}
+
+.method-badge--delete {
+  background-color: color-mix(in srgb, var(--method-delete) 15%, transparent);
+  color: var(--method-delete);
+}
+
+.method-badge--options {
+  background-color: color-mix(in srgb, var(--method-options) 15%, transparent);
+  color: var(--method-options);
+}
+
+.method-badge--head {
+  background-color: color-mix(in srgb, var(--method-head) 15%, transparent);
+  color: var(--method-head);
+}
+
+/* Status badge styles */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--devtools-space-xs) var(--devtools-space-sm);
+  border-radius: var(--devtools-radius-sm);
+  font-family: var(--devtools-font-mono);
+  font-size: var(--font-size-0);
+  font-weight: var(--font-weight-5);
+  min-width: 40px;
+}
+
+.status-badge--1xx {
+  background-color: color-mix(in srgb, var(--status-1xx) 15%, transparent);
+  color: var(--status-1xx);
+}
+
+.status-badge--2xx {
+  background-color: color-mix(in srgb, var(--status-2xx) 15%, transparent);
+  color: var(--status-2xx);
+}
+
+.status-badge--3xx {
+  background-color: color-mix(in srgb, var(--status-3xx) 15%, transparent);
+  color: var(--status-3xx);
+}
+
+.status-badge--4xx {
+  background-color: color-mix(in srgb, var(--status-4xx) 15%, transparent);
+  color: var(--status-4xx);
+}
+
+.status-badge--5xx {
+  background-color: color-mix(in srgb, var(--status-5xx) 15%, transparent);
+  color: var(--status-5xx);
+}
+
+/* Connection status indicator */
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--devtools-space-xs);
+  font-size: var(--font-size-0);
+}
+
+.connection-status__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connection-status__dot--connected {
+  background-color: var(--devtools-success);
+  box-shadow: 0 0 6px var(--devtools-success);
+}
+
+.connection-status__dot--disconnected {
+  background-color: var(--devtools-error);
+}
+
+.connection-status__dot--connecting {
+  background-color: var(--devtools-warning);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Card component styles */
+.card {
+  background-color: var(--devtools-surface);
+  border: 1px solid var(--devtools-border);
+  border-radius: var(--devtools-radius-md);
+  padding: var(--devtools-space-md);
+}
+
+.card--elevated {
+  background-color: var(--devtools-surface-elevated);
+  box-shadow: var(--devtools-shadow-sm);
+}
+
+/* Button styles */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--devtools-space-xs);
+  padding: var(--devtools-space-sm) var(--devtools-space-md);
+  border: none;
+  border-radius: var(--devtools-radius-sm);
+  font-family: var(--devtools-font-sans);
+  font-size: var(--font-size-1);
+  font-weight: var(--font-weight-5);
+  cursor: pointer;
+  transition: all var(--devtools-transition-fast);
+}
+
+.btn--primary {
+  background-color: var(--devtools-primary);
+  color: var(--devtools-text-inverted);
+}
+
+.btn--primary:hover {
+  background-color: var(--devtools-primary-hover);
+}
+
+.btn--primary:active {
+  background-color: var(--devtools-primary-active);
+}
+
+.btn--secondary {
+  background-color: var(--devtools-surface-elevated);
+  color: var(--devtools-text);
+  border: 1px solid var(--devtools-border);
+}
+
+.btn--secondary:hover {
+  background-color: var(--devtools-border);
+}
+
+.btn--ghost {
+  background-color: transparent;
+  color: var(--devtools-text);
+}
+
+.btn--ghost:hover {
+  background-color: var(--devtools-surface);
+}
+
+.btn--icon {
+  padding: var(--devtools-space-sm);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input styles */
+.input {
+  display: block;
+  width: 100%;
+  padding: var(--devtools-space-sm) var(--devtools-space-md);
+  background-color: var(--devtools-surface);
+  border: 1px solid var(--devtools-border);
+  border-radius: var(--devtools-radius-sm);
+  font-family: var(--devtools-font-sans);
+  font-size: var(--font-size-1);
+  color: var(--devtools-text);
+  transition: border-color var(--devtools-transition-fast);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--devtools-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--devtools-primary) 25%, transparent);
+}
+
+.input::placeholder {
+  color: var(--devtools-text-muted);
+}
+
+/* Scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--devtools-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--devtools-border);
+  border-radius: var(--devtools-radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--devtools-text-muted);
+}
+
+/* Utility classes */
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.gap-xs {
+  gap: var(--devtools-space-xs);
+}
+
+.gap-sm {
+  gap: var(--devtools-space-sm);
+}
+
+.gap-md {
+  gap: var(--devtools-space-md);
+}
+
+.gap-lg {
+  gap: var(--devtools-space-lg);
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--devtools-space-xl);
+  color: var(--devtools-text-muted);
+  text-align: center;
+}
+
+.empty-state__icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--devtools-space-md);
+  opacity: 0.5;
+}
+
+.empty-state__title {
+  font-size: var(--font-size-3);
+  font-weight: var(--font-weight-5);
+  margin: 0 0 var(--devtools-space-sm);
+}
+
+.empty-state__description {
+  font-size: var(--font-size-1);
+  margin: 0;
+}

@@ -19,7 +19,11 @@
     "forceConsistentCasingInFileNames": true,
     "composite": true
   },
-  "references": [{ "path": "./packages/core" }, { "path": "./packages/server" }],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/server" },
+    { "path": "./packages/devtools-client" }
+  ],
   "include": [],
   "exclude": ["node_modules", "dist"]
 }
