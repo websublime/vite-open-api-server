@@ -49,6 +49,10 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "private": false,
+  "sideEffects": [
+    "./dist/style.css",
+    "*.css"
+  ],
   "type": "module",
   "types": "./dist/devtools.d.ts",
   "exports": {

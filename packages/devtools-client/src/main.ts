@@ -7,9 +7,10 @@
  */
 
 import { createPinia } from 'pinia';
+import type { App } from 'vue';
 import { createApp } from 'vue';
 
-import App from '@/App.vue';
+import AppComponent from '@/App.vue';
 import router from '@/router';
 import { initializeStores } from '@/stores';
 
@@ -17,11 +18,29 @@ import { initializeStores } from '@/stores';
 import '@/assets/main.css';
 
 /**
- * Create and configure the Vue application
+ * Module-scoped guard to ensure bootstrap only runs once
  */
-function bootstrap(): void {
+let isBootstrapped = false;
+let appInstance: App | null = null;
+
+/**
+ * Create and configure the Vue application
+ * This function is idempotent - calling it multiple times has no effect
+ * after the first successful call.
+ *
+ * @returns The Vue app instance, or null if already bootstrapped
+ */
+function bootstrap(): App | null {
+  // Guard against multiple bootstrap calls
+  if (isBootstrapped) {
+    if (import.meta.env.DEV) {
+      console.warn('[OpenAPI DevTools] Application already initialized, skipping bootstrap');
+    }
+    return appInstance;
+  }
+
   // Create Vue app instance
-  const app = createApp(App);
+  const app = createApp(AppComponent);
 
   // Create Pinia store instance
   const pinia = createPinia();
@@ -36,10 +55,16 @@ function bootstrap(): void {
   // Mount the app to the DOM
   app.mount('#app');
 
+  // Mark as bootstrapped and store the instance
+  isBootstrapped = true;
+  appInstance = app;
+
   // Log startup info in development
   if (import.meta.env.DEV) {
     console.log('[OpenAPI DevTools] Application initialized');
   }
+
+  return app;
 }
 
 // Only auto-bootstrap when running as standalone app (index.html entry)

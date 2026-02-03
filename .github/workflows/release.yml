@@ -75,7 +75,8 @@ jobs:
         if: steps.changesets.outputs.count > 0
         run: |
           # Configure npm authentication for pnpm
-          # pnpm reads .npmrc and expands ${NPM_TOKEN} from environment
+          # Write the resolved NPM_TOKEN secret directly into ~/.npmrc
+          # This is required because pnpm needs explicit token in .npmrc (not env expansion)
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
 
           # Publish packages in topological order (dependencies first)

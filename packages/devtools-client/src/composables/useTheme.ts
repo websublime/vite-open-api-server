@@ -6,7 +6,7 @@
  * Why: Allows users to switch between dark and light mode, respecting system preference
  */
 
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 /**
  * Theme mode type
@@ -23,6 +23,12 @@ const STORAGE_KEY = 'openapi-devtools-theme';
  */
 const themeMode = ref<ThemeMode>('system');
 const systemPrefersDark = ref(false);
+
+/**
+ * Track the current mediaQuery and handler for cleanup
+ */
+let currentMediaQuery: MediaQueryList | null = null;
+let currentMediaHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
 /**
  * Check if we're running in a browser environment
@@ -61,14 +67,16 @@ export function useTheme() {
   /**
    * Apply the current theme to the document
    */
-  function applyTheme() {
+  function applyTheme(): void {
     if (!isBrowser()) return;
 
     const root = document.documentElement;
 
     if (effectiveTheme.value === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
     } else {
+      root.classList.add('light');
       root.classList.remove('dark');
     }
   }
@@ -99,7 +107,7 @@ export function useTheme() {
    * Toggle between light and dark mode
    * If currently in system mode, switch to the opposite of system preference
    */
-  function toggleTheme() {
+  function toggleTheme(): void {
     if (themeMode.value === 'system') {
       // Switch to explicit mode opposite of system preference
       setTheme(systemPrefersDark.value ? 'light' : 'dark');
@@ -112,24 +120,45 @@ export function useTheme() {
   /**
    * Reset to system preference
    */
-  function resetToSystem() {
+  function resetToSystem(): void {
     setTheme('system');
+  }
+
+  /**
+   * Clean up the media query listener
+   */
+  function cleanupMediaQuery(): void {
+    if (currentMediaQuery && currentMediaHandler) {
+      currentMediaQuery.removeEventListener('change', currentMediaHandler);
+      currentMediaQuery = null;
+      currentMediaHandler = null;
+    }
   }
 
   /**
    * Initialize theme from storage and system preference
    */
-  function initialize() {
+  function initialize(): void {
     if (!isBrowser()) return;
+
+    // Clean up any existing media query listener before adding a new one
+    cleanupMediaQuery();
 
     // Check system preference
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     systemPrefersDark.value = mediaQuery.matches;
 
-    // Listen for system preference changes
-    mediaQuery.addEventListener('change', (e) => {
+    // Create and store the handler for cleanup
+    const handler = (e: MediaQueryListEvent): void => {
       systemPrefersDark.value = e.matches;
-    });
+    };
+
+    // Listen for system preference changes
+    mediaQuery.addEventListener('change', handler);
+
+    // Store references for cleanup
+    currentMediaQuery = mediaQuery;
+    currentMediaHandler = handler;
 
     // Load saved preference from localStorage
     let saved: ThemeMode | null = null;
@@ -146,6 +175,27 @@ export function useTheme() {
     applyTheme();
   }
 
+  /**
+   * Reset theme state to defaults (useful for testing)
+   * This resets the singleton state and cleans up listeners
+   */
+  function resetState(): void {
+    cleanupMediaQuery();
+    themeMode.value = 'system';
+    systemPrefersDark.value = false;
+
+    if (isBrowser()) {
+      const root = document.documentElement;
+      root.classList.remove('dark', 'light');
+
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        // Storage unavailable
+      }
+    }
+  }
+
   // Watch for theme changes and apply them
   watch([themeMode, systemPrefersDark], () => {
     applyTheme();
@@ -154,6 +204,11 @@ export function useTheme() {
   // Initialize on mount
   onMounted(() => {
     initialize();
+  });
+
+  // Clean up on unmount
+  onUnmounted(() => {
+    cleanupMediaQuery();
   });
 
   return {
@@ -196,5 +251,10 @@ export function useTheme() {
      * Manually initialize theme (useful for SSR hydration)
      */
     initialize,
+
+    /**
+     * Reset theme state to defaults (useful for testing)
+     */
+    resetState,
   };
 }
