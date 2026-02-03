@@ -190,6 +190,18 @@ The mock server exposes internal endpoints for debugging:
 - `/_api/simulations` - Active error simulations
 - `/_devtools` - DevTools SPA
 
+## Requirements
+
+- **Node.js**: ^20.19.0 || >=22.12.0
+- **pnpm**: 9.x
+
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| `@websublime/vite-plugin-open-api-core` | Core server, store, router, generator |
+| `@websublime/vite-plugin-open-api-devtools` | Vue DevTools SPA |
+
 ## License
 
 MIT

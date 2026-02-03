@@ -223,22 +223,22 @@ vite-open-api-server/
 ├── packages/
 │   ├── core/                  # Core server logic (Hono, store, generator)
 │   ├── devtools-client/       # Vue SPA for DevTools
-│   ├── vite-plugin/           # Vite plugin wrapper
-│   └── playground/            # Demo application
+│   └── server/                # Vite plugin wrapper (main package)
+├── playground/                # Demo application (coming soon)
 └── history/                   # Planning and architecture docs
 ```
 
 | Package | Description |
 |---------|-------------|
-| `@websublime/openapi-server-core` | Core server, store, router, generator |
-| `@websublime/openapi-devtools-client` | Vue DevTools SPA |
+| `@websublime/vite-plugin-open-api-core` | Core server, store, router, generator |
+| `@websublime/vite-plugin-open-api-devtools` | Vue DevTools SPA |
 | `@websublime/vite-plugin-open-api-server` | Vite plugin (main package) |
 
 ## Development
 
 ### Prerequisites
 
-- **Node.js**: >=18.0.0
+- **Node.js**: ^20.19.0 || >=22.12.0
 - **pnpm**: 9.x
 
 ### Getting Started

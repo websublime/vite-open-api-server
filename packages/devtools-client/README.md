@@ -163,6 +163,18 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
 **Persistence:** Theme preference is persisted to `localStorage` under the key `openapi-devtools-theme`.
 
+## Requirements
+
+- **Node.js**: ^20.19.0 || >=22.12.0
+- **pnpm**: 9.x
+
+## Related Packages
+
+| Package | Description |
+|---------|-------------|
+| `@websublime/vite-plugin-open-api-server` | Vite plugin (main package) |
+| `@websublime/vite-plugin-open-api-core` | Core server, store, router, generator |
+
 ## License
 
 MIT

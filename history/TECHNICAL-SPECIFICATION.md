@@ -1023,7 +1023,7 @@ devtools-client/
 
 ```typescript
 import { ref, onMounted, onUnmounted } from 'vue';
-import type { ServerEvent, ClientCommand } from '@websublime/openapi-server-core';
+import type { ServerEvent, ClientCommand } from '@websublime/vite-plugin-open-api-core';
 
 export function useWebSocket() {
   const connected = ref(false);
@@ -1179,11 +1179,11 @@ export const useSimulationStore = defineStore('simulation', () => {
 
 ### 6.1 Plugin Implementation
 
-**File:** `packages/vite-plugin/src/plugin.ts`
+**File:** `packages/server/src/plugin.ts`
 
 ```typescript
 import type { Plugin, ViteDevServer } from 'vite';
-import { createOpenApiServer, type OpenApiServer } from '@websublime/openapi-server-core';
+import { createOpenApiServer, type OpenApiServer } from '@websublime/vite-plugin-open-api-core';
 import { loadHandlers } from './handlers';
 import { loadSeeds, executeSeeds } from './seeds';
 import { createFileWatcher } from './hot-reload';
@@ -1274,12 +1274,12 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
 
 ### 6.2 Handler Loading
 
-**File:** `packages/vite-plugin/src/handlers.ts`
+**File:** `packages/server/src/handlers.ts`
 
 ```typescript
 import { glob } from 'fast-glob';
 import path from 'path';
-import type { HandlerFn, HandlerContext } from '@websublime/openapi-server-core';
+import type { HandlerFn, HandlerContext } from '@websublime/vite-plugin-open-api-core';
 
 export interface HandlerDefinition {
   [operationId: string]: (context: HandlerContext) => unknown | Promise<unknown>;
@@ -1326,12 +1326,12 @@ export function defineHandlers<T extends HandlerDefinition>(handlers: T): T {
 
 ### 6.3 Seed Loading
 
-**File:** `packages/vite-plugin/src/seeds.ts`
+**File:** `packages/server/src/seeds.ts`
 
 ```typescript
 import { glob } from 'fast-glob';
 import path from 'path';
-import type { Store } from '@websublime/openapi-server-core';
+import type { Store } from '@websublime/vite-plugin-open-api-core';
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { faker } from '@faker-js/faker';
 
@@ -1432,7 +1432,7 @@ export function defineSeeds<T extends SeedDefinition>(seeds: T): T {
 
 ### 6.4 Plugin Options
 
-**File:** `packages/vite-plugin/src/types.ts`
+**File:** `packages/server/src/types.ts`
 
 ```typescript
 export interface OpenApiServerOptions {
@@ -1638,7 +1638,7 @@ interface Simulation {
 **Duration:** 1 week
 
 **Deliverables:**
-- `packages/vite-plugin/` package
+- `packages/server/` package
 - Vite proxy configuration
 - Hot reload for handlers/seeds
 - Startup banner
@@ -1684,7 +1684,7 @@ interface Simulation {
 **Duration:** 1 week
 
 **Deliverables:**
-- `packages/playground/` demo app
+- `playground/` demo app
 - README and documentation
 - npm package publishing
 
