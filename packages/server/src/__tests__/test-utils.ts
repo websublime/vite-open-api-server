@@ -6,7 +6,9 @@
  * Why: Reduces code duplication and ensures consistent test setup
  */
 
+import type { Logger } from '@websublime/vite-open-api-core';
 import type { ViteDevServer } from 'vite';
+import type { Mock } from 'vitest';
 import { vi } from 'vitest';
 
 /**
@@ -46,13 +48,16 @@ export function createMockViteServer(
 
 /**
  * Mock logger interface for testing
+ *
+ * Extends the Logger interface to add mock-specific properties
+ * while maintaining compatibility with functions expecting Logger
  */
-export interface MockLogger {
-  log: ReturnType<typeof vi.fn>;
-  info: ReturnType<typeof vi.fn>;
-  warn: ReturnType<typeof vi.fn>;
-  error: ReturnType<typeof vi.fn>;
-  debug: ReturnType<typeof vi.fn>;
+export interface MockLogger extends Logger {
+  log: Mock<(...args: unknown[]) => void>;
+  info: Mock<(...args: unknown[]) => void>;
+  warn: Mock<(...args: unknown[]) => void>;
+  error: Mock<(...args: unknown[]) => void>;
+  debug: Mock<(...args: unknown[]) => void>;
 }
 
 /**
