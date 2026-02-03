@@ -9,50 +9,14 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { ViteDevServer } from 'vite';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getHandlerFiles, loadHandlers } from '../handlers.js';
-
-/**
- * Creates a mock ViteDevServer with ssrLoadModule support
- */
-function createMockViteServer(
-  moduleMap: Map<string, Record<string, unknown>> = new Map(),
-): ViteDevServer {
-  const moduleGraph = {
-    getModuleById: vi.fn().mockReturnValue(null),
-    invalidateModule: vi.fn(),
-  };
-
-  return {
-    moduleGraph,
-    ssrLoadModule: vi.fn().mockImplementation(async (filePath: string) => {
-      const module = moduleMap.get(filePath);
-      if (!module) {
-        throw new Error(`Module not found: ${filePath}`);
-      }
-      return module;
-    }),
-  } as unknown as ViteDevServer;
-}
-
-/**
- * Creates a mock logger
- */
-function createMockLogger() {
-  return {
-    log: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  };
-}
+import { createMockLogger, createMockViteServer, type MockLogger } from './test-utils.js';
 
 describe('loadHandlers', () => {
   let tempDir: string;
   let handlersDir: string;
-  let mockLogger: ReturnType<typeof createMockLogger>;
+  let mockLogger: MockLogger;
 
   beforeEach(async () => {
     // Create a temporary directory for testing
