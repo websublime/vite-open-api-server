@@ -1,3 +1,31 @@
+## [0.8.0] - 2026-02-03
+
+### Features
+
+- implement WebSocket hub for bidirectional communication (8eb4228)
+
+
+### Bug Fixes
+
+- address code review findings - logger default and payload validation (53a6f18)
+- update MockWebSocketHub to include new interface methods (ac85b75)
+
+
+### Code Refactoring
+
+- address code review findings (8840464)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (bd29119)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (9cf16b7)
+- fix import indentation in test-utils.ts (b694033)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (b253c2c)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (f427abb)
+
+
+
 ## [0.7.2] - 2026-02-03
 
 ### Features
