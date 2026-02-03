@@ -6,7 +6,13 @@
  * Why: Reduces code duplication and ensures consistent test setup
  */
 
-import type { Logger, WebSocketHub } from '@websublime/vite-open-api-core';
+import type {
+    CommandHandler,
+    Logger,
+    ServerEvent,
+    WebSocketClient,
+    WebSocketHub,
+} from '@websublime/vite-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';
@@ -89,10 +95,15 @@ export function createMockLogger(): MockLogger {
  * while maintaining compatibility with functions expecting WebSocketHub
  */
 export interface MockWebSocketHub extends WebSocketHub {
-  addClient: Mock<(ws: unknown) => void>;
-  removeClient: Mock<(ws: unknown) => void>;
-  broadcast: Mock<(event: unknown) => void>;
-  handleMessage: Mock<(ws: unknown, message: unknown) => void>;
+  addClient: Mock<(client: WebSocketClient) => void>;
+  removeClient: Mock<(client: WebSocketClient) => void>;
+  broadcast: Mock<(event: ServerEvent) => void>;
+  handleMessage: Mock<(client: WebSocketClient, message: string | unknown) => void>;
+  setCommandHandler: Mock<(handler: CommandHandler) => void>;
+  getClientCount: Mock<() => number>;
+  sendTo: Mock<(client: WebSocketClient, event: ServerEvent) => boolean>;
+  hasClient: Mock<(client: WebSocketClient) => boolean>;
+  clear: Mock<() => void>;
   /** Get all broadcast calls for assertions */
   getBroadcastCalls: () => unknown[];
   /** Clear all mock call history */
@@ -127,20 +138,38 @@ export interface MockWebSocketHub extends WebSocketHub {
  */
 export function createMockWebSocketHub(): MockWebSocketHub {
   const broadcastMock = vi.fn();
+  const addClientMock = vi.fn();
+  const removeClientMock = vi.fn();
+  const handleMessageMock = vi.fn();
+  const setCommandHandlerMock = vi.fn();
+  const getClientCountMock = vi.fn().mockReturnValue(0);
+  const sendToMock = vi.fn().mockReturnValue(true);
+  const hasClientMock = vi.fn().mockReturnValue(false);
+  const clearMock = vi.fn();
 
   return {
-    addClient: vi.fn(),
-    removeClient: vi.fn(),
+    addClient: addClientMock,
+    removeClient: removeClientMock,
     broadcast: broadcastMock,
-    handleMessage: vi.fn(),
+    handleMessage: handleMessageMock,
+    setCommandHandler: setCommandHandlerMock,
+    getClientCount: getClientCountMock,
+    sendTo: sendToMock,
+    hasClient: hasClientMock,
+    clear: clearMock,
     getBroadcastCalls(): unknown[] {
       return broadcastMock.mock.calls.map((call) => call[0]);
     },
     clearMocks(): void {
       broadcastMock.mockClear();
-      this.addClient.mockClear();
-      this.removeClient.mockClear();
-      this.handleMessage.mockClear();
+      addClientMock.mockClear();
+      removeClientMock.mockClear();
+      handleMessageMock.mockClear();
+      setCommandHandlerMock.mockClear();
+      getClientCountMock.mockClear();
+      sendToMock.mockClear();
+      hasClientMock.mockClear();
+      clearMock.mockClear();
     },
   };
 }
