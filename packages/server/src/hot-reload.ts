@@ -41,6 +41,8 @@ export interface FileWatcher {
   close(): Promise<void>;
   /** Check if watcher is active */
   readonly isWatching: boolean;
+  /** Promise that resolves when all watchers are ready */
+  readonly ready: Promise<void>;
 }
 
 /**
@@ -88,6 +90,7 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
   const { watch } = await import('chokidar');
 
   const watchers: FSWatcher[] = [];
+  const readyPromises: Promise<void>[] = [];
   let isWatching = true;
 
   // Handler file patterns
@@ -146,6 +149,13 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
       logger.error('[vite-plugin-open-api-server] Handler watcher error:', error);
     });
 
+    // Track ready promise for this watcher
+    readyPromises.push(
+      new Promise<void>((resolve) => {
+        handlerWatcher.on('ready', () => resolve());
+      }),
+    );
+
     watchers.push(handlerWatcher);
   }
 
@@ -182,8 +192,18 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
       logger.error('[vite-plugin-open-api-server] Seed watcher error:', error);
     });
 
+    // Track ready promise for this watcher
+    readyPromises.push(
+      new Promise<void>((resolve) => {
+        seedWatcher.on('ready', () => resolve());
+      }),
+    );
+
     watchers.push(seedWatcher);
   }
+
+  // Create combined ready promise
+  const readyPromise = Promise.all(readyPromises).then(() => {});
 
   return {
     async close(): Promise<void> {
@@ -192,6 +212,9 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
     },
     get isWatching(): boolean {
       return isWatching;
+    },
+    get ready(): Promise<void> {
+      return readyPromise;
     },
   };
 }

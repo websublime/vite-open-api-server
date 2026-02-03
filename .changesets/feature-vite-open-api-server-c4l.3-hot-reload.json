@@ -1,0 +1,14 @@
+{
+  "branch": "feature/vite-open-api-server-c4l.3-hot-reload",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-03T09:45:15.282249Z",
+  "updated_at": "2026-02-03T09:45:15.282979Z"
+}
