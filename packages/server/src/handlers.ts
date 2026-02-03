@@ -9,7 +9,7 @@
  */
 
 import path from 'node:path';
-import type { HandlerDefinition, HandlerFn, Logger } from '@websublime/vite-open-api-core';
+import type { HandlerDefinition, HandlerFn, Logger } from '@websublime/vite-plugin-open-api-core';
 import fg from 'fast-glob';
 import type { ViteDevServer } from 'vite';
 import { directoryExists } from './utils.js';
@@ -38,7 +38,7 @@ export interface LoadHandlersResult {
  * @example
  * ```typescript
  * // mocks/handlers/pets.handlers.ts
- * import { defineHandlers } from '@websublime/vite-open-api-core';
+ * import { defineHandlers } from '@websublime/vite-plugin-open-api-core';
  *
  * export default defineHandlers({
  *   getPetById: async ({ req, store }) => {

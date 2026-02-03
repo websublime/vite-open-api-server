@@ -1,4 +1,4 @@
-# @websublime/vite-open-api-devtools
+# @websublime/vite-plugin-open-api-devtools
 
 Vue-based DevTools SPA for debugging and inspecting the OpenAPI mock server.
 
@@ -12,7 +12,7 @@ Vue-based DevTools SPA for debugging and inspecting the OpenAPI mock server.
 ## Installation
 
 ```bash
-pnpm add @websublime/vite-open-api-devtools
+pnpm add @websublime/vite-plugin-open-api-devtools
 ```
 
 ## Usage
@@ -35,8 +35,8 @@ pnpm typecheck
 ### Standalone Integration
 
 ```typescript
-import { bootstrap } from '@websublime/vite-open-api-devtools';
-import '@websublime/vite-open-api-devtools/style.css';
+import { bootstrap } from '@websublime/vite-plugin-open-api-devtools';
+import '@websublime/vite-plugin-open-api-devtools/style.css';
 
 // Mount the DevTools SPA
 bootstrap();
@@ -83,7 +83,7 @@ devtools-client/
 The DevTools support both light and dark modes, automatically respecting system preferences. The theme can also be toggled programmatically:
 
 ```typescript
-import { useTheme } from '@websublime/vite-open-api-devtools';
+import { useTheme } from '@websublime/vite-plugin-open-api-devtools';
 
 const { isDark, toggleTheme, setTheme } = useTheme();
 
@@ -118,8 +118,8 @@ The DevTools expose CSS custom properties for customization:
 Creates and mounts the Vue application. This function is idempotent - calling it multiple times has no effect after the first successful call.
 
 ```typescript
-import { bootstrap } from '@websublime/vite-open-api-devtools';
-import '@websublime/vite-open-api-devtools/style.css';
+import { bootstrap } from '@websublime/vite-plugin-open-api-devtools';
+import '@websublime/vite-plugin-open-api-devtools/style.css';
 
 const app = bootstrap();
 ```
@@ -137,7 +137,7 @@ const app = bootstrap();
 Composable for theme management. Must be called within a Vue component's `setup()` function.
 
 ```typescript
-import { useTheme } from '@websublime/vite-open-api-devtools';
+import { useTheme } from '@websublime/vite-plugin-open-api-devtools';
 
 const { isDark, toggleTheme, setTheme, resetToSystem } = useTheme();
 ```

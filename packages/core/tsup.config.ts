@@ -1,5 +1,5 @@
 /**
- * tsup Configuration for @websublime/vite-open-api-core
+ * tsup Configuration for @websublime/vite-plugin-open-api-core
  *
  * What: Configures tsup bundler for the core package
  * How: Bundles TypeScript source to ESM with type declarations

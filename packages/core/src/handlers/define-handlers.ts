@@ -31,7 +31,7 @@ export interface HandlerDefinition {
  * @example
  * ```typescript
  * // mocks/handlers/pets.handler.ts
- * import { defineHandlers } from '@websublime/vite-open-api-core';
+ * import { defineHandlers } from '@websublime/vite-plugin-open-api-core';
  *
  * export default defineHandlers({
  *   // Returns raw data (200 OK)

@@ -22,7 +22,7 @@ export default defineConfig({
     // Peer dependencies - consumers provide
     'vite',
     // Dependencies - consumers install
-    '@websublime/vite-open-api-core',
+    '@websublime/vite-plugin-open-api-core',
     'chokidar',
     'picocolors',
     'fast-glob',

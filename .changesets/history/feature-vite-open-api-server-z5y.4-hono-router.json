@@ -6,7 +6,7 @@
       "production"
     ],
     "packages": [
-      "@websublime/vite-open-api-core"
+      "@websublime/vite-plugin-open-api-core"
     ],
     "changes": [
       "c3f0a93857a49f55cb8a6592e297866b95fa68f4",
@@ -20,7 +20,7 @@
     "applied_by": "workspace-cli",
     "git_commit": "e88e283b20d53d9b3d8775b23ed7cd68afe44990",
     "versions": {
-      "@websublime/vite-open-api-core": "0.3.0"
+      "@websublime/vite-plugin-open-api-core": "0.3.0"
     }
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "@websublime/vite-open-api-devtools",
+  "name": "@websublime/vite-plugin-open-api-devtools",
   "version": "0.1.1",
   "description": "DevTools SPA for vite-open-api-server - Vue-based debugging interface",
   "keywords": [

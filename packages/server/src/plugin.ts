@@ -12,7 +12,7 @@ import {
   createOpenApiServer,
   executeSeeds,
   type OpenApiServer,
-} from '@websublime/vite-open-api-core';
+} from '@websublime/vite-plugin-open-api-core';
 import type { Plugin, ViteDevServer } from 'vite';
 import { extractBannerInfo, printBanner, printError, printReloadNotification } from './banner.js';
 import { loadHandlers } from './handlers.js';

@@ -55,6 +55,6 @@ export type {
   SeedDefinition,
   SeedFn,
   SeedHelper,
-} from '@websublime/vite-open-api-core';
+} from '@websublime/vite-plugin-open-api-core';
 // Handler and seed definition utilities
-export { defineHandlers, defineSeeds } from '@websublime/vite-open-api-core';
+export { defineHandlers, defineSeeds } from '@websublime/vite-plugin-open-api-core';

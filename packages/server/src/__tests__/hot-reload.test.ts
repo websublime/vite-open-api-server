@@ -13,7 +13,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import type { ServerEvent } from '@websublime/vite-open-api-core';
+import type { ServerEvent } from '@websublime/vite-plugin-open-api-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFileWatcher, debounce, type FileWatcher } from '../hot-reload.js';
 import { createMockLogger, createMockWebSocketHub } from './test-utils.js';

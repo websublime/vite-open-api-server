@@ -31,7 +31,7 @@
     "picocolors": "^1.1.1",
     "chokidar": "^4.0.3",
     "fast-glob": "^3.3.3",
-    "@websublime/vite-open-api-core": "workspace:*"
+    "@websublime/vite-plugin-open-api-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

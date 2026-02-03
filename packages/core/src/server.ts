@@ -141,7 +141,7 @@ export interface OpenApiServer {
  *
  * @example
  * ```typescript
- * import { createOpenApiServer } from '@websublime/vite-open-api-core';
+ * import { createOpenApiServer } from '@websublime/vite-plugin-open-api-core';
  *
  * const server = await createOpenApiServer({
  *   spec: './openapi/petstore.yaml',
@@ -191,7 +191,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         store.create(schemaName, item);
       } catch (error) {
         // Log but don't fail - duplicate IDs in seeds are common
-        logger.warn(`[vite-open-api-core] Failed to seed ${schemaName}:`, error);
+        logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
       }
     }
   }
@@ -336,7 +336,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       } catch (_error) {
         // @hono/node-server not installed - provide helpful message
         logger.error(
-          '[vite-open-api-core] Failed to start server. Install @hono/node-server for standalone mode:',
+          '[vite-plugin-open-api-core] Failed to start server. Install @hono/node-server for standalone mode:',
           '\n  npm install @hono/node-server',
         );
         throw new Error(
@@ -357,15 +357,15 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
           const errorCode = (err as NodeJS.ErrnoException).code;
           if (errorCode === 'EADDRINUSE') {
             logger.error(
-              `[vite-open-api-core] Port ${port} is already in use. Choose a different port or stop the other process.`,
+              `[vite-plugin-open-api-core] Port ${port} is already in use. Choose a different port or stop the other process.`,
             );
           } else {
-            logger.error(`[vite-open-api-core] Server error: ${err.message}`);
+            logger.error(`[vite-plugin-open-api-core] Server error: ${err.message}`);
           }
         },
       );
 
-      logger.info(`[vite-open-api-core] Server started on http://localhost:${port}`);
+      logger.info(`[vite-plugin-open-api-core] Server started on http://localhost:${port}`);
     },
 
     async stop(): Promise<void> {
@@ -375,7 +375,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       ) {
         (serverInstance as { close: () => void }).close();
         serverInstance = null;
-        logger.info('[vite-open-api-core] Server stopped');
+        logger.info('[vite-plugin-open-api-core] Server stopped');
       }
     },
 
@@ -398,7 +398,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         data: { count: newHandlers.size },
       });
 
-      logger.info(`[vite-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
+      logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
     },
 
     /**
@@ -422,7 +422,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
           try {
             store.create(schemaName, item);
           } catch (error) {
-            logger.warn(`[vite-open-api-core] Failed to seed ${schemaName}:`, error);
+            logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
           }
         }
       }
@@ -440,7 +440,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         data: { count: newSeeds.size },
       });
 
-      logger.info(`[vite-open-api-core] Seeds updated: ${newSeeds.size} schemas`);
+      logger.info(`[vite-plugin-open-api-core] Seeds updated: ${newSeeds.size} schemas`);
     },
   };
 

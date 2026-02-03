@@ -6,8 +6,8 @@
       "production"
     ],
     "packages": [
-      "@websublime/vite-open-api-devtools",
-      "@websublime/vite-open-api-core"
+      "@websublime/vite-plugin-open-api-devtools",
+      "@websublime/vite-plugin-open-api-core"
     ],
     "changes": [
       "389552bed0903e73e4eee86aac2aad7f3379bd3d",
@@ -26,8 +26,8 @@
     "applied_by": "workspace-cli",
     "git_commit": "65df2d4ad8122c53f43a333f3de29f53b518b61d",
     "versions": {
-      "@websublime/vite-open-api-core": "0.8.1",
-      "@websublime/vite-open-api-devtools": "0.1.1"
+      "@websublime/vite-plugin-open-api-core": "0.8.1",
+      "@websublime/vite-plugin-open-api-devtools": "0.1.1"
     }
   }
 }

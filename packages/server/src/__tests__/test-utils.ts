@@ -12,7 +12,7 @@ import type {
   ServerEvent,
   WebSocketClient,
   WebSocketHub,
-} from '@websublime/vite-open-api-core';
+} from '@websublime/vite-plugin-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
 import { vi } from 'vitest';

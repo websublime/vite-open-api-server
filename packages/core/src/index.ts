@@ -1,11 +1,11 @@
 /**
- * @websublime/vite-open-api-core - Core Server Package
+ * @websublime/vite-plugin-open-api-core - Core Server Package
  *
  * What: Core server logic for vite-open-api-server
  * How: Provides OpenAPI processing, routing, store, and data generation
  * Why: Reusable server components independent of Vite
  *
- * @module @websublime/vite-open-api-core
+ * @module @websublime/vite-plugin-open-api-core
  */
 
 // =============================================================================

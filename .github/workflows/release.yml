@@ -80,6 +80,6 @@ jobs:
           echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
 
           # Publish packages in topological order (dependencies first)
-          # This ensures @websublime/vite-open-api-core is published before
+          # This ensures @websublime/vite-plugin-open-api-core is published before
           # @websublime/vite-plugin-open-api-server which depends on it
           pnpm -r --filter='./packages/*' publish --access public --no-git-checks

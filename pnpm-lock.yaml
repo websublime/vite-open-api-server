@@ -91,7 +91,7 @@ importers:
 
   packages/server:
     dependencies:
-      '@websublime/vite-open-api-core':
+      '@websublime/vite-plugin-open-api-core':
         specifier: workspace:*
         version: link:../core
       chokidar:

@@ -31,7 +31,7 @@ export interface SeedDefinition {
  * @example
  * ```typescript
  * // mocks/seeds/pets.seed.ts
- * import { defineSeeds } from '@websublime/vite-open-api-core';
+ * import { defineSeeds } from '@websublime/vite-plugin-open-api-core';
  *
  * export default defineSeeds({
  *   // Using seed.count to generate N items

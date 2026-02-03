@@ -1,5 +1,5 @@
 {
-  "name": "@websublime/vite-open-api-core",
+  "name": "@websublime/vite-plugin-open-api-core",
   "version": "0.8.1",
   "description": "Core server logic for vite-open-api-server - OpenAPI processing, routing, store, and data generation",
   "keywords": [

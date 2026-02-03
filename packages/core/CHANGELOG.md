@@ -432,7 +432,7 @@
 - add missing type exports and externalize dependencies (58c11ee)
 - add DATE_FORMAT_POST_PROCESSING for RFC3339 date formatting (56eabcb)
 - address PR review feedback (846644e)
-- rename package to @websublime/vite-open-api-core (1f4f87b)
+- rename package to @websublime/vite-plugin-open-api-core (1f4f87b)
 - address 4 PR review comments (3e34b5a)
 
 

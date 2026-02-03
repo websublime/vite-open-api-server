@@ -8,7 +8,7 @@
  * @module banner
  */
 
-import type { EndpointRegistry } from '@websublime/vite-open-api-core';
+import type { EndpointRegistry } from '@websublime/vite-plugin-open-api-core';
 import pc from 'picocolors';
 import type { ResolvedOptions } from './types.js';
 

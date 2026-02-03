@@ -6,7 +6,7 @@
       "production"
     ],
     "packages": [
-      "@websublime/vite-open-api-core",
+      "@websublime/vite-plugin-open-api-core",
       "@websublime/vite-plugin-open-api-server"
     ],
     "changes": [
@@ -21,7 +21,7 @@
     "git_commit": "05c882c051142773815b92e805a3c8049f881799",
     "versions": {
       "@websublime/vite-plugin-open-api-server": "0.19.2",
-      "@websublime/vite-open-api-core": "0.7.2"
+      "@websublime/vite-plugin-open-api-core": "0.7.2"
     }
   }
 }

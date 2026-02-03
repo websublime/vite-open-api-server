@@ -6,7 +6,7 @@
   ],
   "packages": [
     "@websublime/vite-plugin-open-api-server",
-    "@websublime/vite-open-api-core"
+    "@websublime/vite-plugin-open-api-core"
   ],
   "changes": [
     "907a0c607fadabcd173666d680c7e3ccd208ac41",

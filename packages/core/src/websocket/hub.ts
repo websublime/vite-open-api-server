@@ -196,7 +196,7 @@ const WS_READY_STATE = {
  *
  * @example
  * ```typescript
- * import { createWebSocketHub } from '@websublime/vite-open-api-core';
+ * import { createWebSocketHub } from '@websublime/vite-plugin-open-api-core';
  *
  * const hub = createWebSocketHub({
  *   serverVersion: '2.0.0',

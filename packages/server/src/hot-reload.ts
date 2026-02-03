@@ -12,7 +12,7 @@
  */
 
 import path from 'node:path';
-import type { Logger } from '@websublime/vite-open-api-core';
+import type { Logger } from '@websublime/vite-plugin-open-api-core';
 import type { FSWatcher } from 'chokidar';
 
 /**

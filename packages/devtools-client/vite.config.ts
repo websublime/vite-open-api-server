@@ -1,5 +1,5 @@
 /**
- * Vite Configuration for @websublime/vite-open-api-devtools
+ * Vite Configuration for @websublime/vite-plugin-open-api-devtools
  *
  * What: Configures Vite for building the DevTools SPA as a library
  * How: Uses Vue plugin and library mode for bundling

@@ -9,7 +9,7 @@
  */
 
 import path from 'node:path';
-import type { AnySeedFn, Logger, SeedDefinition } from '@websublime/vite-open-api-core';
+import type { AnySeedFn, Logger, SeedDefinition } from '@websublime/vite-plugin-open-api-core';
 import fg from 'fast-glob';
 import type { ViteDevServer } from 'vite';
 import { directoryExists } from './utils.js';
@@ -38,7 +38,7 @@ export interface LoadSeedsResult {
  * @example
  * ```typescript
  * // mocks/seeds/pets.seeds.ts
- * import { defineSeeds } from '@websublime/vite-open-api-core';
+ * import { defineSeeds } from '@websublime/vite-plugin-open-api-core';
  *
  * export default defineSeeds({
  *   Pet: ({ seed, faker }) => {
