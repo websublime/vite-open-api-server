@@ -48,6 +48,18 @@ export interface WebSocketClient {
 export type CommandHandler = (client: WebSocketClient, command: ClientCommand) => void;
 
 /**
+ * Logger interface for WebSocket hub
+ *
+ * All methods are optional to allow partial implementations.
+ * When no logger is provided, defaults to console at runtime.
+ */
+export interface WebSocketHubLogger {
+  debug?: (message: string, ...args: unknown[]) => void;
+  warn?: (message: string, ...args: unknown[]) => void;
+  error?: (message: string, ...args: unknown[]) => void;
+}
+
+/**
  * Options for creating a WebSocket hub
  */
 export interface WebSocketHubOptions {
@@ -65,13 +77,13 @@ export interface WebSocketHubOptions {
 
   /**
    * Optional logger for debugging
+   *
+   * If not provided, defaults to `console` at runtime.
+   * Pass a custom logger to redirect or suppress log output.
+   *
    * @default console
    */
-  logger?: {
-    debug?: (message: string, ...args: unknown[]) => void;
-    warn?: (message: string, ...args: unknown[]) => void;
-    error?: (message: string, ...args: unknown[]) => void;
-  };
+  logger?: WebSocketHubLogger;
 }
 
 /**
@@ -217,7 +229,12 @@ const WS_READY_STATE = {
  * @returns WebSocket hub instance
  */
 export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocketHub {
-  const { serverVersion = '2.0.0', onCommand, logger } = options;
+  const { serverVersion = '2.0.0', onCommand, logger: customLogger } = options;
+
+  /**
+   * Logger instance - defaults to console if not provided
+   */
+  const logger: WebSocketHubLogger = customLogger ?? console;
 
   /**
    * Set of connected clients
@@ -232,17 +249,18 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
   let commandHandler: CommandHandler | undefined = onCommand;
 
   /**
-   * Safe logging helpers that check if logger methods exist
+   * Logging helpers with [WebSocketHub] prefix
+   * Uses the logger instance (defaults to console)
    */
   const log = {
     debug: (message: string, ...args: unknown[]) => {
-      logger?.debug?.(`[WebSocketHub] ${message}`, ...args);
+      logger.debug?.(`[WebSocketHub] ${message}`, ...args);
     },
     warn: (message: string, ...args: unknown[]) => {
-      logger?.warn?.(`[WebSocketHub] ${message}`, ...args);
+      logger.warn?.(`[WebSocketHub] ${message}`, ...args);
     },
     error: (message: string, ...args: unknown[]) => {
-      logger?.error?.(`[WebSocketHub] ${message}`, ...args);
+      logger.error?.(`[WebSocketHub] ${message}`, ...args);
     },
   };
 
@@ -276,8 +294,143 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
   }
 
   /**
+   * Validate that a value is a non-empty string
+   */
+  function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.length > 0;
+  }
+
+  /**
+   * Validate that a value is an array
+   */
+  function isArray(value: unknown): value is unknown[] {
+    return Array.isArray(value);
+  }
+
+  /**
+   * Validate that a value is a plain object
+   */
+  function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  /** Validation result type */
+  type ValidationResult = { valid: true } | { valid: false; reason: string };
+
+  /** Success result constant */
+  const VALID: ValidationResult = { valid: true };
+
+  /**
+   * Validator for commands with no required data
+   */
+  function validateNoData(): ValidationResult {
+    return VALID;
+  }
+
+  /**
+   * Validator for get:timeline (optional data with optional limit)
+   */
+  function validateGetTimeline(data: unknown): ValidationResult {
+    if (data === undefined) return VALID;
+    if (!isObject(data)) return { valid: false, reason: 'get:timeline data must be an object' };
+    if ('limit' in data && typeof data.limit !== 'number') {
+      return { valid: false, reason: 'get:timeline limit must be a number' };
+    }
+    return VALID;
+  }
+
+  /**
+   * Validator for commands requiring schema string (get:store, clear:store)
+   */
+  function validateSchemaRequired(commandType: string, data: unknown): ValidationResult {
+    if (!isObject(data) || !isNonEmptyString(data.schema)) {
+      return { valid: false, reason: `${commandType} requires data.schema as non-empty string` };
+    }
+    return VALID;
+  }
+
+  /**
+   * Validator for set:store (requires schema and items array)
+   */
+  function validateSetStore(data: unknown): ValidationResult {
+    if (!isObject(data)) return { valid: false, reason: 'set:store requires data object' };
+    if (!isNonEmptyString(data.schema)) {
+      return { valid: false, reason: 'set:store requires data.schema as non-empty string' };
+    }
+    if (!isArray(data.items)) {
+      return { valid: false, reason: 'set:store requires data.items as array' };
+    }
+    return VALID;
+  }
+
+  /**
+   * Validator for set:simulation (requires path and status)
+   */
+  function validateSetSimulation(data: unknown): ValidationResult {
+    if (!isObject(data)) return { valid: false, reason: 'set:simulation requires data object' };
+    if (!isNonEmptyString(data.path)) {
+      return { valid: false, reason: 'set:simulation requires data.path as non-empty string' };
+    }
+    if (typeof data.status !== 'number') {
+      return { valid: false, reason: 'set:simulation requires data.status as number' };
+    }
+    return VALID;
+  }
+
+  /**
+   * Validator for clear:simulation (requires path)
+   */
+  function validateClearSimulation(data: unknown): ValidationResult {
+    if (!isObject(data) || !isNonEmptyString(data.path)) {
+      return { valid: false, reason: 'clear:simulation requires data.path as non-empty string' };
+    }
+    return VALID;
+  }
+
+  /**
+   * Map of command types to their payload validators
+   */
+  const commandValidators: Record<string, (data: unknown) => ValidationResult> = {
+    'get:registry': validateNoData,
+    'clear:timeline': validateNoData,
+    reseed: validateNoData,
+    'get:timeline': validateGetTimeline,
+    'get:store': (data) => validateSchemaRequired('get:store', data),
+    'clear:store': (data) => validateSchemaRequired('clear:store', data),
+    'set:store': validateSetStore,
+    'set:simulation': validateSetSimulation,
+    'clear:simulation': validateClearSimulation,
+  };
+
+  /**
+   * Validate command payload based on command type
+   *
+   * Each command type has specific data requirements:
+   * - Commands without data: get:registry, clear:timeline, reseed
+   * - Commands with optional data: get:timeline (limit is optional)
+   * - Commands with required data: get:store, set:store, clear:store,
+   *   set:simulation, clear:simulation
+   *
+   * @returns ValidationResult indicating if payload is valid
+   */
+  function validateCommandPayload(commandType: string, data: unknown): ValidationResult {
+    const validator = commandValidators[commandType];
+    if (!validator) {
+      return { valid: false, reason: `Unknown command type: ${commandType}` };
+    }
+    return validator(data);
+  }
+
+  /**
    * Parse a raw message into a ClientCommand
-   * Returns null if parsing fails or the message is invalid
+   *
+   * Validates:
+   * 1. Message is valid JSON (if string)
+   * 2. Parsed object has a 'type' property
+   * 3. Command type is a known type
+   * 4. Command payload matches the expected shape for the type
+   *
+   * @returns Parsed ClientCommand or null if invalid
    */
   function parseCommand(message: string | unknown): ClientCommand | null {
     try {
@@ -300,6 +453,13 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
       // Validate the command type is a known type using the single source of truth
       if (!CLIENT_COMMAND_TYPES.includes(command.type as (typeof CLIENT_COMMAND_TYPES)[number])) {
         log.warn(`Unknown command type: ${command.type}`);
+        return null;
+      }
+
+      // Validate command payload shape based on type
+      const payloadValidation = validateCommandPayload(command.type, command.data);
+      if (!payloadValidation.valid) {
+        log.warn(`Invalid command payload for ${command.type}: ${payloadValidation.reason}`);
         return null;
       }
 

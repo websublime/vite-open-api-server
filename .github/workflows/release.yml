@@ -80,6 +80,8 @@ jobs:
           # pnpm reads .npmrc and expands ${NPM_TOKEN} from environment
           echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" >> .npmrc
 
+          cp .npmrc ~/.npmrc
+
           # Publish packages in topological order (dependencies first)
           # This ensures @websublime/vite-open-api-core is published before
           # @websublime/vite-plugin-open-api-server which depends on it

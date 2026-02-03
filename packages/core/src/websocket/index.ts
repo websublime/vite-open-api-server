@@ -13,6 +13,7 @@ export {
   createWebSocketHub,
   type WebSocketClient,
   type WebSocketHub,
+  type WebSocketHubLogger,
   type WebSocketHubOptions,
 } from './hub.js';
 

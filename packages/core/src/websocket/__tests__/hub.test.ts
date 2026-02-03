@@ -636,4 +636,246 @@ describe('createWebSocketHub', () => {
       expect(commandHandler).not.toHaveBeenCalled();
     });
   });
+
+  describe('payload validation', () => {
+    it('should reject get:store without schema', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:store' }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject get:store with empty schema', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:store', data: { schema: '' } }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject set:store without items array', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'set:store', data: { schema: 'Pet' } }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject set:store with non-array items', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(
+        client,
+        JSON.stringify({ type: 'set:store', data: { schema: 'Pet', items: 'not-array' } }),
+      );
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should accept set:store with valid payload', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(
+        client,
+        JSON.stringify({ type: 'set:store', data: { schema: 'Pet', items: [{ id: 1 }] } }),
+      );
+
+      expect(commandHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reject clear:store without schema', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'clear:store' }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject set:simulation without path', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'set:simulation', data: { status: 500 } }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject set:simulation without status', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(
+        client,
+        JSON.stringify({ type: 'set:simulation', data: { path: '/pets' } }),
+      );
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject set:simulation with non-number status', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(
+        client,
+        JSON.stringify({ type: 'set:simulation', data: { path: '/pets', status: '500' } }),
+      );
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should accept set:simulation with valid payload', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(
+        client,
+        JSON.stringify({ type: 'set:simulation', data: { path: '/pets', status: 500 } }),
+      );
+
+      expect(commandHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reject clear:simulation without path', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'clear:simulation', data: {} }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should accept get:timeline without data', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:timeline' }));
+
+      expect(commandHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should accept get:timeline with valid limit', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:timeline', data: { limit: 50 } }));
+
+      expect(commandHandler).toHaveBeenCalledTimes(1);
+    });
+
+    it('should reject get:timeline with non-number limit', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:timeline', data: { limit: '50' } }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should reject get:timeline with non-object data', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      hub.handleMessage(client, JSON.stringify({ type: 'get:timeline', data: 'invalid' }));
+
+      expect(commandHandler).not.toHaveBeenCalled();
+    });
+
+    it('should accept commands without data requirements', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      // These commands don't require data
+      hub.handleMessage(client, JSON.stringify({ type: 'get:registry' }));
+      hub.handleMessage(client, JSON.stringify({ type: 'clear:timeline' }));
+      hub.handleMessage(client, JSON.stringify({ type: 'reseed' }));
+
+      expect(commandHandler).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('default logger', () => {
+    it('should use console as default logger when none provided', () => {
+      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+      const hub = createWebSocketHub();
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('should use custom logger when provided', () => {
+      const customLogger = {
+        debug: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      };
+      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
+      const hub = createWebSocketHub({ logger: customLogger });
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      expect(customLogger.debug).toHaveBeenCalled();
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle logger with only some methods defined', () => {
+      const partialLogger = {
+        warn: vi.fn(),
+        // debug and error not defined
+      };
+
+      const hub = createWebSocketHub({ logger: partialLogger });
+      const client = createMockClient();
+
+      // Should not throw even though debug is not defined
+      expect(() => hub.addClient(client)).not.toThrow();
+    });
+  });
 });

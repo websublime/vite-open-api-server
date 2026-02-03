@@ -111,6 +111,7 @@ export type {
   SimulationState,
   WebSocketClient,
   WebSocketHub,
+  WebSocketHubLogger,
   WebSocketHubOptions,
 } from './websocket/index.js';
 export { CLIENT_COMMAND_TYPES, createWebSocketHub } from './websocket/index.js';

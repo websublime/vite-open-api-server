@@ -171,11 +171,26 @@ export type ServerEventData<T extends ServerEvent['type']> = Extract<
 /**
  * Extract the data type for a specific client command type
  *
+ * Handles both required and optional data fields correctly:
+ * - Commands with required data (e.g., 'get:store') return the data type
+ * - Commands with optional data (e.g., 'get:timeline') return the data type | undefined
+ * - Commands without data (e.g., 'get:registry') return undefined
+ *
  * @example
  * ```typescript
  * type GetStoreData = ClientCommandData<'get:store'>;
  * // { schema: string }
+ *
+ * type GetTimelineData = ClientCommandData<'get:timeline'>;
+ * // { limit?: number } | undefined
+ *
+ * type GetRegistryData = ClientCommandData<'get:registry'>;
+ * // undefined
  * ```
  */
 export type ClientCommandData<T extends ClientCommand['type']> =
-  Extract<ClientCommand, { type: T }> extends { data: infer D } ? D : undefined;
+  Extract<ClientCommand, { type: T }> extends infer C
+    ? C extends { data?: infer D }
+      ? D
+      : undefined
+    : undefined;
