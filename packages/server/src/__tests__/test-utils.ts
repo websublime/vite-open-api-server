@@ -7,11 +7,11 @@
  */
 
 import type {
-    CommandHandler,
-    Logger,
-    ServerEvent,
-    WebSocketClient,
-    WebSocketHub,
+  CommandHandler,
+  Logger,
+  ServerEvent,
+  WebSocketClient,
+  WebSocketHub,
 } from '@websublime/vite-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
