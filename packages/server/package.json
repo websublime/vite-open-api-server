@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-server",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "Vite plugin for OpenAPI mock server with DevTools integration",
   "keywords": [
     "vite",
@@ -23,15 +23,15 @@
     "directory": "packages/server"
   },
   "scripts": {
+    "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "dev": "tsup --watch",
-    "build": "tsup"
+    "dev": "tsup --watch"
   },
   "dependencies": {
     "picocolors": "^1.1.1",
+    "chokidar": "^4.0.3",
     "fast-glob": "^3.3.3",
-    "@websublime/vite-open-api-core": "workspace:*",
-    "chokidar": "^4.0.3"
+    "@websublime/vite-open-api-core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.9.0",

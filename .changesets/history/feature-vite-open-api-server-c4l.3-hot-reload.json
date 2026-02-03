@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-c4l.3-hot-reload",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-open-api-core",
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "cfa2283edf0cd02337b882c57d285823e28f05e8"
+    ],
+    "created_at": "2026-02-03T09:45:15.282249Z",
+    "updated_at": "2026-02-03T09:46:35.562093Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-03T15:01:58.363275065Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "05c882c051142773815b92e805a3c8049f881799",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.19.2",
+      "@websublime/vite-open-api-core": "0.7.2"
+    }
+  }
+}

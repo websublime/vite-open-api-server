@@ -1,3 +1,63 @@
+## [0.7.2] - 2026-02-03
+
+### Features
+
+- complete hot reload implementation with WebSocket events (4fb3147)
+- implement Vite plugin core with proxy configuration (820c4bc)
+
+
+### Bug Fixes
+
+- make MockLogger extend Logger interface for type compatibility (3f7cc27)
+- address code review findings (21e2e70)
+- use tsc --build for typecheck with project references (46e9739)
+- add project reference to core for typecheck in CI (a65a30b)
+- use Vite ssrLoadModule for TypeScript handler/seed files (64953c8)
+- revert composite mode and build before typecheck (9608b7c)
+- address review comments for types, hot-reload, and docs (d6c67f4)
+
+
+### Documentation
+
+- update developer workflow - remove close commands from subtask flow (06c6545)
+
+
+### Code Refactoring
+
+- extract shared test utilities for handler and seed tests (ee29f4c)
+
+
+### Continuous Integration
+
+- enable npm publishing for packages (3367273)
+- enable npm publishing for packages (05c31f3)
+
+
+### Tests
+
+- add WebSocket event broadcast tests (05c882c)
+- add unit tests for handler and seed file loading (c39e8d2)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c4l.3-hot-reload (7de37d7)
+- bump @websublime/vite-plugin-open-api-server to 0.19.1 (e03a507)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (70c117e)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (f3dd1b8)
+- sync changeset for feature/vite-open-api-server-c4l-2-file-loading-tests (9162c0f)
+- update plugin server version (30378c0)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (0acaa63)
+- sync changeset for code review fixes (85a8384)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (bfb74da)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (483343e)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (cae309a)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (aed8463)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (e6f3b5c)
+- sync changeset for feature/vite-open-api-server-c4l.1-plugin-core (d2fb8f3)
+
+
+
 ## [0.7.1] - 2026-02-02
 
 ### Bug Fixes

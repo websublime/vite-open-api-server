@@ -1,3 +1,21 @@
+## [0.19.2] - 2026-02-03
+
+### Features
+
+- complete hot reload implementation with WebSocket events (4fb3147)
+
+
+### Tests
+
+- add WebSocket event broadcast tests (05c882c)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c4l.3-hot-reload (7de37d7)
+
+
+
 ## [0.19.1] - 2026-02-03
 
 ### Features
