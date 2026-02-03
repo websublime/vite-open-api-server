@@ -8,7 +8,7 @@
  * @module websocket/hub
  */
 
-import type { ClientCommand, ServerEvent } from './protocol.js';
+import { CLIENT_COMMAND_TYPES, type ClientCommand, type ServerEvent } from './protocol.js';
 
 /**
  * Minimal WebSocket client interface
@@ -297,20 +297,8 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
 
       const command = parsed as { type: string; data?: unknown };
 
-      // Validate the command type is a known type
-      const validTypes = [
-        'get:registry',
-        'get:timeline',
-        'get:store',
-        'set:store',
-        'clear:store',
-        'set:simulation',
-        'clear:simulation',
-        'clear:timeline',
-        'reseed',
-      ];
-
-      if (!validTypes.includes(command.type)) {
+      // Validate the command type is a known type using the single source of truth
+      if (!CLIENT_COMMAND_TYPES.includes(command.type as (typeof CLIENT_COMMAND_TYPES)[number])) {
         log.warn(`Unknown command type: ${command.type}`);
         return null;
       }
@@ -388,12 +376,12 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
 
           // Send error response to client
           const errorEvent: ServerEvent = {
-            type: 'error' as ServerEvent['type'],
+            type: 'error' as const,
             data: {
               command: command.type,
               message: error instanceof Error ? error.message : 'Command handler failed',
             },
-          } as ServerEvent;
+          };
 
           safeSend(client, JSON.stringify(errorEvent));
         }
