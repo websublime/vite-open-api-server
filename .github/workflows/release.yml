@@ -73,14 +73,10 @@ jobs:
 
       - name: Publish to npm
         if: steps.changesets.outputs.count > 0
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           # Configure npm authentication for pnpm
           # pnpm reads .npmrc and expands ${NPM_TOKEN} from environment
-          echo "//registry.npmjs.org/:_authToken=\${NPM_TOKEN}" >> .npmrc
-
-          cp .npmrc ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
 
           # Publish packages in topological order (dependencies first)
           # This ensures @websublime/vite-open-api-core is published before
