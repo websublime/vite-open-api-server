@@ -8,7 +8,12 @@
     "@websublime/vite-open-api-devtools",
     "@websublime/vite-open-api-core"
   ],
-  "changes": [],
+  "changes": [
+    "22f686dd295af03c5ac77d442cdeda011cdb22f0",
+    "5fb53c3d58229017165432f43b222c6b6bd601c3",
+    "c2480d126658ef015eadedcc226cffbdd2529fef",
+    "b94676194e43445a2fe9d11523224efc20e62a8d"
+  ],
   "created_at": "2026-02-03T17:17:11.835018Z",
-  "updated_at": "2026-02-03T17:17:11.835395Z"
+  "updated_at": "2026-02-03T17:17:48.198556Z"
 }
