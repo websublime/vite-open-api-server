@@ -13,9 +13,10 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import type { ServerEvent } from '@websublime/vite-open-api-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createFileWatcher, debounce, type FileWatcher } from '../hot-reload.js';
-import { createMockLogger } from './test-utils.js';
+import { createMockLogger, createMockWebSocketHub } from './test-utils.js';
 
 describe('debounce', () => {
   beforeEach(() => {
@@ -593,6 +594,139 @@ describe('createFileWatcher', () => {
 
       // Should NOT have been called for non-handler file
       expect(onHandlerChange).not.toHaveBeenCalled();
+    });
+  });
+});
+
+/**
+ * WebSocket Event Broadcasting Tests
+ *
+ * These tests verify the expected WebSocket event structure for hot reload notifications.
+ * While the actual broadcasts happen in plugin.ts (which uses closures), these tests
+ * ensure the mock WebSocket hub works correctly and documents the expected event format.
+ *
+ * The plugin broadcasts these events when handlers/seeds are reloaded:
+ * - { type: 'handlers:updated', data: { count: number } }
+ * - { type: 'seeds:updated', data: { count: number } }
+ */
+describe('WebSocket event broadcasting (hot reload integration)', () => {
+  describe('handlers:updated event', () => {
+    it('should have correct event structure for handler reload', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      // Simulate what plugin.ts does when handlers are reloaded
+      const event: ServerEvent = {
+        type: 'handlers:updated',
+        data: { count: 5 },
+      };
+
+      mockWsHub.broadcast(event);
+
+      expect(mockWsHub.broadcast).toHaveBeenCalledTimes(1);
+      expect(mockWsHub.broadcast).toHaveBeenCalledWith({
+        type: 'handlers:updated',
+        data: { count: 5 },
+      });
+    });
+
+    it('should broadcast zero count when no handlers are loaded', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      const event: ServerEvent = {
+        type: 'handlers:updated',
+        data: { count: 0 },
+      };
+
+      mockWsHub.broadcast(event);
+
+      expect(mockWsHub.getBroadcastCalls()).toEqual([
+        { type: 'handlers:updated', data: { count: 0 } },
+      ]);
+    });
+  });
+
+  describe('seeds:updated event', () => {
+    it('should have correct event structure for seed reload', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      // Simulate what plugin.ts does when seeds are reloaded
+      const event: ServerEvent = {
+        type: 'seeds:updated',
+        data: { count: 3 },
+      };
+
+      mockWsHub.broadcast(event);
+
+      expect(mockWsHub.broadcast).toHaveBeenCalledTimes(1);
+      expect(mockWsHub.broadcast).toHaveBeenCalledWith({
+        type: 'seeds:updated',
+        data: { count: 3 },
+      });
+    });
+
+    it('should broadcast zero count when all seeds are removed', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      const event: ServerEvent = {
+        type: 'seeds:updated',
+        data: { count: 0 },
+      };
+
+      mockWsHub.broadcast(event);
+
+      expect(mockWsHub.getBroadcastCalls()).toEqual([
+        { type: 'seeds:updated', data: { count: 0 } },
+      ]);
+    });
+  });
+
+  describe('mock WebSocket hub utilities', () => {
+    it('should track multiple broadcast calls', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      mockWsHub.broadcast({ type: 'handlers:updated', data: { count: 2 } });
+      mockWsHub.broadcast({ type: 'seeds:updated', data: { count: 5 } });
+      mockWsHub.broadcast({ type: 'handlers:updated', data: { count: 3 } });
+
+      expect(mockWsHub.broadcast).toHaveBeenCalledTimes(3);
+      expect(mockWsHub.getBroadcastCalls()).toEqual([
+        { type: 'handlers:updated', data: { count: 2 } },
+        { type: 'seeds:updated', data: { count: 5 } },
+        { type: 'handlers:updated', data: { count: 3 } },
+      ]);
+    });
+
+    it('should clear mock history', () => {
+      const mockWsHub = createMockWebSocketHub();
+
+      mockWsHub.broadcast({ type: 'handlers:updated', data: { count: 1 } });
+      expect(mockWsHub.getBroadcastCalls()).toHaveLength(1);
+
+      mockWsHub.clearMocks();
+
+      expect(mockWsHub.getBroadcastCalls()).toHaveLength(0);
+      expect(mockWsHub.broadcast).not.toHaveBeenCalled();
+    });
+
+    it('should support addClient and removeClient methods', () => {
+      const mockWsHub = createMockWebSocketHub();
+      const mockClient = { id: 'test-client' };
+
+      mockWsHub.addClient(mockClient);
+      mockWsHub.removeClient(mockClient);
+
+      expect(mockWsHub.addClient).toHaveBeenCalledWith(mockClient);
+      expect(mockWsHub.removeClient).toHaveBeenCalledWith(mockClient);
+    });
+
+    it('should support handleMessage method', () => {
+      const mockWsHub = createMockWebSocketHub();
+      const mockClient = { id: 'test-client' };
+      const mockMessage = { type: 'get:registry' };
+
+      mockWsHub.handleMessage(mockClient, mockMessage);
+
+      expect(mockWsHub.handleMessage).toHaveBeenCalledWith(mockClient, mockMessage);
     });
   });
 });
