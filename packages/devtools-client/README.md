@@ -44,7 +44,7 @@ bootstrap();
 
 ## Architecture
 
-```
+```text
 devtools-client/
 ├── src/
 │   ├── App.vue              # Main layout with tabs

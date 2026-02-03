@@ -81,9 +81,9 @@
   --devtools-sidebar-width: 280px;
 }
 
-/* Dark mode support */
+/* Dark mode support - only applies when no explicit theme class is set */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light):not(.dark) {
     /* Surface colors (dark mode) */
     --devtools-bg: var(--gray-9);
     --devtools-surface: var(--gray-8);
@@ -95,6 +95,17 @@
     --devtools-text-muted: var(--gray-4);
     --devtools-text-inverted: var(--gray-9);
   }
+}
+
+/* Manual light mode class for programmatic control */
+.light {
+  --devtools-bg: var(--gray-0);
+  --devtools-surface: var(--gray-1);
+  --devtools-surface-elevated: var(--gray-2);
+  --devtools-border: var(--gray-4);
+  --devtools-text: var(--gray-9);
+  --devtools-text-muted: var(--gray-6);
+  --devtools-text-inverted: var(--gray-0);
 }
 
 /* Manual dark mode class for programmatic control */
@@ -350,7 +361,9 @@ body {
 }
 
 .input:focus {
-  outline: none;
+  /* Use transparent outline as fallback for Windows High Contrast Mode */
+  outline: 2px solid transparent;
+  outline-color: var(--devtools-primary);
   border-color: var(--devtools-primary);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--devtools-primary) 25%, transparent);
 }

@@ -51,7 +51,7 @@ describe('useTheme', () => {
     // Reset all mocks
     vi.clearAllMocks();
     localStorageMock.clear();
-    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.remove('dark', 'light');
 
     // Reset matchMedia to default (light mode)
     matchMediaMock.mockImplementation((query: string) => ({
@@ -65,10 +65,9 @@ describe('useTheme', () => {
       dispatchEvent: vi.fn(),
     }));
 
-    // Reset singleton state to default (system mode)
-    // This is necessary because the composable uses singleton state
-    const { setTheme } = useTheme();
-    setTheme('system');
+    // Reset singleton state using the dedicated reset function
+    const { resetState } = useTheme();
+    resetState();
   });
 
   describe('initialization', () => {
@@ -159,6 +158,26 @@ describe('useTheme', () => {
     });
   });
 
+  describe('resetState', () => {
+    it('should reset theme state to defaults', () => {
+      const { themeMode, setTheme, resetState } = useTheme();
+      setTheme('dark');
+      expect(themeMode.value).toBe('dark');
+
+      resetState();
+      expect(themeMode.value).toBe('system');
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
+      expect(document.documentElement.classList.contains('light')).toBe(false);
+    });
+
+    it('should remove theme from localStorage', () => {
+      const { setTheme, resetState } = useTheme();
+      setTheme('dark');
+      resetState();
+      expect(localStorageMock.removeItem).toHaveBeenCalledWith('openapi-devtools-theme');
+    });
+  });
+
   describe('effectiveTheme', () => {
     it('should return dark when mode is dark', () => {
       const { effectiveTheme, setTheme } = useTheme();
@@ -209,12 +228,111 @@ describe('useTheme', () => {
     });
 
     it('should handle localStorage.getItem throwing error during initialize', () => {
+      // Setup: make getItem throw
       localStorageMock.getItem.mockImplementationOnce(() => {
         throw new Error('SecurityError');
       });
 
+      // Call initialize directly to test the code path
+      const { initialize } = useTheme();
+
       // Should not throw when initializing
-      expect(() => useTheme()).not.toThrow();
+      expect(() => initialize()).not.toThrow();
+    });
+  });
+
+  describe('initialize', () => {
+    it('should load saved theme from localStorage', () => {
+      // Set up localStorage to return a saved theme
+      localStorageMock.getItem.mockReturnValueOnce('dark');
+
+      const { initialize, themeMode } = useTheme();
+      initialize();
+
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('openapi-devtools-theme');
+      expect(themeMode.value).toBe('dark');
+    });
+
+    it('should detect system dark mode preference', () => {
+      // Mock matchMedia to return dark mode preference
+      matchMediaMock.mockImplementation((query: string) => ({
+        matches: true, // System prefers dark
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      const { initialize, systemPrefersDark } = useTheme();
+      initialize();
+
+      expect(systemPrefersDark.value).toBe(true);
+    });
+
+    it('should register event listener for system preference changes', () => {
+      const addEventListenerMock = vi.fn();
+      matchMediaMock.mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: addEventListenerMock,
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+
+      const { initialize } = useTheme();
+      initialize();
+
+      expect(addEventListenerMock).toHaveBeenCalledWith('change', expect.any(Function));
+    });
+
+    it('should clean up previous listener before adding new one', () => {
+      const removeEventListenerMock = vi.fn();
+      const addEventListenerMock = vi.fn();
+      matchMediaMock.mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: addEventListenerMock,
+        removeEventListener: removeEventListenerMock,
+        dispatchEvent: vi.fn(),
+      }));
+
+      const { initialize } = useTheme();
+
+      // First initialize
+      initialize();
+      expect(addEventListenerMock).toHaveBeenCalledTimes(1);
+
+      // Second initialize should clean up first
+      initialize();
+      expect(removeEventListenerMock).toHaveBeenCalled();
+      expect(addEventListenerMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('should apply theme classes to document root', () => {
+      const { initialize, setTheme } = useTheme();
+      setTheme('dark');
+      initialize();
+
+      expect(document.documentElement.classList.contains('dark')).toBe(true);
+      expect(document.documentElement.classList.contains('light')).toBe(false);
+    });
+
+    it('should apply light class when theme is light', () => {
+      const { initialize, setTheme } = useTheme();
+      setTheme('light');
+      initialize();
+
+      expect(document.documentElement.classList.contains('light')).toBe(true);
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
     });
   });
 
