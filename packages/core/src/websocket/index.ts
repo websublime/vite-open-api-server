@@ -16,14 +16,16 @@ export {
   type WebSocketHubOptions,
 } from './hub.js';
 
-export type {
-  ClientCommand,
-  ClientCommandData,
-  RequestLogEntry,
-  ResponseLogEntry,
-  ServerEvent,
-  ServerEventData,
-  SimulationBase,
-  SimulationConfig,
-  SimulationState,
+export {
+  CLIENT_COMMAND_TYPES,
+  type ClientCommand,
+  type ClientCommandData,
+  type ClientCommandType,
+  type RequestLogEntry,
+  type ResponseLogEntry,
+  type ServerEvent,
+  type ServerEventData,
+  type SimulationBase,
+  type SimulationConfig,
+  type SimulationState,
 } from './protocol.js';

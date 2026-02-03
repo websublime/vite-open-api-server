@@ -104,10 +104,41 @@ export type ServerEvent =
   | { type: 'error'; data: { command: string; message: string } };
 
 /**
+ * Valid client command types
+ *
+ * Single source of truth for command type validation.
+ * Used both for TypeScript type inference and runtime validation.
+ *
+ * @remarks
+ * When adding new commands, add them here first. The ClientCommand type
+ * and runtime validation will automatically include them.
+ */
+export const CLIENT_COMMAND_TYPES = [
+  'get:registry',
+  'get:timeline',
+  'get:store',
+  'set:store',
+  'clear:store',
+  'set:simulation',
+  'clear:simulation',
+  'clear:timeline',
+  'reseed',
+] as const;
+
+/**
+ * Type for valid client command types
+ */
+export type ClientCommandType = (typeof CLIENT_COMMAND_TYPES)[number];
+
+/**
  * Client to server commands
  *
  * These commands are sent from DevTools clients to the server.
  * The server processes each command and may respond with a ServerEvent.
+ *
+ * @remarks
+ * Command handlers are responsible for validating the `data` property
+ * of each command. The hub validates the command type but not the data shape.
  */
 export type ClientCommand =
   // Query commands
