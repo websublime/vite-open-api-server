@@ -19,7 +19,7 @@ import '@/assets/main.css';
 /**
  * Create and configure the Vue application
  */
-function bootstrap() {
+function bootstrap(): void {
   // Create Vue app instance
   const app = createApp(App);
 
@@ -42,11 +42,18 @@ function bootstrap() {
   }
 }
 
-// Bootstrap the application
-bootstrap();
+// Only auto-bootstrap when running as standalone app (index.html entry)
+// When imported as a library, consumers should call bootstrap() manually
+if (typeof window !== 'undefined' && document.getElementById('app')) {
+  bootstrap();
+}
 
 /**
  * Export the bootstrap function for library consumers
  * who may want to manually initialize the DevTools
  */
 export { bootstrap };
+
+export type { ThemeMode } from '@/composables';
+// Re-export composables for library consumers
+export { useTheme } from '@/composables';

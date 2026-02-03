@@ -33,14 +33,14 @@ const schemaData = ref([
 /**
  * Select a schema to view its data
  */
-function selectSchema(schemaName: string) {
+function selectSchema(schemaName: string): void {
   selectedSchema.value = schemaName;
 }
 
 /**
  * Reseed the selected schema with fresh generated data
  */
-function reseedSchema() {
+function reseedSchema(): void {
   // TODO: Will trigger reseed via WebSocket command
   console.log('Reseeding schema:', selectedSchema.value);
 }

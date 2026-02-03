@@ -74,7 +74,7 @@ function formatTime(timestamp: string): string {
 /**
  * Clear all timeline entries
  */
-function clearTimeline() {
+function clearTimeline(): void {
   entries.value = [];
 }
 </script>

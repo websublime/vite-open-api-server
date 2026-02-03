@@ -58,6 +58,12 @@ const routes: RouteRecordRaw[] = [
       icon: 'zap',
     },
   },
+  // Catch-all route for undefined paths - redirects to routes page
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    redirect: '/routes',
+  },
 ];
 
 /**
