@@ -76,11 +76,22 @@ export function useTheme() {
   /**
    * Set the theme mode
    */
-  function setTheme(mode: ThemeMode) {
+  function setTheme(mode: ThemeMode): void {
+    const validModes: ThemeMode[] = ['light', 'dark', 'system'];
+    if (!validModes.includes(mode)) {
+      console.warn(`[DevTools] Invalid theme mode: ${mode}`);
+      return;
+    }
+
     themeMode.value = mode;
 
     if (isBrowser()) {
-      localStorage.setItem(STORAGE_KEY, mode);
+      try {
+        localStorage.setItem(STORAGE_KEY, mode);
+      } catch {
+        // Storage unavailable (private browsing, quota exceeded, etc.)
+        console.warn('[DevTools] Unable to persist theme preference');
+      }
     }
   }
 
@@ -121,7 +132,12 @@ export function useTheme() {
     });
 
     // Load saved preference from localStorage
-    const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    let saved: ThemeMode | null = null;
+    try {
+      saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+    } catch {
+      // Storage unavailable (private browsing, etc.)
+    }
     if (saved && ['light', 'dark', 'system'].includes(saved)) {
       themeMode.value = saved;
     }

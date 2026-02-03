@@ -147,7 +147,7 @@ const canAddSimulation = computed(() => {
 /**
  * Add a new simulation
  */
-function addSimulation() {
+function addSimulation(): void {
   if (!canAddSimulation.value || !selectedPresetId.value) return;
 
   const preset = getPreset(selectedPresetId.value);
@@ -169,7 +169,7 @@ function addSimulation() {
 /**
  * Remove an active simulation
  */
-function removeSimulation(id: string) {
+function removeSimulation(id: string): void {
   // TODO: Will send WebSocket command to remove simulation
   activeSimulations.value = activeSimulations.value.filter((s) => s.id !== id);
 }
@@ -177,7 +177,7 @@ function removeSimulation(id: string) {
 /**
  * Clear all simulations
  */
-function clearAllSimulations() {
+function clearAllSimulations(): void {
   // TODO: Will send WebSocket command to clear all simulations
   activeSimulations.value = [];
 }

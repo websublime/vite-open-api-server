@@ -31,7 +31,7 @@ const tabs = computed(() =>
 const activeTab = computed(() => route.name as string);
 
 // Navigate to a tab
-function navigateTo(path: string) {
+function navigateTo(path: string): void {
   router.push(path);
 }
 
@@ -42,6 +42,11 @@ const iconMap: Record<string, typeof Route> = {
   database: Database,
   zap: Zap,
 };
+
+// Get icon with fallback for unknown icon names
+function getIcon(iconName: string): typeof Route {
+  return iconMap[iconName] ?? Route;
+}
 
 // TODO: Connection status will be provided by WebSocket composable
 const isConnected = computed(() => false);
@@ -68,7 +73,7 @@ const isConnected = computed(() => false);
           @click="navigateTo(tab.path)"
         >
           <component
-            :is="iconMap[tab.icon]"
+            :is="getIcon(tab.icon)"
             :size="16"
             class="app-nav__icon"
           />

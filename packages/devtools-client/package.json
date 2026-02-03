@@ -26,6 +26,8 @@
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -37,8 +39,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
+    "jsdom": "^26.1.0",
     "typescript": "^5.9.0",
     "vite": "^7.0.0",
+    "vitest": "^4.0.17",
     "vue-tsc": "^2.2.12"
   },
   "engines": {
