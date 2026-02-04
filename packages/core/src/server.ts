@@ -300,6 +300,11 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       // Serve DevTools SPA HTML
       const html = generateDevToolsHtml();
 
+      // Warn about placeholder usage (should be replaced with built SPA in production)
+      config.logger?.warn?.(
+        '[DevTools] Serving development placeholder with CDN imports. For production, serve the full built DevTools SPA.',
+      );
+
       // Cache for 1 hour in development (reload will bypass cache anyway)
       c.header('Cache-Control', 'public, max-age=3600');
 

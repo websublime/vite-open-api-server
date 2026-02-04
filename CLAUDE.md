@@ -57,6 +57,9 @@ vite-open-api-server/
 | **Vitest** | Testing framework |
 | **Biome** | Linting and formatting |
 
+**Note on Dependencies:**
+- `@types/node` is pinned to `^20.x` to match the minimum Node.js engine version (`^20.19.0`) despite supporting Node 22+. This ensures type compatibility across all supported Node.js versions and prevents type errors when developers use the minimum supported version.
+
 ## Development Commands
 
 ```bash
