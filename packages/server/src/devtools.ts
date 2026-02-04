@@ -76,7 +76,7 @@ export async function registerDevTools(
   app: App,
   options: RegisterDevToolsOptions = {},
 ): Promise<void> {
-  const { enabled = true, label = 'OpenAPI Server' } = options;
+  const { enabled = true, label = 'OpenAPI Server', port, host, protocol } = options;
 
   // Validate app parameter
   if (!app || typeof app !== 'object') {
@@ -97,43 +97,22 @@ export async function registerDevTools(
 
   // Lazy import to avoid SSR issues
   try {
-    const { setupDevtoolsPlugin } = await import('@vue/devtools-api');
+    const { addCustomTab } = await import('@vue/devtools-api');
 
-    setupDevtoolsPlugin(
-      {
-        id: 'vite-plugin-open-api-server',
-        label,
-        packageName: '@websublime/vite-plugin-open-api-server',
-        homepage: 'https://github.com/websublime/vite-open-api-server',
-        logo: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234f46e5%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z%22/%3E%3Cpolyline points=%223.29 7 12 12 20.71 7%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2212%22 y2=%2212%22/%3E%3C/svg%3E',
-        app,
+    // Get the DevTools URL
+    const devtoolsUrl = getDevToolsUrl(port, host, protocol);
+
+    // Add custom tab with iframe to Vue DevTools
+    addCustomTab({
+      name: 'vite-plugin-open-api-server',
+      title: label,
+      icon: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234f46e5%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z%22/%3E%3Cpolyline points=%223.29 7 12 12 20.71 7%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2212%22 y2=%2212%22/%3E%3C/svg%3E',
+      view: {
+        type: 'iframe',
+        src: devtoolsUrl,
       },
-      (api) => {
-        // Add custom inspector for viewing routes
-        api.addInspector({
-          id: 'openapi-routes',
-          label: 'OpenAPI Routes',
-          icon: 'list',
-        });
-
-        // Add custom timeline layer for API requests
-        api.addTimelineLayer({
-          id: 'openapi-requests',
-          label: 'API Requests',
-          color: 0x4f46e5,
-        });
-
-        // Add custom view (iframe)
-        // Note: The DevTools API v7+ uses a different approach for custom views
-        // We'll use the timeline and inspector for now, and the iframe will be
-        // accessible via the standalone DevTools SPA URL
-        // TODO: In future, use options.port/host/protocol to configure a custom iframe view
-        // For now, these options are primarily for the getDevToolsUrl helper function
-        api.on.visitComponentTree(() => {
-          // Future: Add component tree customization if needed
-        });
-      },
-    );
+      category: 'app',
+    });
   } catch (error) {
     // Log warning but don't crash the app
     // DevTools integration is optional, so the app should continue working
