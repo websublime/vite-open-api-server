@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-c5f.4-routes-page",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-devtools"
+    ],
+    "changes": [
+      "8257536b05c9bf323f11ccb16148d8ef96509256",
+      "0c38ce3c6ba246f195678d2eff08ff683b3728ed",
+      "46071cb5632ddfaffa89c93f4fa4ad1522e5ee1c"
+    ],
+    "created_at": "2026-02-04T10:33:18.201769Z",
+    "updated_at": "2026-02-04T10:37:33.879640Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-04T11:08:18.219210798Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "00439834a1bf07e7beaaf797a0f19ed9c5935e8b",
+    "versions": {
+      "@websublime/vite-plugin-open-api-devtools": "0.3.0"
+    }
+  }
+}

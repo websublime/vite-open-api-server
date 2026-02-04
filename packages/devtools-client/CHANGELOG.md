@@ -1,3 +1,30 @@
+## [0.3.0] - 2026-02-04
+
+### Features
+
+- implement Routes Page with endpoint listing and detail view (28682f9)
+
+
+### Bug Fixes
+
+- address code review findings for Routes Page (0043983)
+- correct exports order - types before import/require (757f241)
+- remove extra blank lines in registry store (f96b19b)
+
+
+### Continuous Integration
+
+- remove pull_request trigger from release workflow (6f4520c)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (bc9766f)
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (7cf5ba7)
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (57c2882)
+
+
+
 ## [0.2.0] - 2026-02-04
 
 ### Breaking Changes
