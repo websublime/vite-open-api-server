@@ -288,7 +288,33 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Process buffered responses and merge with existing entries
+   * Create a stub entry for an orphaned response
+   */
+  function createStubEntry(response: ResponseLogEntry): TimelineEntry {
+    // Create a minimal request stub for the orphaned response
+    const stubRequest: RequestLogEntry = {
+      id: response.requestId,
+      method: 'UNKNOWN',
+      path: '/unknown',
+      operationId: 'unknown',
+      timestamp: Date.now(), // Use current time as fallback
+      headers: {},
+      query: {},
+      body: undefined,
+    };
+
+    return {
+      id: response.requestId,
+      request: stubRequest,
+      response,
+      status: response.status,
+      duration: response.duration,
+      simulated: response.simulated,
+    };
+  }
+
+  /**
+   * Process buffered responses and merge with existing entries or create stubs
    */
   function processBufferedResponses(requestMap: Map<string, TimelineEntry>): void {
     for (const [requestId, response] of responseBuffer) {
@@ -296,12 +322,16 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (entry) {
         mergeResponse(entry, response);
         responseBuffer.delete(requestId);
+      } else {
+        // No matching request found, create stub entry
+        requestMap.set(requestId, createStubEntry(response));
+        responseBuffer.delete(requestId);
       }
     }
   }
 
   /**
-   * Process incoming responses and merge or buffer them
+   * Process incoming responses and merge, buffer, or create stub entries
    */
   function processIncomingResponses(
     requestMap: Map<string, TimelineEntry>,
@@ -312,7 +342,22 @@ export const useTimelineStore = defineStore('timeline', () => {
       if (entry) {
         mergeResponse(entry, response);
       } else {
+        // Buffer the response for potential future request
+        // Note: During initial load, we'll create stubs later
         responseBuffer.set(requestId, response);
+      }
+    }
+  }
+
+  /**
+   * Create stub entries for any remaining buffered responses
+   * This ensures no response is lost even if its request never arrives
+   */
+  function createStubsForOrphanedResponses(requestMap: Map<string, TimelineEntry>): void {
+    for (const [requestId, response] of responseBuffer) {
+      if (!requestMap.has(requestId)) {
+        requestMap.set(requestId, createStubEntry(response));
+        responseBuffer.delete(requestId);
       }
     }
   }
@@ -346,6 +391,10 @@ export const useTimelineStore = defineStore('timeline', () => {
     // Second pass: merge responses with requests
     processBufferedResponses(requestMap);
     processIncomingResponses(requestMap, incomingResponses);
+
+    // Third pass: create stub entries for any remaining orphaned responses
+    // This ensures no response is lost even if its request never arrives
+    createStubsForOrphanedResponses(requestMap);
 
     // Convert map to array and sort by timestamp (newest first)
     const sorted = Array.from(requestMap.values()).sort(
