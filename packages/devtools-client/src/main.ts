@@ -79,6 +79,16 @@ if (typeof window !== 'undefined' && document.getElementById('app')) {
  */
 export { bootstrap };
 
-export type { ThemeMode } from '@/composables';
+export type {
+  ClientCommand,
+  ClientCommandType,
+  ConnectedEventData,
+  ConnectionState,
+  EventHandler,
+  ServerEvent,
+  ServerEventType,
+  ThemeMode,
+  UseWebSocketOptions,
+} from '@/composables';
 // Re-export composables for library consumers
-export { useTheme } from '@/composables';
+export { useTheme, useWebSocket } from '@/composables';
