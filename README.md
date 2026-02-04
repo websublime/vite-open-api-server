@@ -223,8 +223,8 @@ vite-open-api-server/
 ├── packages/
 │   ├── core/                  # Core server logic (Hono, store, generator)
 │   ├── devtools-client/       # Vue SPA for DevTools
+│   ├── playground/            # Demo application (coming soon, private)
 │   └── server/                # Vite plugin wrapper (main package)
-├── playground/                # Demo application (coming soon)
 └── history/                   # Planning and architecture docs
 ```
 

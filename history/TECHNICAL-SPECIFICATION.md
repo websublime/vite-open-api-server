@@ -1684,7 +1684,7 @@ interface Simulation {
 **Duration:** 1 week
 
 **Deliverables:**
-- `playground/` demo app
+- `packages/playground/` demo app (private)
 - README and documentation
 - npm package publishing
 

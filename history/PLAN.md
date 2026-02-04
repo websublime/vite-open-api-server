@@ -406,7 +406,7 @@ This plan defines the development roadmap for v2.0, structured as beads issues (
 
 #### Subtasks:
 
-- **6.1.1** Create playground/ with Vue app
+- **6.1.1** Create packages/playground/ with Vue app (private)
 - **6.1.2** Add petstore.yaml OpenAPI spec
 - **6.1.3** Create example handlers
 - **6.1.4** Create example seeds
