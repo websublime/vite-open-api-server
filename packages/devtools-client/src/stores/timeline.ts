@@ -274,6 +274,19 @@ export const useTimelineStore = defineStore('timeline', () => {
     } else {
       // Entry doesn't exist yet, buffer the response
       responseBuffer.set(response.requestId, response);
+
+      // Prevent unbounded buffer growth: create stub entry if buffer exceeds threshold
+      // This ensures orphaned responses don't cause memory leaks in real-time scenarios
+      if (responseBuffer.size > 100) {
+        const stubEntry = createStubEntry(response);
+        entries.value.unshift(stubEntry);
+        responseBuffer.delete(response.requestId);
+
+        // Trim to max entries
+        if (entries.value.length > maxEntries.value) {
+          entries.value = entries.value.slice(0, maxEntries.value);
+        }
+      }
     }
   }
 
@@ -413,6 +426,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   function clearTimeline(): void {
     entries.value = [];
     selectedEntryId.value = null;
+    responseBuffer.clear();
   }
 
   /**
