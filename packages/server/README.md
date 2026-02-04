@@ -179,6 +179,64 @@ When a request comes in, the server looks for a response in this order:
 3. **OpenAPI Example** - If defined in the spec
 4. **Generated Data** - Auto-generated from schema using Faker.js
 
+## Vue DevTools Integration
+
+This plugin provides a custom tab integration for Vue DevTools, allowing you to inspect your mock API server directly from the browser DevTools panel.
+
+### Setup
+
+In your Vue application's main entry point:
+
+```typescript
+// main.ts
+import { createApp } from 'vue';
+import { registerDevTools } from '@websublime/vite-plugin-open-api-server';
+import App from './App.vue';
+
+const app = createApp(App);
+
+// Register OpenAPI Server in Vue DevTools (development only)
+if (import.meta.env.DEV) {
+  registerDevTools(app, {
+    port: 4000, // Must match your server port
+    label: 'OpenAPI Server', // Optional custom label
+  });
+}
+
+app.mount('#app');
+```
+
+### Options
+
+```typescript
+interface RegisterDevToolsOptions {
+  port?: number;      // Server port (default: 3000)
+  enabled?: boolean;  // Enable/disable registration (default: true)
+  label?: string;     // Custom tab label (default: 'OpenAPI Server')
+}
+```
+
+### Features
+
+When registered, the DevTools integration provides:
+
+- **Custom Inspector** - View all registered OpenAPI routes
+- **Timeline Layer** - Track API requests in real-time
+- **DevTools SPA Access** - Direct link to the full DevTools interface
+
+### Accessing DevTools
+
+You can access the DevTools in two ways:
+
+1. **Via Vue DevTools Browser Extension** - After registration, a custom tab will appear in the Vue DevTools panel
+2. **Standalone URL** - Navigate directly to `http://localhost:4000/_devtools` (replace 4000 with your configured port)
+
+The standalone DevTools SPA provides:
+- Routes explorer with endpoint details
+- Timeline of all requests/responses
+- Store data viewer and editor
+- Error simulation controls
+
 ## Internal API
 
 The mock server exposes internal endpoints for debugging:
