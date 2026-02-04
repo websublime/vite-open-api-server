@@ -92,7 +92,7 @@ importers:
   packages/server:
     dependencies:
       '@vue/devtools-api':
-        specifier: ^8.0.5
+        specifier: ^8.0.6
         version: 8.0.6
       '@websublime/vite-plugin-open-api-core':
         specifier: workspace:*
