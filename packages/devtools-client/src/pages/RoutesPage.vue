@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { ChevronDown, ChevronUp, Code, Filter, Route, Search, Sprout, X } from 'lucide-vue-next';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 
 import EndpointDetail from '@/components/EndpointDetail.vue';
 import EndpointList from '@/components/EndpointList.vue';
@@ -23,8 +23,17 @@ const { send, on, connected } = useWebSocket();
 const showFilters = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 
-// HTTP methods for filter
-const httpMethods: HttpMethod[] = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head'];
+// HTTP methods for filter (matches HttpMethod type from registry store)
+const httpMethods: HttpMethod[] = [
+  'get',
+  'post',
+  'put',
+  'patch',
+  'delete',
+  'options',
+  'head',
+  'trace',
+];
 
 /**
  * Fetch registry data when connected
@@ -123,14 +132,29 @@ function toggleFilters(): void {
  */
 const hasActiveFilters = computed(() => registryStore.hasActiveFilters());
 
-// Subscribe to registry events
-onMounted(() => {
-  on<RegistryData>('registry', handleRegistryData);
+// Event cleanup functions for WebSocket subscriptions
+let unsubRegistry: (() => void) | null = null;
+let unsubHandlers: (() => void) | null = null;
+let unsubSeeds: (() => void) | null = null;
 
-  // Fetch registry when already connected or when connection established
+// Subscribe to registry events and setup cleanup
+onMounted(() => {
+  // Subscribe to WebSocket events (on() returns unsubscribe function)
+  unsubRegistry = on<RegistryData>('registry', handleRegistryData);
+  unsubHandlers = on('handlers:updated', () => fetchRegistry());
+  unsubSeeds = on('seeds:updated', () => fetchRegistry());
+
+  // Fetch registry when already connected
   if (connected.value) {
     fetchRegistry();
   }
+});
+
+// Cleanup event subscriptions on unmount to prevent memory leaks
+onUnmounted(() => {
+  unsubRegistry?.();
+  unsubHandlers?.();
+  unsubSeeds?.();
 });
 
 // Re-fetch when connection is established
@@ -138,12 +162,6 @@ watch(connected, (isConnected) => {
   if (isConnected) {
     fetchRegistry();
   }
-});
-
-// Also listen for handler/seed updates to refresh registry
-onMounted(() => {
-  on('handlers:updated', () => fetchRegistry());
-  on('seeds:updated', () => fetchRegistry());
 });
 </script>
 
