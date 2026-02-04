@@ -44,6 +44,17 @@ export function generateDevToolsHtml(): string {
         flex-direction: column;
         gap: 1rem;
       }
+      .warning {
+        color: #ef4444;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+        border-radius: 0.25rem;
+        max-width: 600px;
+        text-align: center;
+      }
       .spinner {
         width: 48px;
         height: 48px;
@@ -62,6 +73,7 @@ export function generateDevToolsHtml(): string {
       <div class="loading">
         <div class="spinner"></div>
         <p>Loading OpenAPI DevTools...</p>
+        <p class="warning">⚠️ Development placeholder - This uses CDN imports. For production, serve the full built DevTools SPA.</p>
       </div>
     </div>
     <script type="module">
