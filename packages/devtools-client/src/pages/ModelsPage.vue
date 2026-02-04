@@ -15,7 +15,8 @@
 <script setup lang="ts">
 import { Database, RefreshCw, Save, Trash2, X } from 'lucide-vue-next';
 import { nextTick, onMounted, ref, watch } from 'vue';
-import type JsonEditor from '@/components/JsonEditor.vue';
+// biome-ignore lint/style/useImportType: Component needs to be available at runtime
+import JsonEditor from '@/components/JsonEditor.vue';
 import { useNotifications } from '@/composables/useNotifications';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useModelsStore } from '@/stores';
