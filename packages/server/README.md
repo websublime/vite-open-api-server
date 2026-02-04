@@ -211,6 +211,8 @@ app.mount('#app');
 ```typescript
 interface RegisterDevToolsOptions {
   port?: number;      // Server port (default: 4000)
+  host?: string;      // Server host (default: 'localhost' or window.location.hostname)
+  protocol?: 'http' | 'https';  // Protocol (default: 'http' or window.location.protocol)
   enabled?: boolean;  // Enable/disable registration (default: true)
   label?: string;     // Custom tab label (default: 'OpenAPI Server')
 }
@@ -220,18 +222,20 @@ interface RegisterDevToolsOptions {
 
 When registered, the DevTools integration provides:
 
-- **Custom Inspector** - View all registered OpenAPI routes
-- **Timeline Layer** - Track API requests in real-time
-- **DevTools SPA Access** - Direct link to the DevTools interface
+- **Custom Tab** - A dedicated tab in Vue DevTools with the full DevTools SPA embedded via iframe
+- **Routes Explorer** - View all registered OpenAPI routes with their handlers and seeds
+- **Timeline Viewer** - Track API requests in real-time
+- **Store Editor** - Inspect and modify in-memory data
+- **Error Simulator** - Test error scenarios and delays
 
 ### Accessing DevTools
 
 You can access the DevTools in two ways:
 
-1. **Via Vue DevTools Browser Extension** - After registration, a custom tab will appear in the Vue DevTools panel
+1. **Via Vue DevTools Browser Extension** - After registration, a custom tab named "OpenAPI Server" (or your custom label) will appear in the Vue DevTools panel with the full DevTools SPA embedded via iframe
 2. **Standalone URL** - Navigate directly to `http://localhost:4000/_devtools/` (replace 4000 with your configured port)
 
-> **Note:** The standalone DevTools SPA currently serves a placeholder page. The full DevTools interface with routes explorer, timeline viewer, store editor, and error simulation controls is planned for a future release. For now, you can access the raw API data via the [Internal API endpoints](#internal-api) below.
+> **Note:** The standalone DevTools SPA currently serves a placeholder page. The full DevTools SPA client (routes explorer, timeline viewer, store editor, and error simulation controls) will be served from this URL in a future task. The iframe integration will automatically display the full SPA once it's implemented.
 
 ## Internal API
 
