@@ -1,3 +1,128 @@
+## [0.20.0] - 2026-02-04
+
+### Breaking Changes
+
+- rename packages to follow vite-plugin prefix convention (8955d38)
+
+
+### Features
+
+- Add Vue DevTools integration (e2b6f51)
+- implement Timeline Page with real-time request/response tracking (d63d240)
+- implement Routes Page with endpoint listing and detail view (28682f9)
+- add WebSocket composable for DevTools SPA (b161f43)
+- initialize DevTools SPA package (f6569cf)
+- implement WebSocket hub for bidirectional communication (8eb4228)
+
+
+### Bug Fixes
+
+- Apply code review recommendations (135b6de)
+- Apply PR review feedback (f9720f6)
+- align @types/node with Node.js engine and update DevTools default port to 3000 (e64596f)
+- Use addCustomTab instead of inspector/timeline (92fc204)
+- address PR review comments for timeline components (b23890a)
+- correct exports field order - types before import/require (a0758c1)
+- add ARIA attributes to collapsible sections in TimelineDetail (9e2c5c7)
+- prevent memory leak in timeline responseBuffer (b4819d3)
+- create stub entries for orphaned responses to prevent data loss (6a2ec22)
+- address code review findings for Routes Page (0043983)
+- remove extra blank lines in registry store (f96b19b)
+- correct exports order - types before import/require (757f241)
+- address code review findings for WebSocket composable (d13e1b0)
+- correct exports condition order in package.json (39af292)
+- address PR review comments (65df2d4)
+- address code review recommendations (2b378e3)
+- apply code review recommendations (65314aa)
+- simplify npm auth in release workflow (7a9812b)
+- address PR review comments for devtools-client (0b2b911)
+- update MockWebSocketHub to include new interface methods (ac85b75)
+- address code review findings - logger default and payload validation (53a6f18)
+
+
+### Documentation
+
+- fix playground location to packages/playground/ (3e8f754)
+- fix inconsistencies in README files and documentation (0afdb4d)
+
+
+### Code Refactoring
+
+- Address PR feedback (a09e245)
+- Apply code review recommendations (2f023b7)
+- address PR review comments for WebSocket composable (c5bb365)
+- address code review findings (8840464)
+
+
+### Continuous Integration
+
+- add PROD environment and npm auth debugging (d982d0b)
+- remove pull_request trigger from release workflow (6f4520c)
+- add pull_request closed trigger to release workflow (c1127dd)
+
+
+### Tests
+
+- Update DevTools tests for new behavior (87163a3)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (d280a03)
+- update pnpm-lock.yaml for @vue/devtools-api ^8.0.6 (d54d873)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (bd3b105)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (26f49e1)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (04bd8b9)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (122af9a)
+- Update dependencies to latest versions (e1a729d)
+- Fix lint errors (aaa57f3)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (730e61c)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (919b166)
+- Update pnpm-lock.yaml (b0b0e7e)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (b74d15e)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (566ee48)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (206b9c6)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (f720d5a)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (3c8feb0)
+- bump @websublime/vite-plugin-open-api-devtools to 0.4.0 (050474b)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (8a25855)
+- disable useShorthandFunctionType Biome rule (3955a53)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (904a737)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (2edab8e)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (f210a35)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (dd95bfb)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (fc7cdf3)
+- fix trailing newline in devtools-client package.json (1c90e64)
+- bump @websublime/vite-plugin-open-api-devtools to 0.3.0 (9eadd3b)
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (bc9766f)
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (57c2882)
+- sync changeset for feature/vite-open-api-server-c5f.4-routes-page (7cf5ba7)
+- bump @websublime/vite-plugin-open-api-devtools to 0.2.0 (6e70249)
+- sync changeset for feature/vite-open-api-server-c5f.3-websocket-composable (de5fda9)
+- sync changeset for feature/vite-open-api-server-c5f.3-websocket-composable (ddf1098)
+- sync changeset for feature/vite-open-api-server-c5f.3-websocket-composable (bfc3ab7)
+- sync changeset for feature/vite-open-api-server-c5f.3-websocket-composable (3a98107)
+- fix lint (aecd9a7)
+- bump versions (51a8505)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (03f6464)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (07001e2)
+- update dependencies and sync changeset (56bfc4f)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (d7770dd)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (8e5dee1)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (585701f)
+- disable noConsole rule for development logging (3cca2b1)
+- sync changeset for code review fixes (3a5a68e)
+- sync changeset for code review fixes (f2b6f6a)
+- sync changeset for feature/vite-open-api-server-c5f.2-devtools-spa-setup (9c1c23b)
+- bump @websublime/vite-open-api-core to 0.8.0 (ea00901)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (f427abb)
+- fix import indentation in test-utils.ts (b694033)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (bd29119)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (b253c2c)
+- sync changeset for feature/vite-open-api-server-c5f.1-websocket-hub (9cf16b7)
+
+
+
 ## [0.19.2] - 2026-02-03
 
 ### Features

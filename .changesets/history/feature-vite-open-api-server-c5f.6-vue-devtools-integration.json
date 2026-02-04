@@ -1,0 +1,38 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-c5f.6-vue-devtools-integration",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-server",
+      "@websublime/vite-plugin-open-api-core"
+    ],
+    "changes": [
+      "7148ae7aba4b8a4f8ab121cd14b558b1fd3f81c2",
+      "cbd6abe6a26e2688c6520ebf49c9245fa9eb6369",
+      "5985523b1a008d4d473792bbe87092b0c8d58bf5",
+      "4758ebe7badfbe76c0d934ca198f1c6463c4a01c",
+      "ad2fd254f5483f728323f1a83ca414f4f31010dc",
+      "01bc5169ffed2f81424cef107233a584c3d4ada5",
+      "cab12b8f7b0d36a85f2a15731ca11cea461cd7de",
+      "eea5f2402c164580641ebcc0f54fdb6e850d3de5",
+      "2d4c9722060688657496f3513fc91bc26f942a3a",
+      "6882502e911bf70aa9540d8a326074184e7d87eb",
+      "34d89752b05870ace2e73d769edadf0744ca0176",
+      "d820b0db7f07deb68bac6beaca435cfc7b134cbc"
+    ],
+    "created_at": "2026-02-04T14:40:04.309216Z",
+    "updated_at": "2026-02-04T16:19:21.393012Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-04T16:30:44.060379156Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "d280a0338de7f7658369d8f68878222adb63821c",
+    "versions": {
+      "@websublime/vite-plugin-open-api-core": "0.9.0",
+      "@websublime/vite-plugin-open-api-server": "0.20.0"
+    }
+  }
+}
