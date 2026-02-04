@@ -105,6 +105,7 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
           // Seeds are populated via executeSeeds, not directly
           seeds: new Map(),
           timelineLimit: resolvedOptions.timelineLimit,
+          devtools: resolvedOptions.devtools,
           cors: resolvedOptions.cors,
           corsOrigin: resolvedOptions.corsOrigin,
           logger: resolvedOptions.logger,
