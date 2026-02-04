@@ -62,7 +62,7 @@ export interface RegisterDevToolsOptions {
  * @param options - Configuration options
  */
 export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}): void {
-  const { port = 3000, enabled = true, label = 'OpenAPI Server' } = options;
+  const { enabled = true, label = 'OpenAPI Server' } = options;
 
   // Only register if enabled
   if (!enabled) {
@@ -73,8 +73,6 @@ export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}
   if (typeof window === 'undefined') {
     return;
   }
-
-  const devtoolsUrl = `http://localhost:${port}/_devtools/`;
 
   setupDevtoolsPlugin(
     {
@@ -107,11 +105,6 @@ export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}
       api.on.visitComponentTree(() => {
         // Future: Add component tree customization if needed
       });
-
-      // Log successful registration
-      console.log(
-        `[OpenAPI Server] DevTools registered. Access DevTools at: ${devtoolsUrl}`,
-      );
     },
   );
 }
