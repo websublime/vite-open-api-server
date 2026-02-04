@@ -6,7 +6,8 @@
       "style": {
         "noDefaultExport": "off",
         "useNamingConvention": "off",
-        "noParameterAssign": "off"
+        "noParameterAssign": "off",
+        "useShorthandFunctionType": "off"
       },
       "complexity": {
         "noForEach": "off",
