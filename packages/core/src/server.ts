@@ -77,6 +77,12 @@ export interface OpenApiServerConfig {
    * @default console
    */
   logger?: Logger;
+
+  /**
+   * Enable DevTools routes (/_devtools/*)
+   * @default true
+   */
+  devtools?: boolean;
 }
 
 /**
@@ -284,26 +290,28 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   // DevTools Routes (/_devtools/*)
   // ==========================================================================
 
-  app.get('/_devtools', (c) => {
-    // Redirect to index
-    return c.redirect('/_devtools/', 302);
-  });
+  if (config.devtools !== false) {
+    app.get('/_devtools', (c) => {
+      // Redirect to index
+      return c.redirect('/_devtools/', 302);
+    });
 
-  app.get('/_devtools/', (c) => {
-    // Serve DevTools SPA HTML
-    const html = generateDevToolsHtml(port);
+    app.get('/_devtools/', (c) => {
+      // Serve DevTools SPA HTML
+      const html = generateDevToolsHtml();
 
-    // Cache for 1 hour in development (reload will bypass cache anyway)
-    c.header('Cache-Control', 'public, max-age=3600');
+      // Cache for 1 hour in development (reload will bypass cache anyway)
+      c.header('Cache-Control', 'public, max-age=3600');
 
-    return c.html(html);
-  });
+      return c.html(html);
+    });
 
-  app.get('/_devtools/*', (c) => {
-    // For now, redirect all sub-routes to the main DevTools page
-    // In a full implementation, this would serve static assets or handle SPA routing
-    return c.redirect('/_devtools/', 302);
-  });
+    app.get('/_devtools/*', (c) => {
+      // For now, redirect all sub-routes to the main DevTools page
+      // In a full implementation, this would serve static assets or handle SPA routing
+      return c.redirect('/_devtools/', 302);
+    });
+  }
 
   // ==========================================================================
   // WebSocket Route (/_ws)

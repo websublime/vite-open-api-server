@@ -13,11 +13,11 @@
  *
  * This generates a minimal HTML page that will eventually serve the full
  * DevTools SPA. Currently serves a placeholder with links to the API endpoints.
+ * The WebSocket URL is dynamically constructed from window.location at runtime.
  *
- * @param port - Server port for WebSocket connection display
  * @returns Complete HTML document as string
  */
-export function generateDevToolsHtml(port: number): string {
+export function generateDevToolsHtml(): string {
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -66,6 +66,9 @@ export function generateDevToolsHtml(port: number): string {
     </div>
     <script type="module">
       // Import Vue and other dependencies from CDN
+      // NOTE: These CDN version pins are intentionally aligned with packages/devtools-client/package.json
+      // and must be updated in tandem. When upgrading Vue, Pinia, or Vue Router in devtools-client,
+      // update these URLs to match the same versions to ensure compatibility.
       import { createApp } from 'https://unpkg.com/vue@3.5.17/dist/vue.esm-browser.prod.js';
       import { createPinia } from 'https://unpkg.com/pinia@3.0.3/dist/pinia.esm-browser.js';
       import { createRouter, createWebHistory } from 'https://unpkg.com/vue-router@4.5.1/dist/vue-router.esm-browser.js';
@@ -85,7 +88,7 @@ export function generateDevToolsHtml(port: number): string {
               <a href="/_api/store" style="color: #4f46e5; text-decoration: none;">Store</a>
             </p>
             <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 2rem;">
-              WebSocket: <code style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">ws://localhost:${port}/_ws</code>
+              WebSocket: <code style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">\${window.location.protocol === 'https:' ? 'wss' : 'ws'}://\${window.location.host}/_ws</code>
             </p>
           </div>
         \`

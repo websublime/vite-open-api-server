@@ -170,8 +170,9 @@ describe('registerDevTools', () => {
   });
 
   it('should not throw when window is undefined (SSR)', async () => {
-    // Save original window
+    // Save original window state
     const originalWindow = global.window;
+    const hadWindow = 'window' in global;
 
     // Mock SSR environment
     // @ts-expect-error - Simulating SSR environment
@@ -179,8 +180,13 @@ describe('registerDevTools', () => {
 
     await expect(registerDevTools(mockApp)).resolves.not.toThrow();
 
-    // Restore window
-    global.window = originalWindow;
+    // Restore window only if it originally existed, otherwise delete to fully remove the property
+    if (hadWindow) {
+      global.window = originalWindow;
+    } else {
+      // @ts-expect-error - Cleaning up test environment
+      delete global.window;
+    }
   });
 
   it('should use default enabled value of true', async () => {

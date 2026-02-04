@@ -687,6 +687,47 @@ describe('createOpenApiServer', () => {
     });
   });
 
+  describe('DevTools configuration', () => {
+    it('should not mount DevTools routes when devtools is false', async () => {
+      const server = await createOpenApiServer({
+        spec: minimalDocument,
+        devtools: false,
+      });
+
+      // DevTools routes should not be available
+      const response1 = await server.app.request('/_devtools');
+      expect(response1.status).toBe(404);
+
+      const response2 = await server.app.request('/_devtools/');
+      expect(response2.status).toBe(404);
+
+      const response3 = await server.app.request('/_devtools/app.js');
+      expect(response3.status).toBe(404);
+    });
+
+    it('should mount DevTools routes when devtools is true', async () => {
+      const server = await createOpenApiServer({
+        spec: minimalDocument,
+        devtools: true,
+      });
+
+      const response = await server.app.request('/_devtools/');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/html');
+    });
+
+    it('should mount DevTools routes by default (devtools undefined)', async () => {
+      const server = await createOpenApiServer({
+        spec: minimalDocument,
+        // devtools not specified - should default to enabled
+      });
+
+      const response = await server.app.request('/_devtools/');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/html');
+    });
+  });
+
   describe('WebSocket placeholder', () => {
     it('should respond to /_ws', async () => {
       const server = await createOpenApiServer({
