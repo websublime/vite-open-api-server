@@ -12,6 +12,8 @@
  * - simulation: Controls active error simulations
  */
 
+export type { ModelsData, ModelsStore, SchemaData, SchemaInfo } from './models';
+export { useModelsStore } from './models';
 export type {
   EndpointEntry,
   EndpointFilter,
@@ -35,7 +37,6 @@ export type {
 export { useTimelineStore } from './timeline';
 
 // Store exports will be added as stores are implemented
-// export { useModelsStore } from './models';
 // export { useSimulationStore } from './simulation';
 
 /**
