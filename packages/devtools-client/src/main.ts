@@ -89,6 +89,7 @@ export type {
   ServerEventType,
   ThemeMode,
   UseWebSocketOptions,
+  UseWebSocketReturn,
 } from '@/composables';
 // Re-export composables for library consumers
 export { useTheme, useWebSocket } from '@/composables';

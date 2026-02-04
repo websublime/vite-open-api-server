@@ -8,6 +8,7 @@
  * @module composables/useWebSocket
  */
 
+import type { ComputedRef } from 'vue';
 import { computed, getCurrentInstance, onMounted, onUnmounted, ref } from 'vue';
 
 /**
@@ -108,6 +109,41 @@ export interface UseWebSocketOptions {
    * Whether to auto-connect on mount (default: true)
    */
   autoConnect?: boolean;
+}
+
+/**
+ * Return type for useWebSocket composable
+ *
+ * Provides explicit typing for the composable return value as required by CLAUDE.md
+ */
+export interface UseWebSocketReturn {
+  /** Current connection state */
+  connectionState: ComputedRef<ConnectionState>;
+  /** Whether the WebSocket is connected */
+  connected: ComputedRef<boolean>;
+  /** Whether the WebSocket is attempting to reconnect */
+  isReconnecting: ComputedRef<boolean>;
+  /** Server version received on connection */
+  serverVersion: ComputedRef<string | null>;
+  /** Number of reconnection attempts made */
+  reconnectAttempts: ComputedRef<number>;
+  /** Connect to the WebSocket server */
+  connect: () => void;
+  /** Disconnect from the WebSocket server */
+  disconnect: () => void;
+  /** Send a command to the server */
+  send: <T = unknown>(command: ClientCommand<T>) => boolean;
+  /** Subscribe to a server event */
+  on: <T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>) => () => void;
+  /** Unsubscribe from a server event */
+  off: <T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>) => void;
+  /** Subscribe to an event once (handler can return true to unsubscribe) */
+  once: <T = unknown>(
+    event: ServerEventType | '*',
+    handler: (data: T) => boolean | undefined,
+  ) => () => void;
+  /** Reset the composable state (useful for testing) */
+  resetState: () => void;
 }
 
 /**
@@ -290,7 +326,12 @@ function connect(): void {
   }
 
   // Don't connect if already connected or connecting
-  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+  // Check connectionState first to prevent race condition when connect() is called rapidly
+  if (
+    connectionState.value === 'connecting' ||
+    connectionState.value === 'connected' ||
+    (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN))
+  ) {
     return;
   }
 
@@ -448,7 +489,7 @@ function resetState(): void {
  * @param options - Configuration options
  * @returns WebSocket management utilities
  */
-export function useWebSocket(options: UseWebSocketOptions = {}) {
+export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
   // Merge options with defaults
   currentOptions = { ...DEFAULT_OPTIONS, ...options };
 
