@@ -269,7 +269,7 @@ function reseedAll(): void {
             :model-value="modelsStore.currentItems"
             :readonly="modelsStore.loading"
             :min-height="400"
-            @update:model-value="(value) => modelsStore.updateItems(value as unknown[])"
+            @update:model-value="(value: unknown) => modelsStore.updateItems(value as unknown[])"
           />
         </div>
 
