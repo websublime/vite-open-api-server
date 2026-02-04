@@ -243,6 +243,8 @@ async function copyFullEntry(): Promise<void> {
           <button
             type="button"
             class="timeline-detail__subsection-header"
+            :aria-expanded="expandedSections.requestQuery"
+            aria-controls="requestQuery-panel"
             @click="toggleSection('requestQuery')"
           >
             <component
@@ -252,7 +254,11 @@ async function copyFullEntry(): Promise<void> {
             <span>Query Parameters</span>
             <span class="text-muted">({{ Object.keys(entry.request.query).length }})</span>
           </button>
-          <div v-show="expandedSections.requestQuery" class="timeline-detail__subsection-content">
+          <div
+            id="requestQuery-panel"
+            v-show="expandedSections.requestQuery"
+            class="timeline-detail__subsection-content"
+          >
             <div
               v-for="(value, key) in entry.request.query"
               :key="key"
@@ -271,6 +277,8 @@ async function copyFullEntry(): Promise<void> {
           <button
             type="button"
             class="timeline-detail__subsection-header"
+            :aria-expanded="expandedSections.requestHeaders"
+            aria-controls="requestHeaders-panel"
             @click="toggleSection('requestHeaders')"
           >
             <component
@@ -280,7 +288,11 @@ async function copyFullEntry(): Promise<void> {
             <span>Headers</span>
             <span class="text-muted">({{ Object.keys(entry.request.headers).length }})</span>
           </button>
-          <div v-show="expandedSections.requestHeaders" class="timeline-detail__subsection-content">
+          <div
+            id="requestHeaders-panel"
+            v-show="expandedSections.requestHeaders"
+            class="timeline-detail__subsection-content"
+          >
             <div
               v-for="(value, key) in entry.request.headers"
               :key="key"
@@ -298,6 +310,8 @@ async function copyFullEntry(): Promise<void> {
             <button
               type="button"
               class="timeline-detail__subsection-toggle"
+              :aria-expanded="expandedSections.requestBody"
+              aria-controls="requestBody-panel"
               @click="toggleSection('requestBody')"
             >
               <component
@@ -315,7 +329,11 @@ async function copyFullEntry(): Promise<void> {
               <component :is="copiedField === 'reqBody' ? Check : Copy" :size="12" />
             </button>
           </div>
-          <div v-show="expandedSections.requestBody" class="timeline-detail__subsection-content">
+          <div
+            id="requestBody-panel"
+            v-show="expandedSections.requestBody"
+            class="timeline-detail__subsection-content"
+          >
             <pre class="timeline-detail__json">{{ formatJson(entry.request.body) }}</pre>
           </div>
         </div>
@@ -330,6 +348,8 @@ async function copyFullEntry(): Promise<void> {
           <button
             type="button"
             class="timeline-detail__subsection-header"
+            :aria-expanded="expandedSections.responseHeaders"
+            aria-controls="responseHeaders-panel"
             @click="toggleSection('responseHeaders')"
           >
             <component
@@ -339,7 +359,11 @@ async function copyFullEntry(): Promise<void> {
             <span>Headers</span>
             <span class="text-muted">({{ Object.keys(entry.response.headers).length }})</span>
           </button>
-          <div v-show="expandedSections.responseHeaders" class="timeline-detail__subsection-content">
+          <div
+            id="responseHeaders-panel"
+            v-show="expandedSections.responseHeaders"
+            class="timeline-detail__subsection-content"
+          >
             <div
               v-for="(value, key) in entry.response.headers"
               :key="key"
@@ -357,6 +381,8 @@ async function copyFullEntry(): Promise<void> {
             <button
               type="button"
               class="timeline-detail__subsection-toggle"
+              :aria-expanded="expandedSections.responseBody"
+              aria-controls="responseBody-panel"
               @click="toggleSection('responseBody')"
             >
               <component
@@ -374,7 +400,11 @@ async function copyFullEntry(): Promise<void> {
               <component :is="copiedField === 'resBody' ? Check : Copy" :size="12" />
             </button>
           </div>
-          <div v-show="expandedSections.responseBody" class="timeline-detail__subsection-content">
+          <div
+            id="responseBody-panel"
+            v-show="expandedSections.responseBody"
+            class="timeline-detail__subsection-content"
+          >
             <pre class="timeline-detail__json">{{ formatJson(entry.response.body) }}</pre>
           </div>
         </div>
