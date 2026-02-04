@@ -61,6 +61,9 @@ const confirmDialog = reactive<ConfirmDialog>({
 // Track active timeout IDs to prevent orphaned timers
 const timeouts = new Map<string, number>();
 
+// Track pending confirm dialog promise resolver
+let pendingResolve: ((value: boolean) => void) | null = null;
+
 // ==========================================================================
 // Helper Functions
 // ==========================================================================
@@ -162,6 +165,15 @@ export function useNotifications() {
     },
   ): Promise<boolean> {
     return new Promise((resolve) => {
+      // Resolve any pending dialog with false (cancelled) before opening new one
+      if (pendingResolve) {
+        pendingResolve(false);
+        pendingResolve = null;
+      }
+
+      // Store the new resolve reference
+      pendingResolve = resolve;
+
       confirmDialog.visible = true;
       confirmDialog.title = options?.title || 'Confirm';
       confirmDialog.message = message;
@@ -170,12 +182,18 @@ export function useNotifications() {
 
       confirmDialog.onConfirm = () => {
         confirmDialog.visible = false;
-        resolve(true);
+        if (pendingResolve) {
+          pendingResolve(true);
+          pendingResolve = null;
+        }
       };
 
       confirmDialog.onCancel = () => {
         confirmDialog.visible = false;
-        resolve(false);
+        if (pendingResolve) {
+          pendingResolve(false);
+          pendingResolve = null;
+        }
       };
     });
   }
@@ -185,8 +203,9 @@ export function useNotifications() {
    */
   function closeConfirm(): void {
     confirmDialog.visible = false;
-    if (confirmDialog.onCancel) {
-      confirmDialog.onCancel();
+    if (pendingResolve) {
+      pendingResolve(false);
+      pendingResolve = null;
     }
   }
 
