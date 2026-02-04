@@ -30,7 +30,7 @@
   "dependencies": {
     "@vue/devtools-api": "^8.0.6",
     "@websublime/vite-plugin-open-api-core": "workspace:*",
-    "chokidar": "^4.0.3",
+    "chokidar": "^5.0.0",
     "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1"
   },
