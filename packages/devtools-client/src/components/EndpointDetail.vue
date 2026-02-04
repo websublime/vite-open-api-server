@@ -11,6 +11,7 @@ import { Code, FileJson, Lock, Shield, Sprout, Tag } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 import type { EndpointEntry } from '@/stores/registry';
+import { getMethodLabel } from '@/utils/format';
 
 /**
  * Component props
@@ -21,13 +22,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-
-/**
- * Get display label for HTTP method
- */
-function getMethodLabel(method: string): string {
-  return method.toUpperCase();
-}
 
 /**
  * Check if endpoint has security requirements

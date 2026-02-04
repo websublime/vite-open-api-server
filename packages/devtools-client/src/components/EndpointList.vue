@@ -10,6 +10,7 @@
 import { ChevronDown, ChevronRight, Code, Sprout } from 'lucide-vue-next';
 
 import type { EndpointEntry, EndpointGroup } from '@/stores/registry';
+import { getMethodLabel } from '@/utils/format';
 
 /**
  * Component props
@@ -32,13 +33,6 @@ const emit = defineEmits<{
   /** Emitted when a group is toggled */
   (e: 'toggle-group', tag: string): void;
 }>();
-
-/**
- * Get display label for HTTP method
- */
-function getMethodLabel(method: string): string {
-  return method.toUpperCase();
-}
 
 /**
  * Handle endpoint click
