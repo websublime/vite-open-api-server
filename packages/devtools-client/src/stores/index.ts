@@ -12,8 +12,19 @@
  * - simulation: Controls active error simulations
  */
 
+export type {
+  EndpointEntry,
+  EndpointFilter,
+  EndpointGroup,
+  HttpMethod,
+  RegistryData,
+  RegistryStats,
+  SecurityRequirement,
+} from './registry';
+// Registry store - manages endpoint data for the Routes pages,
+export { useRegistryStore } from './registry';
+
 // Store exports will be added as stores are implemented
-// export { useRegistryStore } from './registry';
 // export { useTimelineStore } from './timeline';
 // export { useModelsStore } from './models';
 // export { useSimulationStore } from './simulation';
