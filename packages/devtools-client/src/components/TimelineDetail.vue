@@ -63,7 +63,7 @@ const formattedTimestamp = computed(() => {
  * Format duration for display
  */
 const formattedDuration = computed(() => {
-  if (!props.entry?.duration) return 'pending...';
+  if (props.entry?.duration == null) return 'pending...';
   if (props.entry.duration < 1000) {
     return `${props.entry.duration}ms`;
   }
@@ -294,16 +294,18 @@ async function copyFullEntry(): Promise<void> {
 
         <!-- Request Body -->
         <div v-if="hasRequestBody" class="timeline-detail__subsection">
-          <button
-            type="button"
-            class="timeline-detail__subsection-header"
-            @click="toggleSection('requestBody')"
-          >
-            <component
-              :is="expandedSections.requestBody ? ChevronDown : ChevronRight"
-              :size="16"
-            />
-            <span>Body</span>
+          <div class="timeline-detail__subsection-header" role="group">
+            <button
+              type="button"
+              class="timeline-detail__subsection-toggle"
+              @click="toggleSection('requestBody')"
+            >
+              <component
+                :is="expandedSections.requestBody ? ChevronDown : ChevronRight"
+                :size="16"
+              />
+              <span>Body</span>
+            </button>
             <button
               type="button"
               class="btn btn--ghost btn--icon btn--sm"
@@ -312,7 +314,7 @@ async function copyFullEntry(): Promise<void> {
             >
               <component :is="copiedField === 'reqBody' ? Check : Copy" :size="12" />
             </button>
-          </button>
+          </div>
           <div v-show="expandedSections.requestBody" class="timeline-detail__subsection-content">
             <pre class="timeline-detail__json">{{ formatJson(entry.request.body) }}</pre>
           </div>
@@ -351,16 +353,18 @@ async function copyFullEntry(): Promise<void> {
 
         <!-- Response Body -->
         <div v-if="hasResponseBody" class="timeline-detail__subsection">
-          <button
-            type="button"
-            class="timeline-detail__subsection-header"
-            @click="toggleSection('responseBody')"
-          >
-            <component
-              :is="expandedSections.responseBody ? ChevronDown : ChevronRight"
-              :size="16"
-            />
-            <span>Body</span>
+          <div class="timeline-detail__subsection-header" role="group">
+            <button
+              type="button"
+              class="timeline-detail__subsection-toggle"
+              @click="toggleSection('responseBody')"
+            >
+              <component
+                :is="expandedSections.responseBody ? ChevronDown : ChevronRight"
+                :size="16"
+              />
+              <span>Body</span>
+            </button>
             <button
               type="button"
               class="btn btn--ghost btn--icon btn--sm"
@@ -369,7 +373,7 @@ async function copyFullEntry(): Promise<void> {
             >
               <component :is="copiedField === 'resBody' ? Check : Copy" :size="12" />
             </button>
-          </button>
+          </div>
           <div v-show="expandedSections.responseBody" class="timeline-detail__subsection-content">
             <pre class="timeline-detail__json">{{ formatJson(entry.response.body) }}</pre>
           </div>
@@ -550,6 +554,16 @@ async function copyFullEntry(): Promise<void> {
   background-color: var(--devtools-surface);
   border: 1px solid var(--devtools-border);
   border-radius: var(--devtools-radius-sm);
+}
+
+.timeline-detail__subsection-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--devtools-space-xs);
+  flex: 1;
+  padding: 0;
+  background: none;
+  border: none;
   font-family: var(--devtools-font-sans);
   font-size: var(--font-size-1);
   font-weight: var(--font-weight-5);
@@ -559,8 +573,8 @@ async function copyFullEntry(): Promise<void> {
   transition: all var(--devtools-transition-fast);
 }
 
-.timeline-detail__subsection-header:hover {
-  background-color: var(--devtools-surface-elevated);
+.timeline-detail__subsection-toggle:hover {
+  color: var(--devtools-text-hover);
 }
 
 .timeline-detail__subsection-content {

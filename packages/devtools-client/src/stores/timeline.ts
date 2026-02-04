@@ -112,6 +112,9 @@ export const useTimelineStore = defineStore('timeline', () => {
   /** Maximum number of entries to keep */
   const maxEntries = ref(500);
 
+  /** Buffer for responses that arrived before their requests */
+  const responseBuffer = new Map<string, ResponseLogEntry>();
+
   // ==========================================================================
   // Getters / Computed
   // ==========================================================================
@@ -241,6 +244,14 @@ export const useTimelineStore = defineStore('timeline', () => {
       simulated: false,
     };
 
+    // Check if there's a buffered response for this request
+    const bufferedResponse = responseBuffer.get(request.id);
+    if (bufferedResponse) {
+      mergeResponse(entry, bufferedResponse);
+      // Clear consumed buffered response
+      responseBuffer.delete(request.id);
+    }
+
     // Add to beginning of array (newest first)
     entries.value.unshift(entry);
 
@@ -256,10 +267,53 @@ export const useTimelineStore = defineStore('timeline', () => {
   function addResponse(response: ResponseLogEntry): void {
     const entry = entries.value.find((e) => e.id === response.requestId);
     if (entry) {
-      entry.response = response;
-      entry.status = response.status;
-      entry.duration = response.duration;
-      entry.simulated = response.simulated;
+      // Entry exists, merge immediately
+      mergeResponse(entry, response);
+      // Clear from buffer if it was buffered
+      responseBuffer.delete(response.requestId);
+    } else {
+      // Entry doesn't exist yet, buffer the response
+      responseBuffer.set(response.requestId, response);
+    }
+  }
+
+  /**
+   * Merge a response into an entry
+   */
+  function mergeResponse(entry: TimelineEntry, response: ResponseLogEntry): void {
+    entry.response = response;
+    entry.status = response.status;
+    entry.duration = response.duration;
+    entry.simulated = response.simulated;
+  }
+
+  /**
+   * Process buffered responses and merge with existing entries
+   */
+  function processBufferedResponses(requestMap: Map<string, TimelineEntry>): void {
+    for (const [requestId, response] of responseBuffer) {
+      const entry = requestMap.get(requestId);
+      if (entry) {
+        mergeResponse(entry, response);
+        responseBuffer.delete(requestId);
+      }
+    }
+  }
+
+  /**
+   * Process incoming responses and merge or buffer them
+   */
+  function processIncomingResponses(
+    requestMap: Map<string, TimelineEntry>,
+    incomingResponses: Map<string, ResponseLogEntry>,
+  ): void {
+    for (const [requestId, response] of incomingResponses) {
+      const entry = requestMap.get(requestId);
+      if (entry) {
+        mergeResponse(entry, response);
+      } else {
+        responseBuffer.set(requestId, response);
+      }
     }
   }
 
@@ -268,9 +322,10 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Used when fetching initial timeline data
    */
   function setTimelineData(data: TimelineData): void {
-    // Create a map to pair requests with responses
     const requestMap = new Map<string, TimelineEntry>();
+    const incomingResponses = new Map<string, ResponseLogEntry>();
 
+    // First pass: collect all requests and responses
     for (const item of data.entries) {
       if (item.type === 'request') {
         const request = item.data as RequestLogEntry;
@@ -284,20 +339,21 @@ export const useTimelineStore = defineStore('timeline', () => {
         });
       } else if (item.type === 'response') {
         const response = item.data as ResponseLogEntry;
-        const entry = requestMap.get(response.requestId);
-        if (entry) {
-          entry.response = response;
-          entry.status = response.status;
-          entry.duration = response.duration;
-          entry.simulated = response.simulated;
-        }
+        incomingResponses.set(response.requestId, response);
       }
     }
 
+    // Second pass: merge responses with requests
+    processBufferedResponses(requestMap);
+    processIncomingResponses(requestMap, incomingResponses);
+
     // Convert map to array and sort by timestamp (newest first)
-    entries.value = Array.from(requestMap.values()).sort(
+    const sorted = Array.from(requestMap.values()).sort(
       (a, b) => b.request.timestamp - a.request.timestamp,
     );
+
+    // Apply maxEntries limit
+    entries.value = sorted.slice(0, maxEntries.value);
 
     error.value = null;
   }
@@ -405,10 +461,13 @@ export const useTimelineStore = defineStore('timeline', () => {
    * Set maximum entries limit
    */
   function setMaxEntries(limit: number): void {
-    maxEntries.value = limit;
+    // Clamp limit to a safe minimum
+    const clamped = Math.max(1, limit);
+    maxEntries.value = clamped;
+
     // Trim if necessary
-    if (entries.value.length > limit) {
-      entries.value = entries.value.slice(0, limit);
+    if (entries.value.length > clamped) {
+      entries.value = entries.value.slice(0, clamped);
     }
   }
 
