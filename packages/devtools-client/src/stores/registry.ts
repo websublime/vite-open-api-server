@@ -79,8 +79,6 @@ export interface EndpointFilter {
   tags: string[];
 }
 
-
-
 /**
  * Registry store for endpoint data management
  *
