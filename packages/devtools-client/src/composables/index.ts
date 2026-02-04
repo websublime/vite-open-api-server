@@ -7,11 +7,19 @@
  *
  * Composable responsibilities:
  * - useTheme: Manages dark/light mode theme switching
- * - useWebSocket: Handles WebSocket connection (TODO: Task 4.3)
+ * - useWebSocket: Handles WebSocket connection with auto-reconnect
  */
 
 export type { ThemeMode } from './useTheme';
 export { useTheme } from './useTheme';
-
-// WebSocket composable will be added in Task 4.3
-// export { useWebSocket } from './useWebSocket';
+export type {
+  ClientCommand,
+  ClientCommandType,
+  ConnectedEventData,
+  ConnectionState,
+  EventHandler,
+  ServerEvent,
+  ServerEventType,
+  UseWebSocketOptions,
+} from './useWebSocket';
+export { useWebSocket } from './useWebSocket';
