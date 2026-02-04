@@ -21,5 +21,6 @@ export type {
   ServerEvent,
   ServerEventType,
   UseWebSocketOptions,
+  UseWebSocketReturn,
 } from './useWebSocket';
 export { useWebSocket } from './useWebSocket';
