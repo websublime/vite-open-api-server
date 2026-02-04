@@ -651,23 +651,39 @@ describe('createOpenApiServer', () => {
     });
   });
 
-  describe('DevTools placeholder', () => {
-    it('should respond to /_devtools', async () => {
+  describe('DevTools SPA', () => {
+    it('should redirect /_devtools to /_devtools/', async () => {
       const server = await createOpenApiServer({
         spec: minimalDocument,
       });
 
       const response = await server.app.request('/_devtools');
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe('/_devtools/');
     });
 
-    it('should respond to /_devtools/* paths', async () => {
+    it('should serve HTML at /_devtools/', async () => {
+      const server = await createOpenApiServer({
+        spec: minimalDocument,
+      });
+
+      const response = await server.app.request('/_devtools/');
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/html');
+
+      const html = await response.text();
+      expect(html).toContain('OpenAPI DevTools');
+      expect(html).toContain('<div id="app">');
+    });
+
+    it('should redirect /_devtools/* paths to /_devtools/', async () => {
       const server = await createOpenApiServer({
         spec: minimalDocument,
       });
 
       const response = await server.app.request('/_devtools/app.js');
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(302);
+      expect(response.headers.get('location')).toBe('/_devtools/');
     });
   });
 
