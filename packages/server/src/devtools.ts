@@ -8,7 +8,6 @@
  * @module devtools
  */
 
-import { setupDevtoolsPlugin } from '@vue/devtools-api';
 import type { App } from 'vue';
 
 /**
@@ -17,9 +16,21 @@ import type { App } from 'vue';
 export interface RegisterDevToolsOptions {
   /**
    * The port where the OpenAPI server is running
-   * @default 3000
+   * @default 4000
    */
   port?: number;
+
+  /**
+   * The host where the OpenAPI server is running
+   * @default 'localhost' (or derived from window.location.hostname if in browser)
+   */
+  host?: string;
+
+  /**
+   * The protocol to use for the DevTools URL
+   * @default 'http' (or derived from window.location.protocol if in browser)
+   */
+  protocol?: 'http' | 'https';
 
   /**
    * Enable or disable DevTools registration
@@ -52,7 +63,7 @@ export interface RegisterDevToolsOptions {
  *
  * // Register OpenAPI Server DevTools
  * if (import.meta.env.DEV) {
- *   registerDevTools(app, { port: 3000 });
+ *   await registerDevTools(app, { port: 4000 });
  * }
  *
  * app.mount('#app');
@@ -61,7 +72,10 @@ export interface RegisterDevToolsOptions {
  * @param app - Vue application instance
  * @param options - Configuration options
  */
-export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}): void {
+export async function registerDevTools(
+  app: App,
+  options: RegisterDevToolsOptions = {},
+): Promise<void> {
   const { enabled = true, label = 'OpenAPI Server' } = options;
 
   // Only register if enabled
@@ -73,6 +87,9 @@ export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}
   if (typeof window === 'undefined') {
     return;
   }
+
+  // Lazy import to avoid SSR issues
+  const { setupDevtoolsPlugin } = await import('@vue/devtools-api');
 
   setupDevtoolsPlugin(
     {
@@ -102,6 +119,8 @@ export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}
       // Note: The DevTools API v7+ uses a different approach for custom views
       // We'll use the timeline and inspector for now, and the iframe will be
       // accessible via the standalone DevTools SPA URL
+      // TODO: In future, use options.port/host/protocol to configure a custom iframe view
+      // For now, these options are primarily for the getDevToolsUrl helper function
       api.on.visitComponentTree(() => {
         // Future: Add component tree customization if needed
       });
@@ -110,11 +129,25 @@ export function registerDevTools(app: App, options: RegisterDevToolsOptions = {}
 }
 
 /**
- * Get the DevTools URL for the given port
+ * Get the DevTools URL for the given configuration
  *
- * @param port - Server port
+ * When running in a browser, protocol and host are automatically derived from
+ * window.location if not explicitly provided.
+ *
+ * @param port - Server port (default: 4000)
+ * @param host - Server host (default: 'localhost' or window.location.hostname)
+ * @param protocol - Protocol to use (default: 'http' or window.location.protocol)
  * @returns DevTools SPA URL
  */
-export function getDevToolsUrl(port = 3000): string {
-  return `http://localhost:${port}/_devtools/`;
+export function getDevToolsUrl(port = 4000, host?: string, protocol?: 'http' | 'https'): string {
+  // Derive defaults from browser environment if available
+  const actualProtocol =
+    protocol ||
+    (typeof window !== 'undefined'
+      ? (window.location.protocol.replace(':', '') as 'http' | 'https')
+      : 'http');
+  const actualHost =
+    host || (typeof window !== 'undefined' ? window.location.hostname : 'localhost');
+
+  return `${actualProtocol}://${actualHost}:${port}/_devtools/`;
 }

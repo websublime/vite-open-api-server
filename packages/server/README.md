@@ -195,9 +195,9 @@ import App from './App.vue';
 
 const app = createApp(App);
 
-// Register OpenAPI Server in Vue DevTools (development only)
+// Register OpenAPI Server DevTools (development only)
 if (import.meta.env.DEV) {
-  registerDevTools(app, {
+  await registerDevTools(app, {
     port: 4000, // Must match your server port
     label: 'OpenAPI Server', // Optional custom label
   });
@@ -210,7 +210,7 @@ app.mount('#app');
 
 ```typescript
 interface RegisterDevToolsOptions {
-  port?: number;      // Server port (default: 3000)
+  port?: number;      // Server port (default: 4000)
   enabled?: boolean;  // Enable/disable registration (default: true)
   label?: string;     // Custom tab label (default: 'OpenAPI Server')
 }
@@ -222,20 +222,16 @@ When registered, the DevTools integration provides:
 
 - **Custom Inspector** - View all registered OpenAPI routes
 - **Timeline Layer** - Track API requests in real-time
-- **DevTools SPA Access** - Direct link to the full DevTools interface
+- **DevTools SPA Access** - Direct link to the DevTools interface
 
 ### Accessing DevTools
 
 You can access the DevTools in two ways:
 
 1. **Via Vue DevTools Browser Extension** - After registration, a custom tab will appear in the Vue DevTools panel
-2. **Standalone URL** - Navigate directly to `http://localhost:4000/_devtools` (replace 4000 with your configured port)
+2. **Standalone URL** - Navigate directly to `http://localhost:4000/_devtools/` (replace 4000 with your configured port)
 
-The standalone DevTools SPA provides:
-- Routes explorer with endpoint details
-- Timeline of all requests/responses
-- Store data viewer and editor
-- Error simulation controls
+> **Note:** The standalone DevTools SPA currently serves a placeholder page. The full DevTools interface with routes explorer, timeline viewer, store editor, and error simulation controls is planned for a future release. For now, you can access the raw API data via the [Internal API endpoints](#internal-api) below.
 
 ## Internal API
 
