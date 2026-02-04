@@ -172,7 +172,7 @@ export const useModelsStore = defineStore('models', () => {
 
       const data: SchemaData = await response.json();
       currentItems.value = data.items ?? [];
-      originalItems.value = JSON.parse(JSON.stringify(data.items ?? []));
+      originalItems.value = structuredClone(data.items ?? []);
 
       // Update schema count in the list
       const schemaIndex = schemas.value.findIndex((s) => s.name === schemaName);
@@ -232,7 +232,7 @@ export const useModelsStore = defineStore('models', () => {
       const result = await response.json();
 
       // Update original items to match saved items
-      originalItems.value = JSON.parse(JSON.stringify(currentItems.value));
+      originalItems.value = structuredClone(currentItems.value);
 
       // Update schema count
       const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
@@ -295,7 +295,7 @@ export const useModelsStore = defineStore('models', () => {
    * Discard changes and revert to original items
    */
   function discardChanges(): void {
-    currentItems.value = JSON.parse(JSON.stringify(originalItems.value));
+    currentItems.value = structuredClone(originalItems.value);
   }
 
   /**

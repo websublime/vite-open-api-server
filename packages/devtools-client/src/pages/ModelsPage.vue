@@ -1,6 +1,9 @@
 <!--
-  { Database, RefreshCw, Save, Trash2, X }.vue - lucide-vue-nexthat: DisplayonMounted, ref, watch editing vueganized byJsonEditorches storcomponents/JsonEditor.vue from modelsuseWebSocketOview
-  W@/composables/useWebSocketlopers to inuseModelsStoreydata dur@/stores development
+  ModelsPage.vue - Store Data Editor Page
+
+  What: Displays and allows editing of in-memory store data organized by schema
+  How: Fetches store data from models store and displays in an editable JSON view
+  Why: Allows developers to inspect and modify mock data during development
 
   Features:
   - Schema listing sidebar with item counts
@@ -9,11 +12,11 @@
   - Real-time updates via WebSocket
   - Dirty state tracking
 -->
-
 <script setup lang="ts">
 import { Database, RefreshCw, Save, Trash2, X } from 'lucide-vue-next';
 import { onMounted, ref, watch } from 'vue';
 import type JsonEditor from '@/components/JsonEditor.vue';
+import { useNotifications } from '@/composables/useNotifications';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useModelsStore } from '@/stores';
 
@@ -23,6 +26,7 @@ import { useModelsStore } from '@/stores';
 
 const modelsStore = useModelsStore();
 const { send, on, connected } = useWebSocket();
+const { success, error: notifyError, confirm } = useNotifications();
 
 // ==========================================================================
 // State
@@ -88,7 +92,14 @@ watch(
  */
 async function selectSchema(schemaName: string): Promise<void> {
   if (modelsStore.isDirty) {
-    const confirmed = confirm('You have unsaved changes. Are you sure you want to switch schemas?');
+    const confirmed = await confirm(
+      'You have unsaved changes. Are you sure you want to switch schemas?',
+      {
+        title: 'Unsaved Changes',
+        confirmText: 'Switch Schema',
+        cancelText: 'Cancel',
+      },
+    );
     if (!confirmed) return;
   }
 
@@ -100,26 +111,30 @@ async function selectSchema(schemaName: string): Promise<void> {
  */
 async function saveItems(): Promise<void> {
   if (!jsonEditorRef.value?.isValid) {
-    alert('Cannot save invalid JSON. Please fix the errors first.');
+    notifyError('Cannot save invalid JSON. Please fix the errors first.');
     return;
   }
 
-  const success = await modelsStore.saveItems();
-  if (success) {
-    // Show success feedback (could be replaced with toast notification)
-    console.log('Items saved successfully');
+  const saved = await modelsStore.saveItems();
+  if (saved) {
+    success('Items saved successfully');
   }
 }
 
 /**
  * Discard changes and revert to original
  */
-function discardChanges(): void {
+async function discardChanges(): Promise<void> {
   if (!modelsStore.isDirty) return;
 
-  const confirmed = confirm('Discard all changes and revert to saved data?');
+  const confirmed = await confirm('Discard all changes and revert to saved data?', {
+    title: 'Discard Changes',
+    confirmText: 'Discard',
+    cancelText: 'Cancel',
+  });
   if (confirmed) {
     modelsStore.discardChanges();
+    success('Changes discarded');
   }
 }
 
@@ -129,28 +144,33 @@ function discardChanges(): void {
 async function clearSchema(): Promise<void> {
   showClearConfirm.value = false;
 
-  const success = await modelsStore.clearSchema();
-  if (success) {
-    console.log('Schema cleared successfully');
+  const cleared = await modelsStore.clearSchema();
+  if (cleared) {
+    success('Schema cleared successfully');
   }
 }
 
 /**
  * Trigger reseed via WebSocket
  */
-function reseedAll(): void {
+async function reseedAll(): Promise<void> {
   if (!connected.value) {
-    alert('WebSocket not connected. Cannot trigger reseed.');
+    notifyError('WebSocket not connected. Cannot trigger reseed.');
     return;
   }
 
-  const confirmed = confirm(
+  const confirmed = await confirm(
     'This will regenerate all seed data and replace existing items. Continue?',
+    {
+      title: 'Reseed All Schemas',
+      confirmText: 'Reseed',
+      cancelText: 'Cancel',
+    },
   );
   if (!confirmed) return;
 
   send({ type: 'reseed' });
-  console.log('Reseed command sent');
+  success('Reseed command sent');
 }
 
 /**
