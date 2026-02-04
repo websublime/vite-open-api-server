@@ -23,6 +23,12 @@ class MockWebSocket {
 
   static instances: MockWebSocket[] = [];
 
+  /**
+   * When set to true, new MockWebSocket instances will NOT auto-connect.
+   * Useful for testing connection failure scenarios.
+   */
+  static shouldFailNextConnection = false;
+
   readonly CONNECTING = 0;
   readonly OPEN = 1;
   readonly CLOSING = 2;
@@ -40,13 +46,28 @@ class MockWebSocket {
   constructor(url: string) {
     this.url = url;
     MockWebSocket.instances.push(this);
-    // Simulate async connection
-    setTimeout(() => {
-      if (this.readyState === MockWebSocket.CONNECTING) {
-        this.readyState = MockWebSocket.OPEN;
-        this.onopen?.(new Event('open'));
-      }
-    }, 0);
+
+    // Check if this connection should fail
+    const shouldFail = MockWebSocket.shouldFailNextConnection;
+    MockWebSocket.shouldFailNextConnection = false; // Reset for next connection
+
+    if (shouldFail) {
+      // Simulate immediate connection failure
+      setTimeout(() => {
+        if (this.readyState === MockWebSocket.CONNECTING) {
+          this.readyState = MockWebSocket.CLOSED;
+          this.onclose?.(new CloseEvent('close'));
+        }
+      }, 0);
+    } else {
+      // Simulate async connection success
+      setTimeout(() => {
+        if (this.readyState === MockWebSocket.CONNECTING) {
+          this.readyState = MockWebSocket.OPEN;
+          this.onopen?.(new Event('open'));
+        }
+      }, 0);
+    }
   }
 
   send(data: string): void {
@@ -80,6 +101,7 @@ class MockWebSocket {
 
   static clearInstances(): void {
     MockWebSocket.instances = [];
+    MockWebSocket.shouldFailNextConnection = false;
   }
 }
 
@@ -313,6 +335,67 @@ describe('useWebSocket', () => {
       expect(reconnectAttempts.value).toBe(0);
     });
 
+    it('should stop reconnecting after maxReconnectAttempts consecutive failures', async () => {
+      const maxAttempts = 3;
+      const { connect, reconnectAttempts, connectionState } = useWebSocket({
+        autoConnect: false,
+        reconnectDelay: 100,
+        maxReconnectAttempts: maxAttempts,
+      });
+
+      // Initial connection (successful)
+      connect();
+      await vi.runAllTimersAsync();
+      expect(connectionState.value).toBe('connected');
+      expect(reconnectAttempts.value).toBe(0);
+
+      // First disconnect from initial successful connection - triggers attempt 1
+      // Set flag BEFORE disconnecting so next reconnect will fail
+      MockWebSocket.shouldFailNextConnection = true;
+      MockWebSocket.instances[0].simulateDisconnect();
+      expect(reconnectAttempts.value).toBe(1);
+      expect(connectionState.value).toBe('reconnecting');
+
+      // Advance reconnect timer (100ms) - this creates new WebSocket
+      // The MockWebSocket constructor consumes shouldFailNextConnection
+      // Then after 0ms it will call onclose (simulating failure)
+      // But we need to set the flag for the NEXT attempt before the failure triggers another reconnect
+      await vi.advanceTimersByTimeAsync(100);
+      // New instance created, flag consumed. Set for next attempt BEFORE running pending timers.
+      MockWebSocket.shouldFailNextConnection = true;
+      // Run pending 0ms timers to trigger the failure
+      await vi.runOnlyPendingTimersAsync();
+      expect(reconnectAttempts.value).toBe(2);
+      expect(connectionState.value).toBe('reconnecting');
+
+      // Attempt 2 -> 3
+      await vi.advanceTimersByTimeAsync(100);
+      MockWebSocket.shouldFailNextConnection = true;
+      await vi.runOnlyPendingTimersAsync();
+      expect(reconnectAttempts.value).toBe(3);
+      expect(connectionState.value).toBe('reconnecting');
+
+      // Attempt 3 is the last allowed. Next failure should stop reconnecting.
+      await vi.advanceTimersByTimeAsync(100);
+      // Don't set shouldFailNextConnection - let it succeed, then manually disconnect
+      await vi.runOnlyPendingTimersAsync();
+      // Connection should have opened successfully (attempts reset to 0)
+      // Now simulate this connection also failing
+      const lastInstance = MockWebSocket.instances[MockWebSocket.instances.length - 1];
+      lastInstance.simulateDisconnect();
+
+      // Should have stopped - no more reconnecting
+      expect(reconnectAttempts.value).toBe(3);
+      expect(connectionState.value).toBe('disconnected');
+
+      const instanceCountAfterMaxAttempts = MockWebSocket.instances.length;
+
+      // Wait more time - no new connections should be created
+      await vi.advanceTimersByTimeAsync(500);
+      expect(MockWebSocket.instances.length).toBe(instanceCountAfterMaxAttempts);
+      expect(connectionState.value).toBe('disconnected');
+    });
+
     it('should reset reconnect attempts after successful connection', async () => {
       const { connect, reconnectAttempts } = useWebSocket({
         autoConnect: false,
@@ -525,7 +608,7 @@ describe('useWebSocket', () => {
       expect(handler2).toHaveBeenCalledTimes(1);
     });
 
-    it('should unsubscribe once() handler when it returns true', async () => {
+    it('should unsubscribe once() handler after first invocation (one-shot)', async () => {
       const { connect, once } = useWebSocket({ autoConnect: false });
       let callCount = 0;
 
@@ -533,6 +616,54 @@ describe('useWebSocket', () => {
       await vi.runAllTimersAsync();
 
       once('request', () => {
+        callCount++;
+      });
+
+      const event: ServerEvent = {
+        type: 'request',
+        data: { id: '123' },
+      };
+
+      MockWebSocket.instances[0].simulateMessage(event);
+      MockWebSocket.instances[0].simulateMessage(event);
+      MockWebSocket.instances[0].simulateMessage(event);
+
+      // once() is a true one-shot - should only be called once
+      expect(callCount).toBe(1);
+    });
+
+    it('should allow cancelling once() subscription before event fires', async () => {
+      const { connect, once } = useWebSocket({ autoConnect: false });
+      let callCount = 0;
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      const unsubscribe = once('request', () => {
+        callCount++;
+      });
+
+      // Cancel before any event
+      unsubscribe();
+
+      const event: ServerEvent = {
+        type: 'request',
+        data: { id: '123' },
+      };
+
+      MockWebSocket.instances[0].simulateMessage(event);
+
+      expect(callCount).toBe(0);
+    });
+
+    it('should unsubscribe onUntil() handler when it returns true', async () => {
+      const { connect, onUntil } = useWebSocket({ autoConnect: false });
+      let callCount = 0;
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      onUntil('request', () => {
         callCount++;
         return true; // Unsubscribe after first call
       });
@@ -548,14 +679,14 @@ describe('useWebSocket', () => {
       expect(callCount).toBe(1);
     });
 
-    it('should keep once() handler subscribed when it returns false/void', async () => {
-      const { connect, once } = useWebSocket({ autoConnect: false });
+    it('should keep onUntil() handler subscribed when it returns false/void', async () => {
+      const { connect, onUntil } = useWebSocket({ autoConnect: false });
       let callCount = 0;
 
       connect();
       await vi.runAllTimersAsync();
 
-      once('request', () => {
+      onUntil('request', () => {
         callCount++;
         // Returning void/undefined keeps subscription
       });
@@ -570,6 +701,28 @@ describe('useWebSocket', () => {
       MockWebSocket.instances[0].simulateMessage(event);
 
       expect(callCount).toBe(3);
+    });
+
+    it('should unsubscribe onUntil() when condition is met', async () => {
+      const { connect, onUntil } = useWebSocket({ autoConnect: false });
+      const receivedIds: string[] = [];
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Keep listening until we get id '3'
+      onUntil<{ id: string }>('request', (data) => {
+        receivedIds.push(data.id);
+        return data.id === '3'; // Unsubscribe when we see id '3'
+      });
+
+      MockWebSocket.instances[0].simulateMessage({ type: 'request', data: { id: '1' } });
+      MockWebSocket.instances[0].simulateMessage({ type: 'request', data: { id: '2' } });
+      MockWebSocket.instances[0].simulateMessage({ type: 'request', data: { id: '3' } });
+      MockWebSocket.instances[0].simulateMessage({ type: 'request', data: { id: '4' } });
+
+      // Should have received 1, 2, 3 but not 4
+      expect(receivedIds).toEqual(['1', '2', '3']);
     });
   });
 

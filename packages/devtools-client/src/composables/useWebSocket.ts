@@ -9,7 +9,7 @@
  */
 
 import type { ComputedRef } from 'vue';
-import { computed, getCurrentInstance, onMounted, onUnmounted, ref } from 'vue';
+import { computed, getCurrentInstance, onMounted, ref } from 'vue';
 
 /**
  * Server event types that can be received from the server
@@ -137,8 +137,16 @@ export interface UseWebSocketReturn {
   on: <T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>) => () => void;
   /** Unsubscribe from a server event */
   off: <T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>) => void;
-  /** Subscribe to an event once (handler can return true to unsubscribe) */
-  once: <T = unknown>(
+  /**
+   * Subscribe to an event and automatically unsubscribe after the first invocation.
+   * This is a standard one-shot subscription.
+   */
+  once: <T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>) => () => void;
+  /**
+   * Subscribe to an event and unsubscribe when the handler returns true.
+   * Useful for conditional one-time events where you need to wait for specific data.
+   */
+  onUntil: <T = unknown>(
     event: ServerEventType | '*',
     handler: (data: T) => boolean | undefined,
   ) => () => void;
@@ -169,6 +177,12 @@ const reconnectAttempts = ref(0);
 let ws: WebSocket | null = null;
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 let currentOptions: Required<UseWebSocketOptions> = { ...DEFAULT_OPTIONS };
+
+/**
+ * Flag to track if options have been initialized
+ * Options are only set on the first call to useWebSocket or when disconnected
+ */
+let optionsInitialized = false;
 
 /**
  * Event handlers map - stores handlers for each event type
@@ -335,8 +349,8 @@ function connect(): void {
     return;
   }
 
-  // Clean up existing connection
-  disconnect();
+  // Clean up existing connection without resetting reconnect state
+  cleanupConnection();
 
   connectionState.value = 'connecting';
   const url = buildWebSocketUrl(currentOptions.path);
@@ -354,11 +368,10 @@ function connect(): void {
 }
 
 /**
- * Disconnect from the WebSocket server
+ * Clean up WebSocket connection without resetting reconnect state.
+ * Used internally when reconnecting.
  */
-function disconnect(): void {
-  clearReconnectTimer();
-
+function cleanupConnection(): void {
   if (ws) {
     // Remove event handlers to prevent close handler from triggering reconnect
     ws.onopen = null;
@@ -372,6 +385,14 @@ function disconnect(): void {
 
     ws = null;
   }
+}
+
+/**
+ * Disconnect from the WebSocket server
+ */
+function disconnect(): void {
+  clearReconnectTimer();
+  cleanupConnection();
 
   connectionState.value = 'disconnected';
   reconnectAttempts.value = 0;
@@ -446,14 +467,51 @@ function off<T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>
 }
 
 /**
- * Subscribe to an event and automatically unsubscribe when handler returns
- * a truthy value (useful for one-time events)
+ * Subscribe to an event and automatically unsubscribe after the first invocation.
+ * This is a standard one-shot subscription - the handler is called exactly once.
+ *
+ * @param event - The event type to subscribe to
+ * @param handler - The handler function to call once
+ * @returns An unsubscribe function (can be used to cancel before the event fires)
+ *
+ * @example
+ * ```typescript
+ * // Wait for the first 'connected' event
+ * once('connected', (data) => {
+ *   console.log('Connected with version:', data.serverVersion);
+ * });
+ * ```
+ */
+function once<T = unknown>(event: ServerEventType | '*', handler: EventHandler<T>): () => void {
+  const wrappedHandler: EventHandler<T> = (data) => {
+    off(event, wrappedHandler);
+    handler(data);
+  };
+
+  return on(event, wrappedHandler);
+}
+
+/**
+ * Subscribe to an event and unsubscribe when the handler returns true.
+ * Useful for conditional one-time events where you need to wait for specific data.
  *
  * @param event - The event type to subscribe to
  * @param handler - The handler function that returns true to unsubscribe
  * @returns An unsubscribe function
+ *
+ * @example
+ * ```typescript
+ * // Wait until we receive a response with status 200
+ * onUntil('response', (data) => {
+ *   if (data.status === 200) {
+ *     console.log('Success response received');
+ *     return true; // Unsubscribe
+ *   }
+ *   return false; // Keep listening
+ * });
+ * ```
  */
-function once<T = unknown>(
+function onUntil<T = unknown>(
   event: ServerEventType | '*',
   handler: (data: T) => boolean | undefined,
 ): () => void {
@@ -475,6 +533,7 @@ function resetState(): void {
   serverVersion.value = null;
   eventHandlers.clear();
   currentOptions = { ...DEFAULT_OPTIONS };
+  optionsInitialized = false;
 }
 
 /**
@@ -490,8 +549,12 @@ function resetState(): void {
  * @returns WebSocket management utilities
  */
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
-  // Merge options with defaults
-  currentOptions = { ...DEFAULT_OPTIONS, ...options };
+  // Only merge options when not connected and not initialized, or when disconnected
+  // This prevents race conditions when multiple components pass different options
+  if (!optionsInitialized || connectionState.value === 'disconnected') {
+    currentOptions = { ...DEFAULT_OPTIONS, ...options };
+    optionsInitialized = true;
+  }
 
   /**
    * Computed property indicating if the WebSocket is connected
@@ -503,18 +566,16 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
    */
   const isReconnecting = computed(() => connectionState.value === 'reconnecting');
 
+  // Note: We don't disconnect on component unmount because this is singleton state
+  // and other components may still be using the connection.
+  // The connection will be cleaned up when the page unloads.
+
   // Only register lifecycle hooks when inside a Vue component context
   if (hasComponentContext()) {
     onMounted(() => {
       if (currentOptions.autoConnect) {
         connect();
       }
-    });
-
-    onUnmounted(() => {
-      // Note: We don't disconnect on unmount because this is singleton state
-      // and other components may still be using the connection.
-      // The connection will be cleaned up when the page unloads.
     });
   }
 
@@ -570,9 +631,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     off,
 
     /**
-     * Subscribe to an event once (handler can return true to unsubscribe)
+     * Subscribe to an event once (one-shot, auto-unsubscribes after first call)
      */
     once,
+
+    /**
+     * Subscribe to an event until handler returns true
+     */
+    onUntil,
 
     /**
      * Reset the composable state (useful for testing)
