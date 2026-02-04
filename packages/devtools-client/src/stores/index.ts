@@ -23,9 +23,18 @@ export type {
 } from './registry';
 // Registry store - manages endpoint data for the Routes pages,
 export { useRegistryStore } from './registry';
+export type {
+  HttpMethod as TimelineHttpMethod,
+  RequestLogEntry,
+  ResponseLogEntry,
+  TimelineData,
+  TimelineEntry,
+  TimelineFilter,
+} from './timeline';
+// Timeline store - manages request/response timeline events
+export { useTimelineStore } from './timeline';
 
 // Store exports will be added as stores are implemented
-// export { useTimelineStore } from './timeline';
 // export { useModelsStore } from './models';
 // export { useSimulationStore } from './simulation';
 
