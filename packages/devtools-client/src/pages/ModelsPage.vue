@@ -152,6 +152,15 @@ function reseedAll(): void {
   send({ type: 'reseed' });
   console.log('Reseed command sent');
 }
+
+/**
+ * Handle JSON editor value updates
+ */
+function onJsonEditorUpdate(value: unknown): void {
+  if (Array.isArray(value)) {
+    modelsStore.updateItems(value);
+  }
+}
 </script>
 
 <template>
@@ -269,7 +278,7 @@ function reseedAll(): void {
             :model-value="modelsStore.currentItems"
             :readonly="modelsStore.loading"
             :min-height="400"
-            @update:model-value="(value: unknown) => modelsStore.updateItems(value as unknown[])"
+            @update:model-value="onJsonEditorUpdate"
           />
         </div>
 

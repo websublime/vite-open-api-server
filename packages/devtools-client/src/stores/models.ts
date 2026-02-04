@@ -190,8 +190,17 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Update the current items (for editing)
    */
-  function updateItems(items: unknown[]): void {
+  function updateItems(items: unknown): void {
+    // Validate that items is an array
+    if (!Array.isArray(items)) {
+      error.value = 'Invalid data: Expected an array of items';
+      console.error('[ModelsStore] updateItems received non-array value:', typeof items);
+      return;
+    }
+
     currentItems.value = items;
+    // Clear any previous validation errors
+    error.value = null;
   }
 
   /**
@@ -321,9 +330,16 @@ export const useModelsStore = defineStore('models', () => {
       schemas.value[schemaIndex].count = data.count;
     }
 
-    // If the updated schema is currently selected, refresh it
+    // If the updated schema is currently selected, refresh it only if no unsaved changes
     if (selectedSchema.value === data.schema) {
-      fetchSchemaData(data.schema);
+      if (!isDirty.value) {
+        fetchSchemaData(data.schema);
+      } else {
+        // Don't auto-refresh when there are unsaved changes
+        console.warn(
+          `[ModelsStore] Skipping auto-refresh for schema "${data.schema}" - unsaved changes exist`,
+        );
+      }
     }
   }
 
@@ -332,10 +348,18 @@ export const useModelsStore = defineStore('models', () => {
    */
   function handleReseedComplete(data: { success: boolean; schemas: string[] }): void {
     if (data.success) {
-      // Refresh schema list and current data
+      // Refresh schema list
       fetchSchemas();
+
+      // Refresh current schema data only if no unsaved changes
       if (selectedSchema.value) {
-        fetchSchemaData(selectedSchema.value);
+        if (!isDirty.value) {
+          fetchSchemaData(selectedSchema.value);
+        } else {
+          console.warn(
+            `[ModelsStore] Skipping auto-refresh after reseed for schema "${selectedSchema.value}" - unsaved changes exist`,
+          );
+        }
       }
     }
   }
