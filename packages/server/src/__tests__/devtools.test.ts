@@ -11,7 +11,7 @@ import { getDevToolsUrl, registerDevTools } from '../devtools.js';
 describe('getDevToolsUrl', () => {
   it('should return URL with default parameters', () => {
     const url = getDevToolsUrl();
-    expect(url).toBe('http://localhost:4000/_devtools/');
+    expect(url).toBe('http://localhost:3000/_devtools/');
   });
 
   it('should accept custom port', () => {
