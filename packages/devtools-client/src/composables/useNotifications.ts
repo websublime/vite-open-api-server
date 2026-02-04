@@ -58,6 +58,9 @@ const confirmDialog = reactive<ConfirmDialog>({
   onCancel: null,
 });
 
+// Track active timeout IDs to prevent orphaned timers
+const timeouts = new Map<string, number>();
+
 // ==========================================================================
 // Helper Functions
 // ==========================================================================
@@ -82,15 +85,25 @@ function addToast(type: ToastType, message: string, duration = 3000): string {
 
   // Auto-dismiss
   if (duration > 0) {
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       removeToast(id);
+      timeouts.delete(id);
     }, duration);
+    timeouts.set(id, timeoutId);
   }
 
   return id;
 }
 
 function removeToast(id: string): void {
+  // Clear the timeout if it exists
+  const timeoutId = timeouts.get(id);
+  if (timeoutId !== undefined) {
+    clearTimeout(timeoutId);
+    timeouts.delete(id);
+  }
+
+  // Remove the toast from the array
   const index = toasts.value.findIndex((t) => t.id === id);
   if (index !== -1) {
     toasts.value.splice(index, 1);
@@ -188,6 +201,11 @@ export function useNotifications() {
    * Clear all toasts
    */
   function clearAll(): void {
+    // Clear all active timeouts
+    for (const timeoutId of timeouts.values()) {
+      clearTimeout(timeoutId);
+    }
+    timeouts.clear();
     toasts.value = [];
   }
 
