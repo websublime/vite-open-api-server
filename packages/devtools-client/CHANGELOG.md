@@ -1,3 +1,37 @@
+## [0.4.0] - 2026-02-04
+
+### Features
+
+- implement Timeline Page with real-time request/response tracking (d63d240)
+
+
+### Bug Fixes
+
+- add ARIA attributes to collapsible sections in TimelineDetail (9e2c5c7)
+- correct exports field order - types before import/require (a0758c1)
+- address PR review comments for timeline components (b23890a)
+- create stub entries for orphaned responses to prevent data loss (6a2ec22)
+- prevent memory leak in timeline responseBuffer (b4819d3)
+
+
+### Continuous Integration
+
+- add PROD environment and npm auth debugging (d982d0b)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (f210a35)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (dd95bfb)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (2edab8e)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (904a737)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (8a25855)
+- disable useShorthandFunctionType Biome rule (3955a53)
+- sync changeset for feature/vite-open-api-server-c5f.5-timeline-page (fc7cdf3)
+- fix trailing newline in devtools-client package.json (1c90e64)
+
+
+
 ## [0.3.0] - 2026-02-04
 
 ### Features
