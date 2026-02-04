@@ -185,6 +185,47 @@ describe('useTimelineStore', () => {
 
       expect(store.entries[0].simulated).toBe(true);
     });
+
+    it('should create stub entry when buffer exceeds threshold (100 responses)', () => {
+      const store = useTimelineStore();
+
+      // Add 100 orphaned responses to fill the buffer
+      for (let i = 0; i < 100; i++) {
+        store.addResponse(createMockResponse({ requestId: `orphan-${i}` }));
+      }
+
+      // Buffer should be full, no entries created yet
+      expect(store.entries).toHaveLength(0);
+
+      // Add one more response - should trigger stub creation for this response
+      const response101 = createMockResponse({ requestId: 'orphan-101', status: 404 });
+      store.addResponse(response101);
+
+      // Should have created a stub entry for the 101st response
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].request.method).toBe('UNKNOWN');
+      expect(store.entries[0].request.path).toBe('/unknown');
+      expect(store.entries[0].response?.status).toBe(404);
+      expect(store.entries[0].status).toBe(404);
+    });
+
+    it('should merge buffered response when request arrives later', () => {
+      const store = useTimelineStore();
+      const response = createMockResponse({ requestId: 'req-delayed', status: 200 });
+
+      // Response arrives first (gets buffered)
+      store.addResponse(response);
+      expect(store.entries).toHaveLength(0);
+
+      // Request arrives later
+      const request = createMockRequest({ id: 'req-delayed' });
+      store.addRequest(request);
+
+      // Should have merged the buffered response with the request
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].response).toEqual(response);
+      expect(store.entries[0].status).toBe(200);
+    });
   });
 
   describe('setTimelineData', () => {
@@ -274,6 +315,24 @@ describe('useTimelineStore', () => {
       store.clearTimeline();
 
       expect(store.selectedEntryId).toBeNull();
+    });
+
+    it('should clear response buffer when clearing timeline', () => {
+      const store = useTimelineStore();
+
+      // Add a response without a matching request (gets buffered)
+      const response = createMockResponse({ requestId: 'orphaned-req' });
+      store.addResponse(response);
+
+      // Clear timeline
+      store.clearTimeline();
+
+      // Now add the matching request - it should NOT have the buffered response
+      const request = createMockRequest({ id: 'orphaned-req' });
+      store.addRequest(request);
+
+      const entry = store.entries.find((e) => e.id === 'orphaned-req');
+      expect(entry?.response).toBeNull();
     });
   });
 
