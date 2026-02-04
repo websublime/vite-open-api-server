@@ -688,7 +688,8 @@ describe('useWebSocket', () => {
 
       onUntil('request', () => {
         callCount++;
-        // Returning void/undefined keeps subscription
+        // Returning undefined keeps subscription
+        return undefined;
       });
 
       const event: ServerEvent = {
