@@ -14,7 +14,7 @@
 -->
 <script setup lang="ts">
 import { Database, RefreshCw, Save, Trash2, X } from 'lucide-vue-next';
-import { onMounted, ref, watch } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
 import type JsonEditor from '@/components/JsonEditor.vue';
 import { useNotifications } from '@/composables/useNotifications';
 import { useWebSocket } from '@/composables/useWebSocket';
@@ -58,11 +58,36 @@ onMounted(async () => {
 
 // Handle store updates from WebSocket
 on('store:updated', (data) => {
+  // Validate payload structure
+  const payload = data as any;
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    typeof payload.schema !== 'string' ||
+    typeof payload.action !== 'string' ||
+    typeof payload.count !== 'number'
+  ) {
+    console.warn('[ModelsPage] Invalid store:updated payload:', data);
+    return;
+  }
+
   modelsStore.handleStoreUpdate(data as { schema: string; action: string; count: number });
 });
 
 // Handle reseed completion
 on('reseeded', (data) => {
+  // Validate payload structure
+  const payload = data as any;
+  if (
+    typeof data !== 'object' ||
+    data === null ||
+    typeof payload.success !== 'boolean' ||
+    !Array.isArray(payload.schemas)
+  ) {
+    console.warn('[ModelsPage] Invalid reseeded payload:', data);
+    return;
+  }
+
   modelsStore.handleReseedComplete(data as { success: boolean; schemas: string[] });
 });
 
@@ -73,12 +98,11 @@ on('reseeded', (data) => {
 // Format JSON when schema changes
 watch(
   () => modelsStore.selectedSchema,
-  () => {
+  async () => {
     if (jsonEditorRef.value && modelsStore.currentItems.length > 0) {
       // Wait for next tick to ensure editor is updated
-      setTimeout(() => {
-        jsonEditorRef.value?.formatJson();
-      }, 100);
+      await nextTick();
+      jsonEditorRef.value?.formatJson();
     }
   },
 );
