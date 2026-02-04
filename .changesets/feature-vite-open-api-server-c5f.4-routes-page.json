@@ -7,7 +7,9 @@
   "packages": [
     "@websublime/vite-plugin-open-api-devtools"
   ],
-  "changes": [],
+  "changes": [
+    "8257536b05c9bf323f11ccb16148d8ef96509256"
+  ],
   "created_at": "2026-02-04T10:33:18.201769Z",
-  "updated_at": "2026-02-04T10:33:18.202442Z"
+  "updated_at": "2026-02-04T10:34:10.821841Z"
 }
