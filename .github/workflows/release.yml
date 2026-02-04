@@ -19,6 +19,7 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
+    environment: PROD
     if: github.repository == 'websublime/vite-open-api-server'
     permissions:
       contents: write
@@ -73,11 +74,23 @@ jobs:
 
       - name: Publish to npm
         if: steps.changesets.outputs.count > 0
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           # Configure npm authentication for pnpm
           # Write the resolved NPM_TOKEN secret directly into ~/.npmrc
           # This is required because pnpm needs explicit token in .npmrc (not env expansion)
-          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+
+          # Debug: Verify token is set (shows length, not value)
+          echo "Token length: ${#NODE_AUTH_TOKEN}"
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "ERROR: NODE_AUTH_TOKEN is empty! Check NPM_TOKEN secret in GitHub."
+            exit 1
+          fi
+
+          # Debug: Verify npm authentication
+          npm whoami || echo "npm whoami failed - token may be invalid"
 
           # Publish packages in topological order (dependencies first)
           # This ensures @websublime/vite-plugin-open-api-core is published before
