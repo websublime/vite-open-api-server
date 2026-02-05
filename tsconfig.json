@@ -22,7 +22,8 @@
   "references": [
     { "path": "./packages/core" },
     { "path": "./packages/server" },
-    { "path": "./packages/devtools-client" }
+    { "path": "./packages/devtools-client" },
+    { "path": "./packages/playground" }
   ],
   "include": [],
   "exclude": ["node_modules", "dist"]
