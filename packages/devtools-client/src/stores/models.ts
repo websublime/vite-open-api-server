@@ -173,8 +173,9 @@ export const useModelsStore = defineStore('models', () => {
       const data: SchemaData = await response.json();
       const items = data.items ?? [];
       // Clone items to avoid shared references between current and original
-      currentItems.value = structuredClone(items);
-      originalItems.value = structuredClone(items);
+      // Use JSON parse/stringify for reliable cross-environment cloning
+      currentItems.value = JSON.parse(JSON.stringify(items));
+      originalItems.value = JSON.parse(JSON.stringify(items));
 
       // Update schema count in the list
       const schemaIndex = schemas.value.findIndex((s) => s.name === schemaName);
@@ -234,7 +235,8 @@ export const useModelsStore = defineStore('models', () => {
       const result = await response.json();
 
       // Update original items to match saved items
-      originalItems.value = structuredClone(currentItems.value);
+      // Use JSON parse/stringify for reliable cross-environment cloning
+      originalItems.value = JSON.parse(JSON.stringify(currentItems.value));
 
       // Update schema count
       const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
@@ -297,7 +299,9 @@ export const useModelsStore = defineStore('models', () => {
    * Discard changes and revert to original items
    */
   function discardChanges(): void {
-    currentItems.value = structuredClone(originalItems.value);
+    // Use JSON parse/stringify for reliable cross-environment cloning
+    // This works in both browser and Node.js test environments
+    currentItems.value = JSON.parse(JSON.stringify(originalItems.value));
   }
 
   /**
