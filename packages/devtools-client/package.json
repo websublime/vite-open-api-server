@@ -58,9 +58,9 @@
   ],
   "exports": {
     ".": {
+      "types": "./dist/devtools.d.ts",
       "import": "./dist/devtools.js",
-      "require": "./dist/devtools.umd.cjs",
-      "types": "./dist/devtools.d.ts"
+      "require": "./dist/devtools.umd.cjs"
     },
     "./style.css": "./dist/style.css"
   }
