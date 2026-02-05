@@ -1,3 +1,26 @@
+## [0.6.1] - 2026-02-05
+
+### Bug Fixes
+
+- strengthen status code validation (68fe05a)
+- strengthen delay validation to reject NaN and Infinity (bed9972)
+
+
+### Code Refactoring
+
+- apply code review recommendations (6a5515c)
+
+
+### Other Changes
+
+- sync changeset for feature/simulation-manager (25d283a)
+- complete simulation manager implementation (f7d7180)
+- sync changeset for feature/simulation-manager (7cdf8b2)
+- sync changeset for feature/simulation-manager (12df4ed)
+- sync changeset for feature/simulation-manager (e879095)
+
+
+
 ## [0.6.0] - 2026-02-05
 
 ### Features

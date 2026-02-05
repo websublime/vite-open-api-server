@@ -1,3 +1,42 @@
+## [0.21.1] - 2026-02-05
+
+### Features
+
+- implement simulator page with simulation store (a2004a6)
+
+
+### Bug Fixes
+
+- strengthen delay validation to reject NaN and Infinity (bed9972)
+- strengthen status code validation (68fe05a)
+- address critical bugs in simulator implementation (d4ca0f7)
+- add missing vi import for console.log spy in simulation tests (caa7a3d)
+- address PR feedback on simulator implementation (8fe2cff)
+
+
+### Code Refactoring
+
+- apply code review recommendations (6a5515c)
+- improve lifecycle and error handling in simulator (9250436)
+
+
+### Other Changes
+
+- sync changeset for feature/simulation-manager (25d283a)
+- complete simulation manager implementation (f7d7180)
+- sync changeset for feature/simulation-manager (12df4ed)
+- sync changeset for feature/simulation-manager (e879095)
+- sync changeset for feature/simulation-manager (7cdf8b2)
+- bump @websublime/vite-plugin-open-api-devtools to 0.6.0 (bb64bff)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (b948641)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (87b312e)
+- update pnpm-lock.yaml to fix CI (dfde646)
+- fix formatting (add newlines to package.json files) (72665b3)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (1c69be1)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (3c93210)
+
+
+
 ## [0.21.0] - 2026-02-05
 
 ### Features

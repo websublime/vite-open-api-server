@@ -1,0 +1,31 @@
+{
+  "changeset": {
+    "branch": "feature/simulation-manager",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-core",
+      "@websublime/vite-plugin-open-api-devtools"
+    ],
+    "changes": [
+      "8e5b425b086b366883c01c6809bd15ce54788cea",
+      "fd6213e950793a058ccafd50a7365bf38c8c7f82",
+      "6c583cd53e86939ba84c49bd8d68ef70d9032a81",
+      "2e59e175abe5c096f7a2383d1796c6dac8552de4"
+    ],
+    "created_at": "2026-02-05T14:18:27.540942Z",
+    "updated_at": "2026-02-05T14:54:33.376987Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-05T15:05:15.742879832Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "25d283ae2c523c9ee7e93594ae24f63a4b4125b8",
+    "versions": {
+      "@websublime/vite-plugin-open-api-core": "0.10.1",
+      "@websublime/vite-plugin-open-api-devtools": "0.6.1",
+      "@websublime/vite-plugin-open-api-server": "0.21.1"
+    }
+  }
+}
