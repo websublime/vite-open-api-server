@@ -17,7 +17,19 @@
 
 import { defineStore } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
+
+/**
+ * Safe clone helper that handles Vue reactive/proxy values
+ * Attempts structuredClone with toRaw, falls back to JSON serialization
+ */
+function safeClone<T>(value: T): T {
+  try {
+    return structuredClone(toRaw(value));
+  } catch {
+    return JSON.parse(JSON.stringify(value)) as T;
+  }
+}
 
 /**
  * Schema metadata from the server
@@ -102,11 +114,14 @@ export const useModelsStore = defineStore('models', () => {
   });
 
   /**
+   * Dirty state flag - updated by functions that mutate state
+   */
+  const isDirtyFlag: Ref<boolean> = ref(false);
+
+  /**
    * Whether the current data has been modified
    */
-  const isDirty: ComputedRef<boolean> = computed(() => {
-    return JSON.stringify(currentItems.value) !== JSON.stringify(originalItems.value);
-  });
+  const isDirty: ComputedRef<boolean> = computed(() => isDirtyFlag.value);
 
   /**
    * Total number of schemas
@@ -173,9 +188,9 @@ export const useModelsStore = defineStore('models', () => {
       const data: SchemaData = await response.json();
       const items = data.items ?? [];
       // Clone items to avoid shared references between current and original
-      // Use JSON parse/stringify for reliable cross-environment cloning
-      currentItems.value = JSON.parse(JSON.stringify(items));
-      originalItems.value = JSON.parse(JSON.stringify(items));
+      currentItems.value = safeClone(items);
+      originalItems.value = safeClone(items);
+      isDirtyFlag.value = false;
 
       // Update schema count in the list
       const schemaIndex = schemas.value.findIndex((s) => s.name === schemaName);
@@ -204,6 +219,8 @@ export const useModelsStore = defineStore('models', () => {
     currentItems.value = items;
     // Clear any previous validation errors
     error.value = null;
+    // Mark as dirty since items were updated
+    isDirtyFlag.value = true;
   }
 
   /**
@@ -235,8 +252,8 @@ export const useModelsStore = defineStore('models', () => {
       const result = await response.json();
 
       // Update original items to match saved items
-      // Use JSON parse/stringify for reliable cross-environment cloning
-      originalItems.value = JSON.parse(JSON.stringify(currentItems.value));
+      originalItems.value = safeClone(currentItems.value);
+      isDirtyFlag.value = false;
 
       // Update schema count
       const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
@@ -278,6 +295,7 @@ export const useModelsStore = defineStore('models', () => {
       // Update local state
       currentItems.value = [];
       originalItems.value = [];
+      isDirtyFlag.value = false;
 
       // Update schema count
       const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
@@ -299,9 +317,8 @@ export const useModelsStore = defineStore('models', () => {
    * Discard changes and revert to original items
    */
   function discardChanges(): void {
-    // Use JSON parse/stringify for reliable cross-environment cloning
-    // This works in both browser and Node.js test environments
-    currentItems.value = JSON.parse(JSON.stringify(originalItems.value));
+    currentItems.value = safeClone(originalItems.value);
+    isDirtyFlag.value = false;
   }
 
   /**
@@ -325,6 +342,7 @@ export const useModelsStore = defineStore('models', () => {
     originalItems.value = [];
     loading.value = false;
     error.value = null;
+    isDirtyFlag.value = false;
   }
 
   /**

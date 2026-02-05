@@ -222,9 +222,7 @@ async function reseedAll(): Promise<void> {
  * Handle JSON editor value updates
  */
 function onJsonEditorUpdate(value: unknown): void {
-  if (Array.isArray(value)) {
-    modelsStore.updateItems(value);
-  }
+  modelsStore.updateItems(value);
 }
 </script>
 
