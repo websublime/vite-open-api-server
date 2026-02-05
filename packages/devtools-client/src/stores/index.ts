@@ -26,6 +26,13 @@ export type {
 // Registry store - manages endpoint data for the Routes pages,
 export { useRegistryStore } from './registry';
 export type {
+  ActiveSimulation,
+  SimulationPreset,
+  SimulationPresetType,
+} from './simulation';
+// Simulation store - manages error and delay simulations
+export { SIMULATION_PRESETS, useSimulationStore } from './simulation';
+export type {
   HttpMethod as TimelineHttpMethod,
   RequestLogEntry,
   ResponseLogEntry,
@@ -35,9 +42,6 @@ export type {
 } from './timeline';
 // Timeline store - manages request/response timeline events
 export { useTimelineStore } from './timeline';
-
-// Store exports will be added as stores are implemented
-// export { useSimulationStore } from './simulation';
 
 /**
  * Store initialization helper

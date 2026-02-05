@@ -2,147 +2,91 @@
   SimulatorPage.vue - Error Simulation Controls Page
 
   What: Provides controls for simulating various API error conditions
-  How: Will manage simulation state via simulation store and WebSocket commands
+  How: Manages simulation state via simulation store and WebSocket commands
   Why: Allows developers to test error handling without modifying backend code
 -->
 
 <script setup lang="ts">
 import { AlertTriangle, Clock, Plus, Trash2, Zap } from 'lucide-vue-next';
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import { useWebSocket } from '../composables/useWebSocket';
+import { useRegistryStore } from '../stores/registry';
+import { useSimulationStore } from '../stores/simulation';
 
-/**
- * Simulation preset type definition
- */
-interface SimulationPreset {
-  id: string;
-  label: string;
-  description: string;
-  type: 'delay' | 'error';
-  delay?: number;
-  status?: number;
-}
+// ==========================================================================
+// Composables
+// ==========================================================================
 
-/**
- * Active simulation type definition
- */
-interface ActiveSimulation {
-  id: string;
-  path: string;
-  method: string;
-  preset: SimulationPreset;
-}
+const simulationStore = useSimulationStore();
+const registryStore = useRegistryStore();
+const { send, on } = useWebSocket();
 
-// Available simulation presets
-const presets: SimulationPreset[] = [
-  {
-    id: 'slow',
-    label: 'Slow Response',
-    description: 'Add 2 second delay',
-    type: 'delay',
-    delay: 2000,
-  },
-  {
-    id: 'very-slow',
-    label: 'Very Slow',
-    description: 'Add 5 second delay',
-    type: 'delay',
-    delay: 5000,
-  },
-  {
-    id: 'timeout',
-    label: 'Timeout',
-    description: 'Simulate request timeout (30s)',
-    type: 'delay',
-    delay: 30000,
-  },
-  {
-    id: 'error-400',
-    label: 'Bad Request',
-    description: 'Return 400 status',
-    type: 'error',
-    status: 400,
-  },
-  {
-    id: 'error-401',
-    label: 'Unauthorized',
-    description: 'Return 401 status',
-    type: 'error',
-    status: 401,
-  },
-  {
-    id: 'error-403',
-    label: 'Forbidden',
-    description: 'Return 403 status',
-    type: 'error',
-    status: 403,
-  },
-  {
-    id: 'error-404',
-    label: 'Not Found',
-    description: 'Return 404 status',
-    type: 'error',
-    status: 404,
-  },
-  {
-    id: 'error-429',
-    label: 'Rate Limited',
-    description: 'Return 429 status',
-    type: 'error',
-    status: 429,
-  },
-  {
-    id: 'error-500',
-    label: 'Server Error',
-    description: 'Return 500 status',
-    type: 'error',
-    status: 500,
-  },
-  {
-    id: 'error-503',
-    label: 'Unavailable',
-    description: 'Return 503 status',
-    type: 'error',
-    status: 503,
-  },
-];
+// ==========================================================================
+// State
+// ==========================================================================
 
-// TODO: Will be replaced with data from simulation store
-const activeSimulations = ref<ActiveSimulation[]>([
-  {
-    id: '1',
-    path: '/pets',
-    method: 'GET',
-    preset: presets[0],
-  },
-  {
-    id: '2',
-    path: '/pets/{petId}',
-    method: 'GET',
-    preset: presets[6],
-  },
-]);
-
-// Path input for new simulation
+/** Path input for new simulation */
 const newSimulationPath = ref('');
+
+/** Method input for new simulation */
 const newSimulationMethod = ref('GET');
+
+/** Selected preset ID */
 const selectedPresetId = ref<string | null>(null);
 
-// Available HTTP methods
-const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+/** Selected endpoint key (for dropdown selection) */
+const selectedEndpointKey = ref<string | null>(null);
+
+/** Available HTTP methods */
+const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
+
+// ==========================================================================
+// Computed
+// ==========================================================================
 
 /**
- * Get preset by ID
+ * Available endpoints for selection
  */
-function getPreset(id: string): SimulationPreset | undefined {
-  return presets.find((p) => p.id === id);
-}
+const availableEndpoints = computed(() => {
+  return registryStore.endpoints.map((e) => ({
+    key: e.key,
+    label: `${e.method.toUpperCase()} ${e.path}`,
+    method: e.method.toUpperCase(),
+    path: e.path,
+    operationId: e.operationId,
+  }));
+});
 
 /**
  * Check if we can add a new simulation
  */
 const canAddSimulation = computed(() => {
-  return newSimulationPath.value.trim() !== '' && selectedPresetId.value !== null;
+  const hasPath = newSimulationPath.value.trim() !== '';
+  const hasPreset = selectedPresetId.value !== null;
+  return hasPath && hasPreset;
 });
+
+/**
+ * Active simulations for display
+ */
+const activeSimulations = computed(() => {
+  return simulationStore.activeSimulations.map((sim) => {
+    const preset = sim.presetId ? simulationStore.getPreset(sim.presetId) : null;
+    return {
+      ...sim,
+      preset,
+    };
+  });
+});
+
+/**
+ * Simulation count
+ */
+const simulationCount = computed(() => simulationStore.count);
+
+// ==========================================================================
+// Methods
+// ==========================================================================
 
 /**
  * Add a new simulation
@@ -150,37 +94,127 @@ const canAddSimulation = computed(() => {
 function addSimulation(): void {
   if (!canAddSimulation.value || !selectedPresetId.value) return;
 
-  const preset = getPreset(selectedPresetId.value);
+  const preset = simulationStore.getPreset(selectedPresetId.value);
   if (!preset) return;
 
-  // TODO: Will send WebSocket command to add simulation
-  activeSimulations.value.push({
-    id: Date.now().toString(),
-    path: newSimulationPath.value.trim(),
-    method: newSimulationMethod.value,
-    preset,
+  const path = newSimulationPath.value.trim();
+  const simulation = simulationStore.createSimulationFromPreset(
+    path,
+    selectedPresetId.value,
+    undefined,
+  );
+
+  if (!simulation) return;
+
+  // Optimistically add to local state
+  simulationStore.addSimulationLocal(simulation);
+  simulationStore.setLoading(true);
+
+  // Send command to server
+  send({
+    type: 'set:simulation',
+    data: {
+      path: simulation.path,
+      status: simulation.status,
+      delay: simulation.delay,
+      body: simulation.body,
+    },
   });
 
   // Reset form
   newSimulationPath.value = '';
   selectedPresetId.value = null;
+  selectedEndpointKey.value = null;
 }
 
 /**
  * Remove an active simulation
  */
-function removeSimulation(id: string): void {
-  // TODO: Will send WebSocket command to remove simulation
-  activeSimulations.value = activeSimulations.value.filter((s) => s.id !== id);
+function removeSimulation(path: string): void {
+  // Optimistically remove from local state
+  simulationStore.removeSimulationLocal(path);
+  simulationStore.setLoading(true);
+
+  // Send command to server
+  send({
+    type: 'clear:simulation',
+    data: { path },
+  });
 }
 
 /**
  * Clear all simulations
  */
 function clearAllSimulations(): void {
-  // TODO: Will send WebSocket command to clear all simulations
-  activeSimulations.value = [];
+  if (simulationCount.value === 0) return;
+
+  // Clear all one by one (server doesn't have a clear-all command yet)
+  for (const simulation of simulationStore.activeSimulations) {
+    send({
+      type: 'clear:simulation',
+      data: { path: simulation.path },
+    });
+  }
+
+  // Clear local state
+  simulationStore.clearSimulationsLocal();
+  simulationStore.setLoading(true);
 }
+
+/**
+ * Handle endpoint selection from dropdown
+ */
+function handleEndpointSelect(): void {
+  if (!selectedEndpointKey.value) return;
+
+  const endpoint = registryStore.endpoints.find((e) => e.key === selectedEndpointKey.value);
+  if (!endpoint) return;
+
+  newSimulationMethod.value = endpoint.method.toUpperCase();
+  newSimulationPath.value = endpoint.path;
+}
+
+/**
+ * Handle manual path/method input
+ */
+function handleManualInput(): void {
+  // Clear endpoint selection when user types manually
+  selectedEndpointKey.value = null;
+}
+
+// ==========================================================================
+// Lifecycle
+// ==========================================================================
+
+onMounted(() => {
+  // Subscribe to simulation events
+  on('simulation:active', (data: any) => {
+    simulationStore.setSimulations(data);
+  });
+
+  on('simulation:added', (data: any) => {
+    simulationStore.handleSimulationAdded(data);
+  });
+
+  on('simulation:removed', (data: any) => {
+    simulationStore.handleSimulationRemoved(data);
+  });
+
+  on('simulations:cleared', (data: any) => {
+    simulationStore.handleSimulationsCleared(data);
+  });
+
+  on('simulation:set', (data: any) => {
+    simulationStore.handleSimulationSet(data);
+  });
+
+  on('simulation:cleared', (data: any) => {
+    simulationStore.handleSimulationCleared(data);
+  });
+
+  // Request current simulations from server
+  send({ type: 'get:registry' });
+});
 </script>
 
 <template>
@@ -193,11 +227,31 @@ function clearAllSimulations(): void {
       </div>
 
       <div class="simulator-form__body">
+        <!-- Endpoint Selector (optional) -->
+        <div v-if="availableEndpoints.length > 0" class="simulator-form__row">
+          <label class="simulator-form__label">Select Endpoint (optional):</label>
+          <select
+            v-model="selectedEndpointKey"
+            class="input"
+            @change="handleEndpointSelect"
+          >
+            <option :value="null">Manual entry...</option>
+            <option
+              v-for="endpoint in availableEndpoints"
+              :key="endpoint.key"
+              :value="endpoint.key"
+            >
+              {{ endpoint.label }}
+            </option>
+          </select>
+        </div>
+
         <!-- Method and Path -->
         <div class="simulator-form__row">
           <select
             v-model="newSimulationMethod"
             class="simulator-form__method input"
+            @change="handleManualInput"
           >
             <option v-for="method in httpMethods" :key="method" :value="method">
               {{ method }}
@@ -207,22 +261,22 @@ function clearAllSimulations(): void {
             v-model="newSimulationPath"
             type="text"
             class="simulator-form__path input"
-            placeholder="/api/path or * for all"
+            placeholder="/api/path"
+            @input="handleManualInput"
           />
         </div>
 
         <!-- Preset Selection -->
         <div class="simulator-presets">
           <button
-            v-for="preset in presets"
+            v-for="preset in simulationStore.presets"
             :key="preset.id"
             :class="[
               'simulator-preset',
               { 'simulator-preset--selected': selectedPresetId === preset.id },
-              preset.type === 'delay'
-                ? 'simulator-preset--delay'
-                : 'simulator-preset--error',
+              `simulator-preset--${preset.type}`,
             ]"
+            :title="preset.description"
             @click="selectedPresetId = preset.id"
           >
             <component
@@ -236,7 +290,7 @@ function clearAllSimulations(): void {
         <!-- Add Button -->
         <button
           class="btn btn--primary"
-          :disabled="!canAddSimulation"
+          :disabled="!canAddSimulation || simulationStore.isLoading"
           @click="addSimulation"
         >
           <Plus :size="16" />
@@ -249,11 +303,12 @@ function clearAllSimulations(): void {
     <div class="simulator-active">
       <div class="simulator-active__header">
         <span class="simulator-active__title">
-          Active Simulations ({{ activeSimulations.length }})
+          Active Simulations ({{ simulationCount }})
         </span>
         <button
-          v-if="activeSimulations.length > 0"
+          v-if="simulationCount > 0"
           class="btn btn--ghost"
+          :disabled="simulationStore.isLoading"
           @click="clearAllSimulations"
         >
           <Trash2 :size="14" />
@@ -264,45 +319,43 @@ function clearAllSimulations(): void {
       <div class="simulator-active__list">
         <div
           v-for="simulation in activeSimulations"
-          :key="simulation.id"
+          :key="simulation.path"
           class="simulator-simulation card"
         >
           <div class="simulator-simulation__info">
-            <span
-              :class="[
-                'method-badge',
-                `method-badge--${simulation.method.toLowerCase()}`,
-              ]"
-            >
-              {{ simulation.method }}
-            </span>
             <span class="simulator-simulation__path font-mono">
               {{ simulation.path }}
             </span>
           </div>
           <div class="simulator-simulation__preset">
             <component
-              :is="simulation.preset.type === 'delay' ? Clock : AlertTriangle"
+              :is="simulation.preset?.type === 'delay' ? Clock : AlertTriangle"
               :size="14"
-              :class="
-                simulation.preset.type === 'delay'
-                  ? 'text-warning'
-                  : 'text-error'
-              "
+              :class="{
+                'text-warning': simulation.preset?.type === 'delay',
+                'text-error': simulation.preset?.type === 'error',
+                'text-muted': simulation.preset?.type === 'empty',
+              }"
             />
-            <span>{{ simulation.preset.label }}</span>
+            <span>
+              {{ simulation.preset?.label || `HTTP ${simulation.status}` }}
+            </span>
+            <span v-if="simulation.delay" class="text-muted">
+              ({{ simulation.delay }}ms)
+            </span>
           </div>
           <button
             class="btn btn--ghost btn--icon"
             title="Remove simulation"
-            @click="removeSimulation(simulation.id)"
+            :disabled="simulationStore.isLoading"
+            @click="removeSimulation(simulation.path)"
           >
             <Trash2 :size="14" />
           </button>
         </div>
 
         <!-- Empty State -->
-        <div v-if="activeSimulations.length === 0" class="empty-state">
+        <div v-if="simulationCount === 0" class="empty-state">
           <Zap :size="48" class="empty-state__icon" />
           <h3 class="empty-state__title">No active simulations</h3>
           <p class="empty-state__description">
@@ -348,7 +401,19 @@ function clearAllSimulations(): void {
 
 .simulator-form__row {
   display: flex;
+  flex-direction: column;
+  gap: var(--devtools-space-xs);
+}
+
+.simulator-form__row:has(.simulator-form__method) {
+  flex-direction: row;
   gap: var(--devtools-space-sm);
+}
+
+.simulator-form__label {
+  font-size: var(--font-size-0);
+  font-weight: var(--font-weight-5);
+  color: var(--devtools-text);
 }
 
 .simulator-form__method {
@@ -400,6 +465,10 @@ function clearAllSimulations(): void {
 
 .simulator-preset--error {
   color: var(--devtools-error);
+}
+
+.simulator-preset--empty {
+  color: var(--devtools-text-muted);
 }
 
 .simulator-preset__label {
@@ -469,5 +538,9 @@ function clearAllSimulations(): void {
 
 .text-error {
   color: var(--devtools-error);
+}
+
+.text-muted {
+  color: var(--devtools-text-muted);
 }
 </style>
