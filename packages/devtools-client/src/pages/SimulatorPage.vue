@@ -67,6 +67,12 @@ const selectedEndpointKey = ref<string | null>(null);
 /** Available HTTP methods */
 const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'];
 
+/** WebSocket event unsubscribe functions (populated in onMounted) */
+let unsubscribers: Array<() => void> = [];
+
+/** Simulations pending clear (for rollback on partial failures) */
+const pendingClears = ref<Set<string>>(new Set());
+
 // ==========================================================================
 // Computed
 // ==========================================================================
@@ -197,17 +203,25 @@ function removeSimulation(path: string): void {
 function clearAllSimulations(): void {
   if (simulationCount.value === 0) return;
 
-  // Clear all one by one (server doesn't have a clear-all command yet)
+  // Mark each simulation as pending clear and store for rollback
   for (const simulation of simulationStore.activeSimulations) {
+    pendingClears.value.add(simulation.path);
+
+    // Store previous state for rollback
+    simulationStore.removeSimulationLocal(simulation.path, true);
+
+    // Send clear command to server
     send({
       type: 'clear:simulation',
       data: { path: simulation.path },
     });
   }
 
-  // Clear local state
-  simulationStore.clearSimulationsLocal();
   simulationStore.setLoading(true);
+
+  // Note: Individual simulations will be removed from local state
+  // only when we receive the corresponding "simulation:cleared" event
+  // with success: true. Failed clears will be rolled back automatically.
 }
 
 /**
@@ -237,7 +251,7 @@ function handleManualInput(): void {
 
 onMounted(() => {
   // Subscribe to simulation events and collect unsubscribe functions
-  const unsubscribers = [
+  unsubscribers = [
     on('simulation:active', (data: SimulationActiveEvent) => {
       simulationStore.setSimulations(data.simulations);
     }),
@@ -259,19 +273,25 @@ onMounted(() => {
     }),
 
     on('simulation:cleared', (data: SimulationClearedEvent) => {
+      // Remove from pending clears if it was part of clearAll
+      if (pendingClears.value.has(data.path)) {
+        pendingClears.value.delete(data.path);
+      }
+
+      // Delegate to store handler (handles success/failure and rollback)
       simulationStore.handleSimulationCleared(data);
     }),
   ];
 
   // Request current simulations from server
   send({ type: 'get:registry' });
+});
 
-  // Cleanup on unmount to prevent memory leaks
-  onUnmounted(() => {
-    for (const unsub of unsubscribers) {
-      unsub();
-    }
-  });
+// Cleanup on unmount to prevent memory leaks
+onUnmounted(() => {
+  for (const unsub of unsubscribers) {
+    unsub();
+  }
 });
 </script>
 
