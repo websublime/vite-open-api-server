@@ -92,14 +92,36 @@ importers:
         specifier: ^2.2.12
         version: 2.2.12(typescript@5.9.3)
 
+  packages/playground:
+    dependencies:
+      vue:
+        specifier: ^3.5.27
+        version: 3.5.27(typescript@5.9.3)
+    devDependencies:
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.0
+        version: 6.0.4(vite@7.3.1(@types/node@25.2.0)(yaml@2.8.2))(vue@3.5.27(typescript@5.9.3))
+      '@websublime/vite-plugin-open-api-server':
+        specifier: workspace:*
+        version: link:../server
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vite:
+        specifier: ^7.0.0
+        version: 7.3.1(@types/node@25.2.0)(yaml@2.8.2)
+      vue-tsc:
+        specifier: ^2.2.12
+        version: 2.2.12(typescript@5.9.3)
+
   packages/server:
     dependencies:
       '@vue/devtools-api':
         specifier: ^8.0.6
         version: 8.0.6
       '@websublime/vite-plugin-open-api-core':
-        specifier: 0.10.0
-        version: 0.10.0(@hono/node-server@1.19.9(hono@4.11.4))
+        specifier: 0.10.1
+        version: 0.10.1(@hono/node-server@1.19.9(hono@4.11.4))
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -721,8 +743,8 @@ packages:
   '@vue/shared@3.5.27':
     resolution: {integrity: sha512-dXr/3CgqXsJkZ0n9F3I4elY8wM9jMJpP3pvRG52r6m0tu/MsAFIe6JpXVGeNMd/D9F4hQynWT8Rfuj0bdm9kFQ==}
 
-  '@websublime/vite-plugin-open-api-core@0.10.0':
-    resolution: {integrity: sha512-AsV2oxmOErq3/o41wrQoe5jZ08G4ZIiAgj80JmN14x8PpDWAUHninaG+8WaG4JOAWqZoGDyRbiWunwa/5lx6yw==}
+  '@websublime/vite-plugin-open-api-core@0.10.1':
+    resolution: {integrity: sha512-uA9l1BwOSMdN8OtXlKH97+GU1vbeU8WR86b5e2folQ+XRr4KqJwl8mzpINsQ5BAjZxITCxCjtpHsXC4uir5yIQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       '@hono/node-server': ^1.14.0
@@ -1977,7 +1999,7 @@ snapshots:
 
   '@vue/shared@3.5.27': {}
 
-  '@websublime/vite-plugin-open-api-core@0.10.0(@hono/node-server@1.19.9(hono@4.11.4))':
+  '@websublime/vite-plugin-open-api-core@0.10.1(@hono/node-server@1.19.9(hono@4.11.4))':
     dependencies:
       '@faker-js/faker': 10.2.0
       '@scalar/json-magic': 0.9.1
