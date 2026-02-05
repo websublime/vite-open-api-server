@@ -70,8 +70,8 @@ export default defineSeeds({
           name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles']),
         },
         photoUrls: [
-          faker.image.urlLoremFlickr({ category: 'animals' }),
-          faker.image.urlLoremFlickr({ category: 'pets' }),
+          faker.image.url(),
+          faker.image.url(),
         ],
         tags: faker.helpers
           .arrayElements(
