@@ -23,7 +23,11 @@
  * 4. Include `headers` in response (if specified)
  */
 export interface Simulation {
-  /** Unique path identifier (e.g., "GET /pets" or operationId) */
+  /**
+   * Unique path identifier.
+   * Recommended format: "METHOD /path" (e.g., "GET /pets") to avoid collisions.
+   * Alternatively, use the operationId if unique.
+   */
   path: string;
 
   /** Operation ID from OpenAPI spec (for display/lookup) */
@@ -161,8 +165,15 @@ export function createSimulationManager(): SimulationManager {
       if (!simulation.path) {
         throw new Error('Simulation path is required');
       }
-      if (typeof simulation.status !== 'number') {
-        throw new Error('Simulation status must be a number');
+      if (
+        typeof simulation.status !== 'number' ||
+        simulation.status < 100 ||
+        simulation.status > 599
+      ) {
+        throw new Error('Simulation status must be a valid HTTP status code (100-599)');
+      }
+      if (simulation.delay !== undefined && simulation.delay < 0) {
+        throw new Error('Simulation delay must be non-negative');
       }
 
       // Store a copy to prevent external mutation
