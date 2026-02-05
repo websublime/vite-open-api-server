@@ -45,11 +45,18 @@ const showClearConfirm = ref(false);
 
 onMounted(async () => {
   // Load schemas on mount
-  await modelsStore.fetchSchemas();
+  try {
+    await modelsStore.fetchSchemas();
 
-  // Select first schema if available
-  if (modelsStore.schemas.length > 0 && !modelsStore.selectedSchema) {
-    await modelsStore.selectSchemaByName(modelsStore.schemas[0].name);
+    // Select first schema if available
+    if (modelsStore.schemas.length > 0 && !modelsStore.selectedSchema) {
+      await modelsStore.selectSchemaByName(modelsStore.schemas[0].name);
+    }
+  } catch (err) {
+    // Error is already set in the store, but ensure it's visible
+    if (!modelsStore.error) {
+      modelsStore.error = err instanceof Error ? err.message : 'Failed to load schemas';
+    }
   }
 });
 
@@ -143,6 +150,10 @@ async function saveItems(): Promise<void> {
   const saved = await modelsStore.saveItems();
   if (saved) {
     success('Items saved successfully');
+  } else {
+    // Show error to user if save failed
+    const errorMessage = modelsStore.error || 'Failed to save items';
+    notifyError(errorMessage);
   }
 }
 
@@ -169,9 +180,18 @@ async function discardChanges(): Promise<void> {
 async function clearSchema(): Promise<void> {
   showClearConfirm.value = false;
 
-  const cleared = await modelsStore.clearSchema();
-  if (cleared) {
-    success('Schema cleared successfully');
+  try {
+    const cleared = await modelsStore.clearSchema();
+    if (cleared) {
+      success('Schema cleared successfully');
+    } else {
+      // Show error to user if clear failed
+      const errorMessage = modelsStore.error || 'Failed to clear schema';
+      notifyError(errorMessage);
+    }
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Failed to clear schema';
+    notifyError(errorMessage);
   }
 }
 
@@ -334,13 +354,19 @@ function onJsonEditorUpdate(value: unknown): void {
         </div>
       </template>
 
-      <!-- Empty State -->
+      <!-- Empty State or Error -->
       <div v-else class="empty-state">
-        <Database :size="48" class="empty-state__icon" />
-        <h3 class="empty-state__title">Select a schema</h3>
-        <p class="empty-state__description">
-          Choose a schema from the sidebar to view and edit its data.
-        </p>
+        <!-- Show error if present and no schema selected -->
+        <div v-if="modelsStore.error" class="models-error">
+          <span>⚠️ {{ modelsStore.error }}</span>
+        </div>
+        <template v-else>
+          <Database :size="48" class="empty-state__icon" />
+          <h3 class="empty-state__title">Select a schema</h3>
+          <p class="empty-state__description">
+            Choose a schema from the sidebar to view and edit its data.
+          </p>
+        </template>
       </div>
     </main>
 

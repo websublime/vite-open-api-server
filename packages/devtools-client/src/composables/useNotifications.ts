@@ -59,7 +59,7 @@ const confirmDialog = reactive<ConfirmDialog>({
 });
 
 // Track active timeout IDs to prevent orphaned timers
-const timeouts = new Map<string, number>();
+const timeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 // Track pending confirm dialog promise resolver
 let pendingResolve: ((value: boolean) => void) | null = null;

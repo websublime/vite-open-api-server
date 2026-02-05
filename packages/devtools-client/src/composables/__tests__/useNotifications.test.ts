@@ -51,14 +51,14 @@ describe('useNotifications', () => {
 
     it('should create an info toast', () => {
       const { info, toasts } = useNotifications();
-      const id = info('Information message');
+      info('Information message');
 
       expect(toasts.value[0].type).toBe('info');
     });
 
     it('should create a warning toast', () => {
       const { warning, toasts } = useNotifications();
-      const id = warning('Warning message');
+      warning('Warning message');
 
       expect(toasts.value[0].type).toBe('warning');
     });
