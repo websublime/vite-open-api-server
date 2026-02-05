@@ -1,0 +1,37 @@
+{
+  "root": false,
+  "extends": "//",
+  "linter": {
+    "rules": {
+      "style": {
+        "noDefaultExport": "off",
+        "useNamingConvention": "off",
+        "noParameterAssign": "off",
+        "useShorthandFunctionType": "off"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "noStaticOnlyClass": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "off",
+        "noUnusedVariables": "off",
+        "useHookAtTopLevel": "off",
+        "noUndeclaredVariables": "off",
+        "noNodejsModules": "off",
+        "noUndeclaredDependencies": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noSkippedTests": "off",
+        "useAwait": "off",
+        "noAssignInExpressions": "off",
+        "noConsole": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off",
+        "noReExportAll": "off"
+      }
+    }
+  }
+}
