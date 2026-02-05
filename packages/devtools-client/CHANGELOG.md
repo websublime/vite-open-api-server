@@ -1,3 +1,33 @@
+## [0.6.0] - 2026-02-05
+
+### Features
+
+- implement simulator page with simulation store (a2004a6)
+
+
+### Bug Fixes
+
+- add missing vi import for console.log spy in simulation tests (caa7a3d)
+- address PR feedback on simulator implementation (8fe2cff)
+- address critical bugs in simulator implementation (d4ca0f7)
+
+
+### Code Refactoring
+
+- improve lifecycle and error handling in simulator (9250436)
+
+
+### Other Changes
+
+- fix formatting (add newlines to package.json files) (72665b3)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (1c69be1)
+- update pnpm-lock.yaml to fix CI (dfde646)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (87b312e)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (3c93210)
+- sync changeset for feature/vite-open-api-server-c9v.2-simulator-page (b948641)
+
+
+
 ## [0.5.0] - 2026-02-05
 
 ### Features
