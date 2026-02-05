@@ -124,6 +124,12 @@ export const useSimulationStore = defineStore('simulation', () => {
   const simulations = ref<Map<string, ActiveSimulation>>(new Map());
 
   /**
+   * Previous simulation state for rollback on failure
+   * Keyed by path, stores the simulation before optimistic update
+   */
+  const previousSimulations = ref<Map<string, ActiveSimulation | null>>(new Map());
+
+  /**
    * Loading state for async operations
    */
   const isLoading = ref(false);
@@ -218,16 +224,28 @@ export const useSimulationStore = defineStore('simulation', () => {
   /**
    * Add a new simulation locally
    * Note: This updates local state only. Use addSimulation() to sync with server.
+   * @param storeForRollback - If true, stores previous state for rollback
    */
-  function addSimulationLocal(simulation: ActiveSimulation): void {
+  function addSimulationLocal(simulation: ActiveSimulation, storeForRollback = false): void {
+    if (storeForRollback) {
+      // Store previous state (null if didn't exist)
+      const previous = simulations.value.get(simulation.path) || null;
+      previousSimulations.value.set(simulation.path, previous);
+    }
     simulations.value.set(simulation.path, simulation);
   }
 
   /**
    * Remove a simulation locally by path
    * Note: This updates local state only. Use removeSimulation() to sync with server.
+   * @param storeForRollback - If true, stores previous state for rollback
    */
-  function removeSimulationLocal(path: string): boolean {
+  function removeSimulationLocal(path: string, storeForRollback = false): boolean {
+    if (storeForRollback) {
+      // Store previous state before removing
+      const previous = simulations.value.get(path) || null;
+      previousSimulations.value.set(path, previous);
+    }
     return simulations.value.delete(path);
   }
 
@@ -307,6 +325,28 @@ export const useSimulationStore = defineStore('simulation', () => {
   }
 
   /**
+   * Rollback a simulation to its previous state
+   * @param path - The path of the simulation to rollback
+   */
+  function rollbackSimulation(path: string): void {
+    if (!previousSimulations.value.has(path)) {
+      return;
+    }
+
+    const previous = previousSimulations.value.get(path);
+    if (previous === null || previous === undefined) {
+      // Was added optimistically, remove it
+      simulations.value.delete(path);
+    } else {
+      // Restore previous state
+      simulations.value.set(path, previous);
+    }
+
+    // Clear rollback data
+    previousSimulations.value.delete(path);
+  }
+
+  /**
    * Handle simulation:added event from server
    */
   function handleSimulationAdded(data: { path: string }): void {
@@ -336,8 +376,12 @@ export const useSimulationStore = defineStore('simulation', () => {
    */
   function handleSimulationSet(data: { path: string; success: boolean }): void {
     if (data.success) {
+      // Clear rollback data on success
+      previousSimulations.value.delete(data.path);
       console.log('[Simulation] Set successfully:', data.path);
     } else {
+      // Rollback optimistic update on failure
+      rollbackSimulation(data.path);
       setError(`Failed to set simulation for ${data.path}`);
     }
     setLoading(false);
@@ -348,9 +392,12 @@ export const useSimulationStore = defineStore('simulation', () => {
    */
   function handleSimulationCleared(data: { path: string; success: boolean }): void {
     if (data.success) {
-      removeSimulationLocal(data.path);
+      // Clear rollback data on success
+      previousSimulations.value.delete(data.path);
       console.log('[Simulation] Cleared successfully:', data.path);
     } else {
+      // Rollback optimistic removal on failure
+      rollbackSimulation(data.path);
       setError(`Failed to clear simulation for ${data.path}`);
     }
     setLoading(false);
@@ -385,6 +432,7 @@ export const useSimulationStore = defineStore('simulation', () => {
     setLoading,
     setError,
     clearError,
+    rollbackSimulation,
 
     // Event handlers
     handleSimulationAdded,
