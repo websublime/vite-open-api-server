@@ -1,3 +1,50 @@
+## [0.21.0] - 2026-02-05
+
+### Features
+
+- implement Models Page with JSON editor and store management (54d8564)
+
+
+### Bug Fixes
+
+- add explicit type annotation to ModelPage value parameter (26c78c9)
+- apply PR review feedback (1ea57c9)
+- apply second round of PR review feedback (ffb639f)
+- address all PR review comments (1cf85d9)
+- use public API in isDirty test instead of accessing private originalItems (d17753f)
+- replace structuredClone with JSON parse/stringify for CI compatibility (a006014)
+- address PR review comments (82388dc)
+
+
+### Code Refactoring
+
+- address code review feedback for Models Page (0805a58)
+- apply code review recommendations (dc05494)
+
+
+### Tests
+
+- add unit tests for useNotifications and models store (25951e1)
+
+
+### Other Changes
+
+- update pnpm-lock.yaml (c3aa7ac)
+- add changeset for Models Page feature (e7c79b5)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (d554535)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (efb74c3)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (ce46074)
+- update package dependencies (254c940)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (3dc2465)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (cebe01b)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (a62831f)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (e4c9ac1)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (0440d1c)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (fe27808)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (f9e6a5c)
+
+
+
 ## [0.20.0] - 2026-02-04
 
 ### Breaking Changes

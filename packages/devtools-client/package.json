@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-devtools",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "DevTools SPA for vite-open-api-server - Vue-based debugging interface",
   "keywords": [
     "devtools",
@@ -30,19 +30,19 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "lucide-vue-next": "^0.513.0",
-    "open-props": "^2.0.0-beta.5",
-    "pinia": "^3.0.3",
     "vue": "^3.5.17",
-    "vue-router": "^4.5.1"
+    "open-props": "^2.0.0-beta.5",
+    "vue-router": "^4.5.1",
+    "lucide-vue-next": "^0.513.0",
+    "pinia": "^3.0.3"
   },
   "devDependencies": {
-    "@ungap/structured-clone": "^1.3.0",
     "@vitejs/plugin-vue": "^6.0.0",
-    "jsdom": "^26.1.0",
+    "@ungap/structured-clone": "^1.3.0",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
     "vitest": "^4.0.17",
+    "jsdom": "^26.1.0",
     "vue-tsc": "^2.2.12"
   },
   "engines": {
@@ -53,15 +53,15 @@
   "types": "./dist/devtools.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/devtools.d.ts",
       "import": "./dist/devtools.js",
-      "require": "./dist/devtools.umd.cjs"
+      "require": "./dist/devtools.umd.cjs",
+      "types": "./dist/devtools.d.ts"
     },
     "./style.css": "./dist/style.css"
   },
+  "module": "./dist/devtools.js",
   "sideEffects": [
     "./dist/style.css",
     "*.css"
-  ],
-  "module": "./dist/devtools.js"
+  ]
 }

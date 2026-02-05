@@ -1,0 +1,41 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-c9v.1-models-page",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-core",
+      "@websublime/vite-plugin-open-api-devtools",
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "7cea33757cd7a22d0760bc5d214ba4e7d56484eb",
+      "10dab769622e87a983e14ee942612e5da659873d",
+      "bcd21160f2dec9908b8bc12668260add6cc491d4",
+      "6a1e791ebbe78ade73c3de72f47eb4f2979a736f",
+      "698b66982f287cf3396fae707e32dcb7bf495779",
+      "d5230542c5fcbb735072a43792478a85ced6b507",
+      "f61551dbcff7d7aa27ce92225775a34f7277f2b4",
+      "6c4b050e241dc0eaab37c78f136cb5402bdb1b5d",
+      "aea6e7f16eb0d7f637ef158b27dc009e6cb1479c",
+      "5980a5d2e298c24aad34f69a7b56c5487b230e04",
+      "0947470cc4b0185d55559d4689bf8594aad5c403",
+      "0789b0a0a20e752360e53f73e0b45e41397eff75",
+      "9d31b405f8355d00d6197c9c62d5d7424f6be26d"
+    ],
+    "created_at": "2026-02-04T16:54:58.561962Z",
+    "updated_at": "2026-02-05T09:43:10.583954Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-05T10:24:40.089887561Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "c3aa7ac17a9294dca60f88eb287730550e0841ae",
+    "versions": {
+      "@websublime/vite-plugin-open-api-devtools": "0.5.0",
+      "@websublime/vite-plugin-open-api-core": "0.10.0",
+      "@websublime/vite-plugin-open-api-server": "0.21.0"
+    }
+  }
+}

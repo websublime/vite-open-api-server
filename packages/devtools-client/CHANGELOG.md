@@ -1,3 +1,75 @@
+## [0.5.0] - 2026-02-05
+
+### Features
+
+- implement Models Page with JSON editor and store management (54d8564)
+- Add Vue DevTools integration (e2b6f51)
+
+
+### Bug Fixes
+
+- address all PR review comments (1cf85d9)
+- replace structuredClone with JSON parse/stringify for CI compatibility (a006014)
+- add explicit type annotation to ModelPage value parameter (26c78c9)
+- address PR review comments (82388dc)
+- apply second round of PR review feedback (ffb639f)
+- use public API in isDirty test instead of accessing private originalItems (d17753f)
+- apply PR review feedback (1ea57c9)
+- Apply PR review feedback (f9720f6)
+- align @types/node with Node.js engine and update DevTools default port to 3000 (e64596f)
+- Use addCustomTab instead of inspector/timeline (92fc204)
+- Apply code review recommendations (135b6de)
+
+
+### Code Refactoring
+
+- apply code review recommendations (dc05494)
+- address code review feedback for Models Page (0805a58)
+- Apply code review recommendations (2f023b7)
+- Address PR feedback (a09e245)
+
+
+### Tests
+
+- add unit tests for useNotifications and models store (25951e1)
+- Update DevTools tests for new behavior (87163a3)
+
+
+### Other Changes
+
+- update pnpm-lock.yaml (c3aa7ac)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (f9e6a5c)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (fe27808)
+- update package dependencies (254c940)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (e4c9ac1)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (ce46074)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (efb74c3)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (a62831f)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (d554535)
+- add changeset for Models Page feature (e7c79b5)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (0440d1c)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (cebe01b)
+- sync changeset for feature/vite-open-api-server-c9v.1-models-page (3dc2465)
+- bump versions (9cd282b)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (26f49e1)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (206b9c6)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (bd3b105)
+- Fix lint errors (aaa57f3)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (730e61c)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (b74d15e)
+- update pnpm-lock.yaml for @vue/devtools-api ^8.0.6 (d54d873)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (122af9a)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (f720d5a)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (3c8feb0)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (04bd8b9)
+- Update pnpm-lock.yaml (b0b0e7e)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (566ee48)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (919b166)
+- sync changeset for feature/vite-open-api-server-c5f.6-vue-devtools-integration (d280a03)
+- Update dependencies to latest versions (e1a729d)
+
+
+
 ## [0.4.0] - 2026-02-04
 
 ### Features
