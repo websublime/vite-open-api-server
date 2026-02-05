@@ -151,6 +151,46 @@ describe('createSimulationManager', () => {
       }).not.toThrow();
     });
 
+    it('should throw error for NaN status code', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: NaN,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
+    it('should throw error for Infinity status code', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: Infinity,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
+    it('should throw error for negative Infinity status code', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: -Infinity,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
+    it('should throw error for non-integer status code', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 200.5,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
     it('should store a copy to prevent external mutation', () => {
       const simulation: Simulation = {
         path: '/pets',
