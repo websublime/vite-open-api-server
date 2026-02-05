@@ -7,7 +7,12 @@
   "packages": [
     "petstore-app"
   ],
-  "changes": [],
+  "changes": [
+    "db8da6cfc93d7a1739a5c12ee3a588d1a5731024",
+    "4f65d7235af9342ef6ed7fc907125d8ecf51b913",
+    "e22de48f2b8bda7af60c3a98164a4500ef8bcd9f",
+    "b8926ae4bee155223f47561ad3f13e6c6c33d02e"
+  ],
   "created_at": "2026-02-05T15:20:47.554290Z",
-  "updated_at": "2026-02-05T15:20:47.554741Z"
+  "updated_at": "2026-02-05T15:21:01.624761Z"
 }
