@@ -166,7 +166,8 @@ export function createSimulationManager(): SimulationManager {
         throw new Error('Simulation path is required');
       }
       if (
-        typeof simulation.status !== 'number' ||
+        !Number.isFinite(simulation.status) ||
+        !Number.isInteger(simulation.status) ||
         simulation.status < 100 ||
         simulation.status > 599
       ) {
