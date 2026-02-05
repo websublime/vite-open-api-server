@@ -116,7 +116,7 @@ export default defineHandlers({
       };
     }
 
-    const updatedPet = store.update('Pet', body.id, body);
+    const updatedPet = store.update('Pet', body.id, body) as any;
 
     logger.info(`Updated pet: ${updatedPet.name} (ID: ${updatedPet.id})`);
 
