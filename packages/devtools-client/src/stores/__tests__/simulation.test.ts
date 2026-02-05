@@ -448,9 +448,11 @@ describe('useSimulationStore', () => {
     });
 
     describe('handleSimulationCleared', () => {
-      it('should remove simulation and set loading to false on success', () => {
+      it('should clear rollback data and set loading to false on success', () => {
         const store = useSimulationStore();
         store.addSimulationLocal(createMockSimulation({ path: 'GET /pets' }));
+        // Simulate optimistic removal with rollback tracking
+        store.removeSimulationLocal('GET /pets', true);
         store.setLoading(true);
 
         store.handleSimulationCleared({ path: 'GET /pets', success: true });
@@ -459,11 +461,82 @@ describe('useSimulationStore', () => {
         expect(store.isLoading).toBe(false);
       });
 
-      it('should set error on failure', () => {
+      it('should rollback removal and set error on failure', () => {
         const store = useSimulationStore();
+        const simulation = createMockSimulation({ path: 'GET /pets' });
+        store.addSimulationLocal(simulation);
+        // Simulate optimistic removal with rollback tracking
+        store.removeSimulationLocal('GET /pets', true);
+
+        expect(store.count).toBe(0); // Optimistically removed
+
         store.handleSimulationCleared({ path: 'GET /pets', success: false });
 
+        expect(store.count).toBe(1); // Rolled back
+        expect(store.getSimulation('GET /pets')).toEqual(simulation);
         expect(store.error).toBe('Failed to clear simulation for GET /pets');
+      });
+    });
+
+    describe('rollbackSimulation', () => {
+      it('should rollback added simulation (restore null state)', () => {
+        const store = useSimulationStore();
+        const simulation = createMockSimulation({ path: 'GET /pets' });
+
+        // Add with rollback tracking
+        store.addSimulationLocal(simulation, true);
+        expect(store.count).toBe(1);
+
+        // Rollback should remove it (restore to null)
+        store.rollbackSimulation('GET /pets');
+        expect(store.count).toBe(0);
+      });
+
+      it('should rollback removed simulation (restore previous state)', () => {
+        const store = useSimulationStore();
+        const simulation = createMockSimulation({ path: 'GET /pets' });
+
+        // Add simulation first
+        store.addSimulationLocal(simulation);
+        expect(store.count).toBe(1);
+
+        // Remove with rollback tracking
+        store.removeSimulationLocal('GET /pets', true);
+        expect(store.count).toBe(0);
+
+        // Rollback should restore it
+        store.rollbackSimulation('GET /pets');
+        expect(store.count).toBe(1);
+        expect(store.getSimulation('GET /pets')).toEqual(simulation);
+      });
+
+      it('should rollback updated simulation (restore previous state)', () => {
+        const store = useSimulationStore();
+        const sim1 = createMockSimulation({ path: 'GET /pets', status: 500 });
+        const sim2 = createMockSimulation({ path: 'GET /pets', status: 404 });
+
+        // Add first simulation
+        store.addSimulationLocal(sim1);
+        expect(store.getSimulation('GET /pets')?.status).toBe(500);
+
+        // Update with rollback tracking
+        store.addSimulationLocal(sim2, true);
+        expect(store.getSimulation('GET /pets')?.status).toBe(404);
+
+        // Rollback should restore first simulation
+        store.rollbackSimulation('GET /pets');
+        expect(store.getSimulation('GET /pets')?.status).toBe(500);
+      });
+
+      it('should do nothing when no rollback data exists', () => {
+        const store = useSimulationStore();
+        const simulation = createMockSimulation({ path: 'GET /pets' });
+        store.addSimulationLocal(simulation);
+
+        // Rollback without tracking should do nothing
+        store.rollbackSimulation('GET /pets');
+        expect(store.count).toBe(1);
+        expect(store.getSimulation('GET /pets')).toEqual(simulation);
       });
     });
   });

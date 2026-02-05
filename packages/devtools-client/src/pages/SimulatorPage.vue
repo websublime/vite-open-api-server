@@ -97,17 +97,18 @@ function addSimulation(): void {
   const preset = simulationStore.getPreset(selectedPresetId.value);
   if (!preset) return;
 
-  const path = newSimulationPath.value.trim();
+  // Combine method and path to create unique key (e.g., "GET /pets")
+  const pathWithMethod = `${newSimulationMethod.value} ${newSimulationPath.value.trim()}`;
   const simulation = simulationStore.createSimulationFromPreset(
-    path,
+    pathWithMethod,
     selectedPresetId.value,
     undefined,
   );
 
   if (!simulation) return;
 
-  // Optimistically add to local state
-  simulationStore.addSimulationLocal(simulation);
+  // Optimistically add to local state (store previous state for rollback)
+  simulationStore.addSimulationLocal(simulation, true);
   simulationStore.setLoading(true);
 
   // Send command to server
@@ -131,8 +132,8 @@ function addSimulation(): void {
  * Remove an active simulation
  */
 function removeSimulation(path: string): void {
-  // Optimistically remove from local state
-  simulationStore.removeSimulationLocal(path);
+  // Optimistically remove from local state (store previous state for rollback)
+  simulationStore.removeSimulationLocal(path, true);
   simulationStore.setLoading(true);
 
   // Send command to server
