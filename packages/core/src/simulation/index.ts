@@ -8,5 +8,4 @@
  * @module simulation
  */
 
-// TODO: Will be implemented in Task 5.3
 export { createSimulationManager, type Simulation, type SimulationManager } from './simulator.js';
