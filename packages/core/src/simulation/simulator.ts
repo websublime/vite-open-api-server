@@ -173,8 +173,11 @@ export function createSimulationManager(): SimulationManager {
       ) {
         throw new Error('Simulation status must be a valid HTTP status code (100-599)');
       }
-      if (simulation.delay !== undefined && simulation.delay < 0) {
-        throw new Error('Simulation delay must be non-negative');
+      if (
+        simulation.delay !== undefined &&
+        (!Number.isFinite(simulation.delay) || simulation.delay < 0)
+      ) {
+        throw new Error('Simulation delay must be a non-negative finite number');
       }
 
       // Store a copy to prevent external mutation

@@ -119,7 +119,29 @@ describe('createSimulationManager', () => {
           status: 500,
           delay: -100,
         });
-      }).toThrow('delay must be non-negative');
+      }).toThrow('delay must be a non-negative finite number');
+    });
+
+    it('should throw error for NaN delay', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 500,
+          delay: NaN,
+        });
+      }).toThrow('delay must be a non-negative finite number');
+    });
+
+    it('should throw error for Infinity delay', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 500,
+          delay: Infinity,
+        });
+      }).toThrow('delay must be a non-negative finite number');
     });
 
     it('should accept zero delay', () => {
