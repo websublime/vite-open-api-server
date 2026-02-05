@@ -88,7 +88,67 @@ describe('createSimulationManager', () => {
           operationId: 'test',
           status: undefined as unknown as number,
         });
-      }).toThrow('status must be a number');
+      }).toThrow('status must be a valid HTTP status code');
+    });
+
+    it('should throw error for status code below 100', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 99,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
+    it('should throw error for status code above 599', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 600,
+        });
+      }).toThrow('status must be a valid HTTP status code (100-599)');
+    });
+
+    it('should throw error for negative delay', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 500,
+          delay: -100,
+        });
+      }).toThrow('delay must be non-negative');
+    });
+
+    it('should accept zero delay', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 500,
+          delay: 0,
+        });
+      }).not.toThrow();
+    });
+
+    it('should accept valid status codes at boundaries', () => {
+      expect(() => {
+        manager.set({
+          path: 'GET /pets',
+          operationId: 'test',
+          status: 100,
+        });
+      }).not.toThrow();
+
+      expect(() => {
+        manager.set({
+          path: 'GET /pets2',
+          operationId: 'test2',
+          status: 599,
+        });
+      }).not.toThrow();
     });
 
     it('should store a copy to prevent external mutation', () => {
