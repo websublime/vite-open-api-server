@@ -93,13 +93,27 @@ describe('useModelsStore', () => {
       expect(store.totalItems).toBe(8);
     });
 
-    it('should detect dirty state', () => {
+    it('should detect dirty state', async () => {
       const store = useModelsStore();
-      // Simulate realistic flow: populate original items first (as if fetched)
-      store.originalItems = [{ id: 1, name: 'Fluffy' }];
-      // Then modify current items
-      store.currentItems = [{ id: 1, name: 'Fluffy Modified' }];
 
+      // Simulate realistic flow: fetch data first to populate originalItems internally
+      const mockData: SchemaData = {
+        schema: 'Pet',
+        count: 1,
+        idField: 'id',
+        items: [{ id: 1, name: 'Fluffy' }],
+      };
+
+      (fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockData,
+      });
+
+      await store.selectSchemaByName('Pet');
+      expect(store.isDirty).toBe(false);
+
+      // Then modify current items using public API
+      store.updateItems([{ id: 1, name: 'Fluffy Modified' }]);
       expect(store.isDirty).toBe(true);
     });
   });
