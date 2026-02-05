@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-open-api-server-c9v.2-simulator-page",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-devtools"
+  ],
+  "changes": [],
+  "created_at": "2026-02-05T10:48:06.788893Z",
+  "updated_at": "2026-02-05T10:48:06.789979Z"
+}
