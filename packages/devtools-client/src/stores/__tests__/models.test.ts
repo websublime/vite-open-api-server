@@ -95,7 +95,10 @@ describe('useModelsStore', () => {
 
     it('should detect dirty state', () => {
       const store = useModelsStore();
-      store.currentItems = [{ id: 1, name: 'Fluffy' }];
+      // Simulate realistic flow: populate original items first (as if fetched)
+      store.originalItems = [{ id: 1, name: 'Fluffy' }];
+      // Then modify current items
+      store.currentItems = [{ id: 1, name: 'Fluffy Modified' }];
 
       expect(store.isDirty).toBe(true);
     });
@@ -201,7 +204,7 @@ describe('useModelsStore', () => {
         json: async () => ({ created: 1 }),
       });
 
-      // Note: This will fail due to structuredClone in JSDOM, but we verify the API call
+      // structuredClone polyfill is provided in vitest-setup.ts
       await store.saveItems();
 
       expect(fetch).toHaveBeenCalledWith(
@@ -262,10 +265,40 @@ describe('useModelsStore', () => {
   });
 
   describe('discardChanges', () => {
-    it.skip('should revert to original items (requires structuredClone - browser only)', async () => {
-      // Note: structuredClone is not available in JSDOM environment
-      // This functionality is tested manually in browser environment
-      // The implementation uses structuredClone which is a browser API
+    it('should revert to original items', async () => {
+      const store = useModelsStore();
+
+      // Simulate fetching schema data (which sets originalItems internally)
+      const mockData: SchemaData = {
+        schema: 'Pet',
+        count: 2,
+        idField: 'id',
+        items: [
+          { id: 1, name: 'Fluffy' },
+          { id: 2, name: 'Spot' },
+        ],
+      };
+
+      (fetch as any).mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockData,
+      });
+
+      await store.selectSchemaByName('Pet');
+
+      // Verify original state
+      expect(store.currentItems).toEqual(mockData.items);
+      expect(store.isDirty).toBe(false);
+
+      // Modify current items
+      store.updateItems([{ id: 1, name: 'Modified' }]);
+      expect(store.isDirty).toBe(true);
+
+      // Discard changes - should restore original items
+      store.discardChanges();
+
+      expect(store.currentItems).toEqual(mockData.items);
+      expect(store.isDirty).toBe(false);
     });
   });
 

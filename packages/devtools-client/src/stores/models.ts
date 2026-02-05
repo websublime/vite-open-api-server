@@ -171,8 +171,10 @@ export const useModelsStore = defineStore('models', () => {
       }
 
       const data: SchemaData = await response.json();
-      currentItems.value = data.items ?? [];
-      originalItems.value = structuredClone(data.items ?? []);
+      const items = data.items ?? [];
+      // Clone items to avoid shared references between current and original
+      currentItems.value = structuredClone(items);
+      originalItems.value = structuredClone(items);
 
       // Update schema count in the list
       const schemaIndex = schemas.value.findIndex((s) => s.name === schemaName);
