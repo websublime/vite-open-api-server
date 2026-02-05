@@ -8,10 +8,37 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Clock, Plus, Trash2, Zap } from 'lucide-vue-next';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useWebSocket } from '../composables/useWebSocket';
 import { useRegistryStore } from '../stores/registry';
+import type { ActiveSimulation } from '../stores/simulation';
 import { useSimulationStore } from '../stores/simulation';
+
+// ==========================================================================
+// Types
+// ==========================================================================
+
+interface SimulationActiveEvent {
+  simulations: ActiveSimulation[];
+}
+
+interface SimulationPathEvent {
+  path: string;
+}
+
+interface SimulationsClearedEvent {
+  count: number;
+}
+
+interface SimulationSetEvent {
+  path: string;
+  success: boolean;
+}
+
+interface SimulationClearedEvent {
+  path: string;
+  success: boolean;
+}
 
 // ==========================================================================
 // Composables
@@ -97,8 +124,29 @@ function addSimulation(): void {
   const preset = simulationStore.getPreset(selectedPresetId.value);
   if (!preset) return;
 
-  // Combine method and path to create unique key (e.g., "GET /pets")
-  const pathWithMethod = `${newSimulationMethod.value} ${newSimulationPath.value.trim()}`;
+  // Validate path input
+  const trimmedPath = newSimulationPath.value.trim();
+
+  // Path must start with /
+  if (!trimmedPath.startsWith('/')) {
+    simulationStore.setError('Path must start with /');
+    return;
+  }
+
+  // Path must not be too long (reasonable limit)
+  if (trimmedPath.length > 500) {
+    simulationStore.setError('Path is too long (max 500 characters)');
+    return;
+  }
+
+  // Path should only contain valid URL path characters
+  if (!/^\/[\w\-/{}:.]*$/.test(trimmedPath)) {
+    simulationStore.setError('Path contains invalid characters');
+    return;
+  }
+
+  // Combine method and path to create endpoint key (e.g., "get:/pets")
+  const pathWithMethod = `${newSimulationMethod.value.toLowerCase()}:${trimmedPath}`;
   const simulation = simulationStore.createSimulationFromPreset(
     pathWithMethod,
     selectedPresetId.value,
@@ -188,33 +236,42 @@ function handleManualInput(): void {
 // ==========================================================================
 
 onMounted(() => {
-  // Subscribe to simulation events
-  on('simulation:active', (data: any) => {
-    simulationStore.setSimulations(data);
-  });
+  // Subscribe to simulation events and collect unsubscribe functions
+  const unsubscribers = [
+    on('simulation:active', (data: SimulationActiveEvent) => {
+      simulationStore.setSimulations(data.simulations);
+    }),
 
-  on('simulation:added', (data: any) => {
-    simulationStore.handleSimulationAdded(data);
-  });
+    on('simulation:added', (data: SimulationPathEvent) => {
+      simulationStore.handleSimulationAdded(data);
+    }),
 
-  on('simulation:removed', (data: any) => {
-    simulationStore.handleSimulationRemoved(data);
-  });
+    on('simulation:removed', (data: SimulationPathEvent) => {
+      simulationStore.handleSimulationRemoved(data);
+    }),
 
-  on('simulations:cleared', (data: any) => {
-    simulationStore.handleSimulationsCleared(data);
-  });
+    on('simulations:cleared', (data: SimulationsClearedEvent) => {
+      simulationStore.handleSimulationsCleared(data);
+    }),
 
-  on('simulation:set', (data: any) => {
-    simulationStore.handleSimulationSet(data);
-  });
+    on('simulation:set', (data: SimulationSetEvent) => {
+      simulationStore.handleSimulationSet(data);
+    }),
 
-  on('simulation:cleared', (data: any) => {
-    simulationStore.handleSimulationCleared(data);
-  });
+    on('simulation:cleared', (data: SimulationClearedEvent) => {
+      simulationStore.handleSimulationCleared(data);
+    }),
+  ];
 
   // Request current simulations from server
   send({ type: 'get:registry' });
+
+  // Cleanup on unmount to prevent memory leaks
+  onUnmounted(() => {
+    for (const unsub of unsubscribers) {
+      unsub();
+    }
+  });
 });
 </script>
 
