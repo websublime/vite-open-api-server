@@ -1,31 +1,34 @@
 {
-  "model": "opus",
-  "enabledPlugins": {
-    "beads@beads-marketplace": true
-  },
   "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": ["mcp__acp__Write", "mcp__acp__Edit"]
+  },
+  "model": "opus",
   "hooks": {
     "PreCompact": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bd prime"
           }
-        ],
-        "matcher": ""
+        ]
       }
     ],
     "SessionStart": [
       {
+        "matcher": "",
         "hooks": [
           {
-            "command": "bd prime",
-            "type": "command"
+            "type": "command",
+            "command": "bd prime"
           }
-        ],
-        "matcher": ""
+        ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "beads@beads-marketplace": true
   }
 }
