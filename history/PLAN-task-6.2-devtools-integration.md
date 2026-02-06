@@ -17,7 +17,7 @@ When a consumer installs `@websublime/vite-plugin-open-api-server` from npm, the
 
 ## Architecture
 
-```
+```text
 Build time:
   devtools-client builds → dist/spa/ (with base: '/_devtools/')
   server builds → tsup bundles src/ → dist/

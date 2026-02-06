@@ -127,13 +127,17 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
 import { addCustomTab } from '@vue/devtools-api';
 
 try {
+  // Build iframe URL at runtime so it works in remote/container environments
+  // Use the browser's current hostname (not hardcoded localhost) with the mock server port
+  const iframeSrc = window.location.protocol + '//' + window.location.hostname + ':${port}/_devtools/';
+
   addCustomTab({
     name: 'vite-plugin-open-api-server',
     title: 'OpenAPI Server',
     icon: 'https://api.iconify.design/carbon:api-1.svg?width=24&height=24&color=%2394a3b8',
     view: {
       type: 'iframe',
-      src: 'http://localhost:${port}/_devtools/',
+      src: iframeSrc,
     },
     category: 'app',
   });

@@ -7,7 +7,7 @@
  *      so consumers don't need to install the devtools-client separately
  */
 
-import { cpSync, existsSync } from 'node:fs';
+import { cpSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +24,11 @@ if (!existsSync(source)) {
     '\nSkipping SPA copy. Build devtools-client first: pnpm --filter @websublime/vite-plugin-open-api-devtools build',
   );
   process.exit(0);
+}
+
+// Remove existing destination to ensure a clean copy (avoids stale files)
+if (existsSync(destination)) {
+  rmSync(destination, { recursive: true, force: true });
 }
 
 cpSync(source, destination, { recursive: true });
