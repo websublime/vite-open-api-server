@@ -9,6 +9,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -94,6 +95,15 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
      */
     config() {
       if (!resolvedOptions.devtools || !resolvedOptions.enabled) {
+        return;
+      }
+
+      // Only add to optimizeDeps if the package is actually resolvable
+      // to avoid Vite warnings when the consumer hasn't installed it
+      const require = createRequire(import.meta.url);
+      try {
+        require.resolve('@vue/devtools-api');
+      } catch {
         return;
       }
 
