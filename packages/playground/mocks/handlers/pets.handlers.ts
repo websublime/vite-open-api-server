@@ -42,9 +42,7 @@ export default defineHandlers({
     logger.info(`Finding pets with status: ${status}`);
 
     const allPets = store.list('Pet');
-    const filteredPets = allPets.filter(
-      (pet: any) => pet.status?.toLowerCase() === status,
-    );
+    const filteredPets = allPets.filter((pet: any) => pet.status?.toLowerCase() === status);
 
     logger.info(`Found ${filteredPets.length} pets with status ${status}`);
 

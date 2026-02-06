@@ -69,22 +69,18 @@ export default defineSeeds({
           id: selectedType.category,
           name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles']),
         },
-        photoUrls: [
-          faker.image.url(),
-          faker.image.url(),
-        ],
-        tags: faker.helpers
-          .arrayElements(
-            [
-              { id: 1, name: 'friendly' },
-              { id: 2, name: 'playful' },
-              { id: 3, name: 'energetic' },
-              { id: 4, name: 'calm' },
-              { id: 5, name: 'trained' },
-              { id: 6, name: 'vaccinated' },
-            ],
-            { min: 1, max: 3 },
-          ),
+        photoUrls: [faker.image.url(), faker.image.url()],
+        tags: faker.helpers.arrayElements(
+          [
+            { id: 1, name: 'friendly' },
+            { id: 2, name: 'playful' },
+            { id: 3, name: 'energetic' },
+            { id: 4, name: 'calm' },
+            { id: 5, name: 'trained' },
+            { id: 6, name: 'vaccinated' },
+          ],
+          { min: 1, max: 3 },
+        ),
         status: faker.helpers.arrayElement(['available', 'pending', 'sold']),
       };
     }),

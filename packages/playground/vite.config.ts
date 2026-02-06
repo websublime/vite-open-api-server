@@ -6,9 +6,9 @@
  * Why: Demonstrates all features of vite-plugin-open-api-server
  */
 
+import { resolve } from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import { openApiServer } from '@websublime/vite-plugin-open-api-server';
-import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
