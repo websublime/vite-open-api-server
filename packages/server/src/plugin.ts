@@ -53,6 +53,17 @@ import { type OpenApiServerOptions, resolveOptions } from './types.js';
  * @param options - Plugin configuration options
  * @returns Vite plugin
  */
+/**
+ * Virtual module ID for the DevTools tab registration script.
+ *
+ * This script is served as a Vite module (not inline HTML) so that bare
+ * import specifiers like `@vue/devtools-api` are resolved through Vite's
+ * module pipeline. Inline `<script type="module">` blocks in HTML are
+ * executed directly by the browser, which cannot resolve bare specifiers.
+ */
+const VIRTUAL_DEVTOOLS_TAB_ID = 'virtual:open-api-devtools-tab';
+const RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID = `\0${VIRTUAL_DEVTOOLS_TAB_ID}`;
+
 export function openApiServer(options: OpenApiServerOptions): Plugin {
   const resolvedOptions = resolveOptions(options);
 
@@ -73,6 +84,65 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
 
     // Only active in dev mode
     apply: 'serve',
+
+    /**
+     * Ensure @vue/devtools-api is available for the DevTools tab module
+     *
+     * The virtual module imports from '@vue/devtools-api', which Vite needs
+     * to pre-bundle so it can be resolved at runtime in the browser, even
+     * though the host app may not have it as a direct dependency.
+     */
+    config() {
+      if (!resolvedOptions.devtools || !resolvedOptions.enabled) {
+        return;
+      }
+
+      return {
+        optimizeDeps: {
+          include: ['@vue/devtools-api'],
+        },
+      };
+    },
+
+    /**
+     * Resolve the virtual module for DevTools tab registration
+     */
+    resolveId(id: string) {
+      if (id === VIRTUAL_DEVTOOLS_TAB_ID) {
+        return RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID;
+      }
+    },
+
+    /**
+     * Load the virtual module that registers the custom Vue DevTools tab
+     *
+     * This code is served as a proper Vite module, allowing bare import
+     * specifiers to be resolved through Vite's dependency pre-bundling.
+     */
+    load(id: string) {
+      if (id === RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID) {
+        const port = resolvedOptions.port;
+
+        return `
+import { addCustomTab } from '@vue/devtools-api';
+
+try {
+  addCustomTab({
+    name: 'vite-plugin-open-api-server',
+    title: 'OpenAPI Server',
+    icon: 'https://api.iconify.design/carbon:api-1.svg?width=24&height=24&color=%2394a3b8',
+    view: {
+      type: 'iframe',
+      src: 'http://localhost:${port}/_devtools/',
+    },
+    category: 'app',
+  });
+} catch (e) {
+  // @vue/devtools-api not available - expected when the package is not installed
+}
+`;
+      }
+    },
 
     /**
      * Configure the Vite dev server
@@ -175,39 +245,23 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
     /**
      * Inject Vue DevTools custom tab registration script
      *
-     * When devtools is enabled, this injects a small script into the host app's
-     * HTML that registers a custom "OpenAPI Server" tab in Vue DevTools.
-     * The tab embeds the DevTools SPA via iframe.
+     * When devtools is enabled, this injects a script tag that loads the
+     * virtual module for custom tab registration. Using a virtual module
+     * (instead of an inline script) ensures that bare import specifiers
+     * like `@vue/devtools-api` are resolved through Vite's module pipeline.
      */
-    transformIndexHtml(html: string) {
+    transformIndexHtml() {
       if (!resolvedOptions.devtools || !resolvedOptions.enabled) {
-        return html;
+        return;
       }
 
-      const port = resolvedOptions.port;
-      const devtoolsIcon =
-        'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234f46e5%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z%22/%3E%3Cpolyline points=%223.29 7 12 12 20.71 7%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2212%22 y2=%2212%22/%3E%3C/svg%3E';
-
-      const devtoolsScript = `
-<script type="module">
-try {
-  const { addCustomTab } = await import('@vue/devtools-api');
-  addCustomTab({
-    name: 'vite-plugin-open-api-server',
-    title: 'OpenAPI Server',
-    icon: '${devtoolsIcon}',
-    view: {
-      type: 'iframe',
-      src: window.location.protocol + '//' + window.location.hostname + ':${port}/_devtools/',
-    },
-    category: 'app',
-  });
-} catch (e) {
-  // Vue DevTools not available - this is expected when the extension is not installed
-}
-</script>`;
-
-      return html.replace('</head>', `${devtoolsScript}\n</head>`);
+      return [
+        {
+          tag: 'script',
+          attrs: { type: 'module', src: `/@id/${VIRTUAL_DEVTOOLS_TAB_ID}` },
+          injectTo: 'head' as const,
+        },
+      ];
     },
   };
 
