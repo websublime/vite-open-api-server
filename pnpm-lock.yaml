@@ -101,6 +101,9 @@ importers:
       '@vitejs/plugin-vue':
         specifier: ^6.0.0
         version: 6.0.4(vite@7.3.1(@types/node@25.2.0)(yaml@2.8.2))(vue@3.5.27(typescript@5.9.3))
+      '@vue/devtools-api':
+        specifier: ^8.0.6
+        version: 8.0.6
       '@websublime/vite-plugin-open-api-server':
         specifier: workspace:*
         version: link:../server
