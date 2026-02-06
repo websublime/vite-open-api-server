@@ -26,8 +26,10 @@ const MIME_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.webp': 'image/webp',
   '.woff': 'font/woff',
   '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 };
 
 /**
@@ -80,14 +82,19 @@ export function mountDevToolsRoutes(app: Hono, options: MountDevToolsOptions): v
       }
 
       try {
-        const content = await readFile(filePath);
         const ext = extname(filePath);
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
+        const isText = contentType.includes('charset=utf-8') || contentType.startsWith('image/svg');
 
         c.header('Content-Type', contentType);
         // Hashed filenames are safe to cache indefinitely
         c.header('Cache-Control', 'public, max-age=31536000, immutable');
-        return c.body(content);
+
+        if (isText) {
+          return c.body(await readFile(filePath, 'utf-8'));
+        }
+        const buffer = await readFile(filePath);
+        return c.body(new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength));
       } catch {
         return c.notFound();
       }
@@ -116,7 +123,7 @@ export function mountDevToolsRoutes(app: Hono, options: MountDevToolsOptions): v
       logger?.warn?.(
         '[DevTools] Serving development placeholder. Install @websublime/vite-plugin-open-api-devtools for the full DevTools SPA.',
       );
-      c.header('Cache-Control', 'public, max-age=3600');
+      c.header('Cache-Control', 'no-cache, no-store, must-revalidate');
       return c.html(generateDevToolsHtml());
     });
 
