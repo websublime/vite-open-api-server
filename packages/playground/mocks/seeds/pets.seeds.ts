@@ -48,13 +48,34 @@ export default defineSeeds({
   Pet: ({ seed, faker }) =>
     seed.count(20, (index) => {
       const petTypes = [
-        { type: 'dog', category: 1, names: ['Max', 'Bella', 'Charlie', 'Luna', 'Cooper'] },
-        { type: 'cat', category: 2, names: ['Whiskers', 'Mittens', 'Shadow', 'Simba', 'Luna'] },
-        { type: 'bird', category: 3, names: ['Tweety', 'Polly', 'Rio', 'Sky', 'Blue'] },
-        { type: 'fish', category: 4, names: ['Nemo', 'Dory', 'Goldie', 'Bubbles', 'Finn'] },
+        {
+          type: 'dog',
+          category: 1,
+          categoryName: 'Dogs',
+          names: ['Max', 'Bella', 'Charlie', 'Luna', 'Cooper'],
+        },
+        {
+          type: 'cat',
+          category: 2,
+          categoryName: 'Cats',
+          names: ['Whiskers', 'Mittens', 'Shadow', 'Simba', 'Luna'],
+        },
+        {
+          type: 'bird',
+          category: 3,
+          categoryName: 'Birds',
+          names: ['Tweety', 'Polly', 'Rio', 'Sky', 'Blue'],
+        },
+        {
+          type: 'fish',
+          category: 4,
+          categoryName: 'Fish',
+          names: ['Nemo', 'Dory', 'Goldie', 'Bubbles', 'Finn'],
+        },
         {
           type: 'reptile',
           category: 5,
+          categoryName: 'Reptiles',
           names: ['Rex', 'Spike', 'Scales', 'Slither', 'Godzilla'],
         },
       ];
@@ -67,7 +88,7 @@ export default defineSeeds({
         name: `${petName} ${faker.number.int({ min: 1, max: 999 })}`,
         category: {
           id: selectedType.category,
-          name: faker.helpers.arrayElement(['Dogs', 'Cats', 'Birds', 'Fish', 'Reptiles']),
+          name: selectedType.categoryName,
         },
         photoUrls: [faker.image.url(), faker.image.url()],
         tags: faker.helpers.arrayElements(

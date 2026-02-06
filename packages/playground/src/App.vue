@@ -50,13 +50,27 @@ async function apiCall(url: string, options: RequestInit = {}) {
       },
     });
 
-    const data = await res.json();
-    response.value = { status: res.status, data };
+    // Read response as text first to handle empty bodies
+    const text = await res.text();
+    let data = null;
 
-    if (!res.ok) {
-      error.value = `Error ${res.status}: ${data.message || 'Request failed'}`;
+    // Parse JSON if body is not empty
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
     }
 
+    // Check if response is OK
+    if (!res.ok) {
+      const errorMessage = data?.message || `Request failed with status ${res.status}`;
+      error.value = `Error ${res.status}: ${errorMessage}`;
+      throw new Error(errorMessage);
+    }
+
+    response.value = { status: res.status, data };
     return data;
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -68,13 +82,21 @@ async function apiCall(url: string, options: RequestInit = {}) {
 
 // Pet operations
 async function findPetsByStatus() {
-  const data = await apiCall(`/pet/findByStatus?status=${petStatus.value}`);
-  pets.value = data;
+  try {
+    const data = await apiCall(`/pet/findByStatus?status=${petStatus.value}`);
+    pets.value = data;
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function getPetById(id: number) {
-  const data = await apiCall(`/pet/${id}`);
-  selectedPet.value = data;
+  try {
+    const data = await apiCall(`/pet/${id}`);
+    selectedPet.value = data;
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function addPet() {
@@ -83,54 +105,74 @@ async function addPet() {
     return;
   }
 
-  const pet = {
-    name: newPetName.value,
-    status: newPetStatus.value,
-    photoUrls: ['https://example.com/photo.jpg'],
-  };
+  try {
+    const pet = {
+      name: newPetName.value,
+      status: newPetStatus.value,
+      photoUrls: ['https://example.com/photo.jpg'],
+    };
 
-  const data = await apiCall('/pet', {
-    method: 'POST',
-    body: JSON.stringify(pet),
-  });
+    const data = await apiCall('/pet', {
+      method: 'POST',
+      body: JSON.stringify(pet),
+    });
 
-  newPetName.value = '';
-  pets.value = [data, ...pets.value];
+    newPetName.value = '';
+    pets.value = [data, ...pets.value];
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function deletePet(id: number) {
-  await apiCall(`/pet/${id}`, { method: 'DELETE' });
-  pets.value = pets.value.filter((p) => p.id !== id);
-  if (selectedPet.value?.id === id) {
-    selectedPet.value = null;
+  try {
+    await apiCall(`/pet/${id}`, { method: 'DELETE' });
+    pets.value = pets.value.filter((p) => p.id !== id);
+    if (selectedPet.value?.id === id) {
+      selectedPet.value = null;
+    }
+  } catch {
+    // Error already set by apiCall
   }
 }
 
 // Store operations
 async function getInventory() {
-  const data = await apiCall('/store/inventory');
-  response.value = { status: 200, data };
+  try {
+    const data = await apiCall('/store/inventory');
+    response.value = { status: 200, data };
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function placeOrder() {
-  const order = {
-    petId: pets.value[0]?.id || 1,
-    quantity: 1,
-    status: 'placed',
-    complete: false,
-  };
+  try {
+    const order = {
+      petId: pets.value[0]?.id || 1,
+      quantity: 1,
+      status: 'placed',
+      complete: false,
+    };
 
-  const data = await apiCall('/store/order', {
-    method: 'POST',
-    body: JSON.stringify(order),
-  });
+    const data = await apiCall('/store/order', {
+      method: 'POST',
+      body: JSON.stringify(order),
+    });
 
-  orders.value = [data, ...orders.value];
+    orders.value = [data, ...orders.value];
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function getOrderById(id: number) {
-  const data = await apiCall(`/store/order/${id}`);
-  selectedOrder.value = data;
+  try {
+    const data = await apiCall(`/store/order/${id}`);
+    selectedOrder.value = data;
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 // User operations
@@ -140,36 +182,54 @@ async function loginUser() {
     return;
   }
 
-  await apiCall(`/user/login?username=${loginUsername.value}&password=${loginPassword.value}`);
+  try {
+    const encodedUsername = encodeURIComponent(loginUsername.value);
+    const encodedPassword = encodeURIComponent(loginPassword.value);
+    await apiCall(`/user/login?username=${encodedUsername}&password=${encodedPassword}`);
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function logoutUser() {
-  await apiCall('/user/logout');
-  loginUsername.value = '';
-  loginPassword.value = '';
+  try {
+    await apiCall('/user/logout');
+    loginUsername.value = '';
+    loginPassword.value = '';
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function createUser() {
-  const user = {
-    username: `user_${Date.now()}`,
-    firstName: 'Demo',
-    lastName: 'User',
-    email: 'demo@example.com',
-    password: 'password123',
-    phone: '1234567890',
-  };
+  try {
+    const user = {
+      username: `user_${Date.now()}`,
+      firstName: 'Demo',
+      lastName: 'User',
+      email: 'demo@example.com',
+      password: 'password123',
+      phone: '1234567890',
+    };
 
-  const data = await apiCall('/user', {
-    method: 'POST',
-    body: JSON.stringify(user),
-  });
+    const data = await apiCall('/user', {
+      method: 'POST',
+      body: JSON.stringify(user),
+    });
 
-  users.value = [data, ...users.value];
+    users.value = [data, ...users.value];
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 async function getUserByName(username: string) {
-  const data = await apiCall(`/user/${username}`);
-  selectedUser.value = data;
+  try {
+    const data = await apiCall(`/user/${username}`);
+    selectedUser.value = data;
+  } catch {
+    // Error already set by apiCall
+  }
 }
 
 // Format JSON for display

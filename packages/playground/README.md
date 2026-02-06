@@ -42,7 +42,7 @@ The mock API server runs at **http://localhost:4000**
 
 ### 📁 Project Structure
 
-```
+```text
 playground/
 ├── openapi/
 │   └── petstore.yaml       # OpenAPI 3.0 specification

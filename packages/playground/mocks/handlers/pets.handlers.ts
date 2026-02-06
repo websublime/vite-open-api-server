@@ -16,6 +16,16 @@ export default defineHandlers({
   getPetById: ({ req, store, logger }) => {
     const petId = Number.parseInt(req.params.petId as string, 10);
 
+    // Validate petId is a valid number
+    if (!Number.isFinite(petId)) {
+      logger.warn(`Invalid petId: ${req.params.petId}`);
+      return {
+        type: 'status',
+        status: 400,
+        data: { message: 'Invalid petId' },
+      };
+    }
+
     logger.info(`Fetching pet with ID: ${petId}`);
 
     const pet = store.get('Pet', petId);
@@ -134,6 +144,16 @@ export default defineHandlers({
    */
   deletePet: ({ req, store, logger }) => {
     const petId = Number.parseInt(req.params.petId as string, 10);
+
+    // Validate petId is a valid number
+    if (!Number.isFinite(petId)) {
+      logger.warn(`Invalid petId: ${req.params.petId}`);
+      return {
+        type: 'status',
+        status: 400,
+        data: { message: 'Invalid petId' },
+      };
+    }
 
     logger.info(`Attempting to delete pet with ID: ${petId}`);
 
