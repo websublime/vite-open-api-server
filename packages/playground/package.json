@@ -1,6 +1,6 @@
 {
   "name": "petstore-app",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Playground demo application for vite-open-api-server",
   "keywords": [
     "playground",
@@ -10,21 +10,22 @@
   ],
   "license": "MIT",
   "author": "Websublime",
+  "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
     "preview": "vite preview",
-    "typecheck": "vue-tsc --noEmit"
+    "build": "vue-tsc --noEmit && vite build"
   },
   "dependencies": {
     "vue": "^3.5.27"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.0",
-    "@websublime/vite-plugin-open-api-server": "workspace:*",
+    "vue-tsc": "^2.2.12",
     "typescript": "^5.9.3",
     "vite": "^7.0.0",
-    "vue-tsc": "^2.2.12"
+    "@websublime/vite-plugin-open-api-server": "workspace:*"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
