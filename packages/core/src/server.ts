@@ -300,7 +300,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   if (config.devtools !== false) {
     mountDevToolsRoutes(app, {
       spaDir: config.devtoolsSpaDir,
-      logger: config.logger,
+      logger,
     });
   }
 

@@ -9,7 +9,7 @@
  */
 
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize, resolve } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import type { Hono } from 'hono';
 
 import { generateDevToolsHtml } from './devtools-template.js';
@@ -67,14 +67,15 @@ export function mountDevToolsRoutes(app: Hono, options: MountDevToolsOptions): v
 
   if (spaDir) {
     const resolvedSpaDir = resolve(spaDir);
+    const spaDirPrefix = resolvedSpaDir.endsWith(sep) ? resolvedSpaDir : resolvedSpaDir + sep;
 
     // Serve static assets with immutable cache headers
     app.get('/_devtools/assets/*', async (c) => {
       const relativePath = c.req.path.replace('/_devtools/', '');
       const filePath = normalize(join(resolvedSpaDir, relativePath));
 
-      // Path traversal protection
-      if (!filePath.startsWith(resolvedSpaDir)) {
+      // Path traversal protection: ensure resolved file is inside spaDir
+      if (!filePath.startsWith(spaDirPrefix) && filePath !== resolvedSpaDir) {
         return c.notFound();
       }
 
