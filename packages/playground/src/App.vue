@@ -7,7 +7,6 @@
 -->
 
 <script setup lang="ts">
-
 import { computed, ref } from 'vue';
 
 // API base path (proxied by Vite to the mock server)
@@ -101,7 +100,7 @@ async function addPet() {
 
 async function deletePet(id: number) {
   await apiCall(`/pet/${id}`, { method: 'DELETE' });
-  pets.value = pets.value.filter(p => p.id !== id);
+  pets.value = pets.value.filter((p) => p.id !== id);
   if (selectedPet.value?.id === id) {
     selectedPet.value = null;
   }
