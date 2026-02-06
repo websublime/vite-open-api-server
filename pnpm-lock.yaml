@@ -120,8 +120,8 @@ importers:
         specifier: ^8.0.6
         version: 8.0.6
       '@websublime/vite-plugin-open-api-core':
-        specifier: 0.10.1
-        version: 0.10.1(@hono/node-server@1.19.9(hono@4.11.4))
+        specifier: workspace:*
+        version: link:../core
       chokidar:
         specifier: ^5.0.0
         version: 5.0.0
@@ -132,6 +132,9 @@ importers:
         specifier: ^1.1.1
         version: 1.1.1
     devDependencies:
+      '@websublime/vite-plugin-open-api-devtools':
+        specifier: workspace:*
+        version: link:../devtools-client
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(postcss@8.5.6)(typescript@5.9.3)(yaml@2.8.2)
@@ -742,15 +745,6 @@ packages:
 
   '@vue/shared@3.5.27':
     resolution: {integrity: sha512-dXr/3CgqXsJkZ0n9F3I4elY8wM9jMJpP3pvRG52r6m0tu/MsAFIe6JpXVGeNMd/D9F4hQynWT8Rfuj0bdm9kFQ==}
-
-  '@websublime/vite-plugin-open-api-core@0.10.1':
-    resolution: {integrity: sha512-uA9l1BwOSMdN8OtXlKH97+GU1vbeU8WR86b5e2folQ+XRr4KqJwl8mzpINsQ5BAjZxITCxCjtpHsXC4uir5yIQ==}
-    engines: {node: ^20.19.0 || >=22.12.0}
-    peerDependencies:
-      '@hono/node-server': ^1.14.0
-    peerDependenciesMeta:
-      '@hono/node-server':
-        optional: true
 
   acorn@8.15.0:
     resolution: {integrity: sha512-NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==}
@@ -1998,17 +1992,6 @@ snapshots:
       vue: 3.5.27(typescript@5.9.3)
 
   '@vue/shared@3.5.27': {}
-
-  '@websublime/vite-plugin-open-api-core@0.10.1(@hono/node-server@1.19.9(hono@4.11.4))':
-    dependencies:
-      '@faker-js/faker': 10.2.0
-      '@scalar/json-magic': 0.9.1
-      '@scalar/openapi-parser': 0.24.1
-      '@scalar/openapi-types': 0.5.3
-      '@scalar/openapi-upgrader': 0.1.7
-      hono: 4.11.4
-    optionalDependencies:
-      '@hono/node-server': 1.19.9(hono@4.11.4)
 
   acorn@8.15.0: {}
 

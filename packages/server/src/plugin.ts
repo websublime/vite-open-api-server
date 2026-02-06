@@ -8,6 +8,9 @@
  * @module plugin
  */
 
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   createOpenApiServer,
   executeSeeds,
@@ -96,6 +99,22 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
         // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
         const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
 
+        // Resolve DevTools SPA directory (shipped inside this package's dist/)
+        let devtoolsSpaDir: string | undefined;
+        if (resolvedOptions.devtools) {
+          const pluginDir = dirname(fileURLToPath(import.meta.url));
+          const spaDir = join(pluginDir, 'devtools-spa');
+          if (existsSync(spaDir)) {
+            devtoolsSpaDir = spaDir;
+          } else {
+            resolvedOptions.logger?.warn?.(
+              '[vite-plugin-open-api-server] DevTools SPA not found at',
+              spaDir,
+              '- serving placeholder. Run "pnpm build" to include the SPA.',
+            );
+          }
+        }
+
         // Create the OpenAPI mock server
         server = await createOpenApiServer({
           spec: resolvedOptions.spec,
@@ -106,6 +125,7 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
           seeds: new Map(),
           timelineLimit: resolvedOptions.timelineLimit,
           devtools: resolvedOptions.devtools,
+          devtoolsSpaDir,
           cors: resolvedOptions.cors,
           corsOrigin: resolvedOptions.corsOrigin,
           logger: resolvedOptions.logger,
@@ -153,12 +173,42 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
     },
 
     /**
-     * Handle HMR (Hot Module Replacement)
+     * Inject Vue DevTools custom tab registration script
      *
-     * Note: This is called for all HMR updates, not just our files.
-     * We handle our own file watching separately.
+     * When devtools is enabled, this injects a small script into the host app's
+     * HTML that registers a custom "OpenAPI Server" tab in Vue DevTools.
+     * The tab embeds the DevTools SPA via iframe.
      */
-    // handleHotUpdate is not needed - we use chokidar directly
+    transformIndexHtml(html: string) {
+      if (!resolvedOptions.devtools || !resolvedOptions.enabled) {
+        return html;
+      }
+
+      const port = resolvedOptions.port;
+      const devtoolsIcon =
+        'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%234f46e5%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z%22/%3E%3Cpolyline points=%223.29 7 12 12 20.71 7%22/%3E%3Cline x1=%2212%22 y1=%2222%22 x2=%2212%22 y2=%2212%22/%3E%3C/svg%3E';
+
+      const devtoolsScript = `
+<script type="module">
+try {
+  const { addCustomTab } = await import('@vue/devtools-api');
+  addCustomTab({
+    name: 'vite-plugin-open-api-server',
+    title: 'OpenAPI Server',
+    icon: '${devtoolsIcon}',
+    view: {
+      type: 'iframe',
+      src: window.location.protocol + '//' + window.location.hostname + ':${port}/_devtools/',
+    },
+    category: 'app',
+  });
+} catch (e) {
+  // Vue DevTools not available - this is expected when the extension is not installed
+}
+</script>`;
+
+      return html.replace('</head>', `${devtoolsScript}\n</head>`);
+    },
   };
 
   /**
@@ -176,12 +226,29 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
     // Escape special regex characters in proxy path
     const escapedPath = proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-    // Add proxy configuration
+    // Add proxy configuration for API requests
     proxyConfig[proxyPath] = {
       target: `http://localhost:${port}`,
       changeOrigin: true,
       // Remove the proxy path prefix when forwarding
       rewrite: (path: string) => path.replace(new RegExp(`^${escapedPath}`), ''),
+    };
+
+    // Proxy internal routes so they work through Vite's dev server port
+    proxyConfig['/_devtools'] = {
+      target: `http://localhost:${port}`,
+      changeOrigin: true,
+    };
+
+    proxyConfig['/_api'] = {
+      target: `http://localhost:${port}`,
+      changeOrigin: true,
+    };
+
+    proxyConfig['/_ws'] = {
+      target: `http://localhost:${port}`,
+      changeOrigin: true,
+      ws: true,
     };
 
     // Update the proxy config (Vite's proxy is mutable)

@@ -26,7 +26,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && vite build && pnpm run build:spa",
+    "build:spa": "vite build --config vite.config.spa.ts",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
