@@ -16,6 +16,13 @@ export type { OpenApiServer, OpenApiServerConfig } from './server.js';
 export { createOpenApiServer } from './server.js';
 
 // =============================================================================
+// DevTools Server - Static File Serving
+// =============================================================================
+
+export type { MountDevToolsOptions } from './devtools-server.js';
+export { mountDevToolsRoutes } from './devtools-server.js';
+
+// =============================================================================
 // Parser Module - OpenAPI Document Processing
 // =============================================================================
 

@@ -12,7 +12,7 @@ import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
-import { generateDevToolsHtml } from './devtools-template.js';
+import { mountDevToolsRoutes } from './devtools-server.js';
 import type { HandlerFn, Logger } from './handlers/index.js';
 import { mountInternalApi, type TimelineEntry } from './internal-api.js';
 import { processOpenApiDocument } from './parser/index.js';
@@ -83,6 +83,13 @@ export interface OpenApiServerConfig {
    * @default true
    */
   devtools?: boolean;
+
+  /**
+   * Absolute path to the DevTools SPA build directory
+   * When provided, serves the built SPA at /_devtools/ instead of the placeholder
+   * The directory should contain index.html and an assets/ subdirectory
+   */
+  devtoolsSpaDir?: string;
 }
 
 /**
@@ -291,30 +298,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   // ==========================================================================
 
   if (config.devtools !== false) {
-    app.get('/_devtools', (c) => {
-      // Redirect to index
-      return c.redirect('/_devtools/', 302);
-    });
-
-    app.get('/_devtools/', (c) => {
-      // Serve DevTools SPA HTML
-      const html = generateDevToolsHtml();
-
-      // Warn about placeholder usage (should be replaced with built SPA in production)
-      config.logger?.warn?.(
-        '[DevTools] Serving development placeholder with CDN imports. For production, serve the full built DevTools SPA.',
-      );
-
-      // Cache for 1 hour in development (reload will bypass cache anyway)
-      c.header('Cache-Control', 'public, max-age=3600');
-
-      return c.html(html);
-    });
-
-    app.get('/_devtools/*', (c) => {
-      // For now, redirect all sub-routes to the main DevTools page
-      // In a full implementation, this would serve static assets or handle SPA routing
-      return c.redirect('/_devtools/', 302);
+    mountDevToolsRoutes(app, {
+      spaDir: config.devtoolsSpaDir,
+      logger: config.logger,
     });
   }
 
