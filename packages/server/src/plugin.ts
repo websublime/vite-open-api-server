@@ -131,15 +131,12 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
      */
     load(id: string) {
       if (id === RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID) {
-        const port = resolvedOptions.port;
-
         return `
 import { addCustomTab } from '@vue/devtools-api';
 
 try {
-  // Build iframe URL at runtime so it works in remote/container environments
-  // Use the browser's current hostname (not hardcoded localhost) with the mock server port
-  const iframeSrc = window.location.protocol + '//' + window.location.hostname + ':${port}/_devtools/';
+  // Route through Vite's proxy so it works in all environments
+  const iframeSrc = window.location.origin + '/_devtools/';
 
   addCustomTab({
     name: 'vite-plugin-open-api-server',
@@ -291,15 +288,16 @@ try {
     const serverConfig = vite.config.server ?? {};
     const proxyConfig = serverConfig.proxy ?? {};
 
-    // Escape special regex characters in proxy path
+    // Escape special regex characters in proxy path and pre-compile regex
     const escapedPath = proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pathPrefixRegex = new RegExp(`^${escapedPath}`);
 
     // Add proxy configuration for API requests
     proxyConfig[proxyPath] = {
       target: `http://localhost:${port}`,
       changeOrigin: true,
       // Remove the proxy path prefix when forwarding
-      rewrite: (path: string) => path.replace(new RegExp(`^${escapedPath}`), ''),
+      rewrite: (path: string) => path.replace(pathPrefixRegex, ''),
     };
 
     // Proxy internal routes so they work through Vite's dev server port
