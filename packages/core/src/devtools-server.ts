@@ -77,7 +77,7 @@ export function mountDevToolsRoutes(app: Hono, options: MountDevToolsOptions): v
       const filePath = normalize(join(resolvedSpaDir, relativePath));
 
       // Path traversal protection: ensure resolved file is inside spaDir
-      if (!filePath.startsWith(spaDirPrefix) && filePath !== resolvedSpaDir) {
+      if (!filePath.startsWith(spaDirPrefix)) {
         return c.notFound();
       }
 
