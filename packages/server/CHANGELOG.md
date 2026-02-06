@@ -1,3 +1,40 @@
+## [0.22.0] - 2026-02-06
+
+### Features
+
+- register custom tab in Vue DevTools via virtual module (0e6509e)
+- integrate DevTools client SPA into server package (1781f7a)
+- add petstore demo application (7a2fe70)
+
+
+### Bug Fixes
+
+- address third round of PR review comments (cc487d2)
+- address PR review comments for devtools integration (8e80311)
+- address second round of PR review comments (6384871)
+- add Vue SFC type declarations (3a145ce)
+- address all PR review comments (7bcc7b5)
+- rename files to match plugin patterns and fix deprecation (2f5f93e)
+- add type annotation for updatedPet in handler (edfd954)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-03j.4-devtools-integration (f001668)
+- sync changeset for feature/vite-open-api-server-03j.4-devtools-integration (104676a)
+- sync changeset for feature/vite-open-api-server-03j.4-devtools-integration (1dca1ee)
+- reformat claude local settings (20be19f)
+- bump petstore-app to 0.1.0 (37b5c77)
+- sync changeset for feature/vite-open-api-server-03j.1-playground-app (6ef3af2)
+- add changeset for playground app (5a3f2eb)
+- add biome configuration (bc22e86)
+- sync changeset for feature/vite-open-api-server-03j.1-playground-app (cc5dedd)
+- sync changeset for feature/vite-open-api-server-03j.1-playground-app (767b341)
+- apply biome formatting fixes (659e6b8)
+- sync changeset for feature/vite-open-api-server-03j.1-playground-app (85e04d4)
+
+
+
 ## [0.21.1] - 2026-02-05
 
 ### Features
