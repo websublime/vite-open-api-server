@@ -9,6 +9,7 @@
 <script setup lang="ts">
 import { Database } from 'lucide-vue-next';
 import { computed } from 'vue';
+import { discoverColumns, formatCell, getCellValue, getRowKey } from '@/utils/data-table';
 
 /**
  * Component props
@@ -40,65 +41,13 @@ const emit = defineEmits<Emits>();
 // ==========================================================================
 
 /**
- * Discover columns from all items' keys.
- * Iterates over every item to accumulate all unique keys,
- * then places idField first if present.
+ * Columns discovered from all items' keys, with idField placed first.
  */
-const columns = computed<string[]>(() => {
-  if (props.items.length === 0) return [];
+const columns = computed<string[]>(() => discoverColumns(props.items, props.idField));
 
-  const keySet = new Set<string>();
-  for (const item of props.items) {
-    if (typeof item === 'object' && item !== null) {
-      for (const key of Object.keys(item as Record<string, unknown>)) {
-        keySet.add(key);
-      }
-    }
-  }
-
-  if (keySet.size === 0) return [];
-
-  const keys = Array.from(keySet);
-  const idField = props.idField;
-
-  // Put idField first if it exists
-  if (keys.includes(idField)) {
-    return [idField, ...keys.filter((k) => k !== idField)];
-  }
-
-  return keys;
-});
 // ==========================================================================
 // Methods
 // ==========================================================================
-
-/**
- * Format a cell value for display
- */
-function formatCell(value: unknown): string {
-  if (value === null || value === undefined) return '--';
-  if (typeof value === 'string') return truncate(value, 50);
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  if (Array.isArray(value)) return truncate(JSON.stringify(value), 50);
-  if (typeof value === 'object') return truncate(JSON.stringify(value), 50);
-  return String(value);
-}
-
-/**
- * Truncate a string to maxLen characters
- */
-function truncate(str: string, maxLen: number): string {
-  if (str.length <= maxLen) return str;
-  return `${str.slice(0, maxLen)}…`;
-}
-
-/**
- * Get a cell value from an item by column name
- */
-function getCellValue(item: unknown, column: string): unknown {
-  if (typeof item !== 'object' || item === null) return undefined;
-  return (item as Record<string, unknown>)[column];
-}
 
 /**
  * Handle row click
@@ -108,12 +57,10 @@ function onRowClick(index: number): void {
 }
 
 /**
- * Get a stable key for a row, using the item's ID field value if available
+ * Get a stable key for a row, delegating to the utility function
  */
-function getRowKey(item: unknown, index: number): string | number {
-  const id = getCellValue(item, props.idField);
-  if (id !== undefined && id !== null) return id as string | number;
-  return index;
+function rowKey(item: unknown, index: number): string | number {
+  return getRowKey(item, props.idField, index);
 }
 </script>
 
@@ -143,7 +90,7 @@ function getRowKey(item: unknown, index: number): string | number {
         <tbody>
           <tr
             v-for="(item, index) in items"
-            :key="getRowKey(item, index)"
+            :key="rowKey(item, index)"
             :class="['data-table__row', { 'data-table__row--selected': index === selectedIndex }]"
             @click="onRowClick(index)"
           >
@@ -244,10 +191,6 @@ function getRowKey(item: unknown, index: number): string | number {
   white-space: nowrap;
   min-width: 2ch;
   user-select: none;
-}
-
-thead .data-table__row-num {
-  background-color: var(--devtools-surface-elevated);
 }
 
 /* Rows */

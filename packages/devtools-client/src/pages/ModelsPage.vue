@@ -122,6 +122,16 @@ watch(
   },
 );
 
+// Reset selection when items shrink below the selected index
+watch(
+  () => modelsStore.currentItems.length,
+  (newLen) => {
+    if (selectedItemIndex.value >= newLen) {
+      selectedItemIndex.value = -1;
+    }
+  },
+);
+
 // ==========================================================================
 // Actions
 // ==========================================================================

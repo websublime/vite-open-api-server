@@ -8,4 +8,5 @@
  * @module utils
  */
 
+export { discoverColumns, formatCell, getCellValue, getRowKey, truncate } from './data-table';
 export { getMethodLabel } from './format';
