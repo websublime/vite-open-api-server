@@ -8,7 +8,7 @@
 
 <script setup lang="ts">
 import { AlertTriangle, Clock, Plus, Trash2, Zap } from 'lucide-vue-next';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useWebSocket } from '../composables/useWebSocket';
 import { useRegistryStore } from '../stores/registry';
 import type { ActiveSimulation } from '../stores/simulation';
@@ -46,7 +46,7 @@ interface SimulationClearedEvent {
 
 const simulationStore = useSimulationStore();
 const registryStore = useRegistryStore();
-const { send, on } = useWebSocket();
+const { send, on, connected } = useWebSocket();
 
 // ==========================================================================
 // State
@@ -246,6 +246,21 @@ function handleManualInput(): void {
 }
 
 // ==========================================================================
+// Data Fetching
+// ==========================================================================
+
+/**
+ * Fetch current simulations from server via get:registry command
+ * (server responds with simulation:active event containing current simulations)
+ */
+function fetchSimulations(): void {
+  if (connected.value) {
+    simulationStore.setLoading(true);
+    send({ type: 'get:registry' });
+  }
+}
+
+// ==========================================================================
 // Lifecycle
 // ==========================================================================
 
@@ -283,14 +298,23 @@ onMounted(() => {
     }),
   ];
 
-  // Request current simulations from server
-  send({ type: 'get:registry' });
+  // Fetch current simulations if already connected
+  if (connected.value) {
+    fetchSimulations();
+  }
 });
 
 // Cleanup on unmount to prevent memory leaks
 onUnmounted(() => {
   for (const unsub of unsubscribers) {
     unsub();
+  }
+});
+
+// Re-fetch simulations when connection is (re)established
+watch(connected, (isConnected) => {
+  if (isConnected) {
+    fetchSimulations();
   }
 });
 </script>
