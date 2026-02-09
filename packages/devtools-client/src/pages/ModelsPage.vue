@@ -122,13 +122,40 @@ watch(
   },
 );
 
-// Reset selection when items shrink below the selected index
+// Reset selection when items array changes and the selected item no longer matches
 watch(
-  () => modelsStore.currentItems.length,
-  (newLen) => {
-    if (selectedItemIndex.value >= newLen) {
+  () => modelsStore.currentItems,
+  (newItems, oldItems) => {
+    const idx = selectedItemIndex.value;
+    if (idx < 0) return;
+
+    // Out of range
+    if (idx >= newItems.length) {
       selectedItemIndex.value = -1;
+      return;
     }
+
+    // Compare by ID field identity
+    const idField = modelsStore.currentSchema?.idField ?? 'id';
+    const oldItem = oldItems?.[idx];
+    const newItem = newItems[idx];
+
+    // Same object reference — keep selection
+    if (oldItem === newItem) return;
+
+    // Compare by ID value if both are objects
+    if (
+      typeof oldItem === 'object' &&
+      oldItem !== null &&
+      typeof newItem === 'object' &&
+      newItem !== null
+    ) {
+      const oldId = (oldItem as Record<string, unknown>)[idField];
+      const newId = (newItem as Record<string, unknown>)[idField];
+      if (oldId !== undefined && oldId === newId) return;
+    }
+
+    selectedItemIndex.value = -1;
   },
 );
 
