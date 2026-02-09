@@ -788,9 +788,9 @@ describe('createOpenApiServer', () => {
       });
 
       // Add simulation for 500 error
-      // Note: The router looks up simulations by the OpenAPI path (e.g., '/pets')
+      // Note: The router looks up simulations by method:path key (e.g., 'get:/pets')
       server.simulationManager.set({
-        path: '/pets',
+        path: 'get:/pets',
         operationId: 'listPets',
         status: 500,
         body: { error: 'Simulated error' },

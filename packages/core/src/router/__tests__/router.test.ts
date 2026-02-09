@@ -1701,9 +1701,9 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
 
       const simulationManager = {
         get: (path: string) => {
-          if (path === '/pets') {
+          if (path === 'get:/pets') {
             return {
-              path: '/pets',
+              path: 'get:/pets',
               operationId: 'getPets',
               status: 500,
               body: { error: 'Simulated server error' },
@@ -1715,7 +1715,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         remove: vi.fn(),
         list: vi.fn(),
         clear: vi.fn(),
-        has: (path: string) => path === '/pets',
+        has: (path: string) => path === 'get:/pets',
         count: () => 1,
       };
 
