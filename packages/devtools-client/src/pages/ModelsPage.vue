@@ -651,6 +651,7 @@ function onTableRowSelect(index: number): void {
 
   .models-panel {
     min-width: 0;
+    min-height: 200px;
   }
 }
 
