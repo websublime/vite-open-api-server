@@ -5,7 +5,8 @@
     "production"
   ],
   "packages": [
-    "@websublime/vite-plugin-open-api-core"
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
   ],
   "changes": [
     "9f360dba3341206928f0d123e6b427e621174242",
