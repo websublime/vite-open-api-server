@@ -1,0 +1,30 @@
+{
+  "changeset": {
+    "branch": "feature/vite-open-api-server-6nr-websocket-upgrade",
+    "bump": "minor",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-core",
+      "@websublime/vite-plugin-open-api-devtools"
+    ],
+    "changes": [
+      "4d38ab0d377a8b744ff802b43366f396a6d97c61",
+      "6f6973653fd2dceefccc306055d5e7edefb37c2e",
+      "ae9e7bf53deffe1a61cb6e260356d9205c3d0c38",
+      "6a3f87c99d6efb5c2429f4eab4010516fa09725f"
+    ],
+    "created_at": "2026-02-09T09:47:55.809760Z",
+    "updated_at": "2026-02-09T12:13:52.068221Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-09T12:33:56.491283367Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "b1847d9615bbcabafdc7943c51df11b31e31f9e0",
+    "versions": {
+      "@websublime/vite-plugin-open-api-devtools": "0.8.0",
+      "@websublime/vite-plugin-open-api-core": "0.12.0"
+    }
+  }
+}

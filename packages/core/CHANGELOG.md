@@ -1,3 +1,27 @@
+## [0.12.0] - 2026-02-09
+
+### Features
+
+- implement WebSocket upgrade handler for /_ws endpoint (4df47f2)
+
+
+### Bug Fixes
+
+- address second round of PR review comments (b1847d9)
+- address PR review comments for WebSocket command handler (c685d5d)
+- address code review findings for WebSocket command handler (459cfc8) (#1, #3, #7, #6, #2, #4, #8)
+- address PR review comments for WebSocket command handler (4a67a50)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-6nr-websocket-upgrade (a53cb5a)
+- sync changeset for feature/vite-open-api-server-6nr-websocket-upgrade (97755dd)
+- sync changeset for feature/vite-open-api-server-6nr-websocket-upgrade (ea81da2)
+- sync changeset for feature/vite-open-api-server-6nr-websocket-upgrade (3c101aa)
+
+
+
 ## [0.11.0] - 2026-02-06
 
 ### Features
