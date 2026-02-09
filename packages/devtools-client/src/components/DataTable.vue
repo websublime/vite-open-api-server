@@ -2,7 +2,7 @@
   DataTable.vue - Dynamic Data Table Component
 
   What: Displays an array of objects as a scrollable table with dynamic columns
-  How: Discovers columns from first item's keys, places idField first, formats cells
+  How: Discovers columns from all items' keys, places idField first, formats cells
   Why: Shows store data in tabular form alongside the JSON editor on the Models page
 -->
 
@@ -40,16 +40,25 @@ const emit = defineEmits<Emits>();
 // ==========================================================================
 
 /**
- * Discover columns from the first item's keys.
- * Places idField first, then remaining keys in original order.
+ * Discover columns from all items' keys.
+ * Iterates over every item to accumulate all unique keys,
+ * then places idField first if present.
  */
 const columns = computed<string[]>(() => {
   if (props.items.length === 0) return [];
 
-  const firstItem = props.items[0];
-  if (typeof firstItem !== 'object' || firstItem === null) return [];
+  const keySet = new Set<string>();
+  for (const item of props.items) {
+    if (typeof item === 'object' && item !== null) {
+      for (const key of Object.keys(item as Record<string, unknown>)) {
+        keySet.add(key);
+      }
+    }
+  }
 
-  const keys = Object.keys(firstItem as Record<string, unknown>);
+  if (keySet.size === 0) return [];
+
+  const keys = Array.from(keySet);
   const idField = props.idField;
 
   // Put idField first if it exists
@@ -59,7 +68,6 @@ const columns = computed<string[]>(() => {
 
   return keys;
 });
-
 // ==========================================================================
 // Methods
 // ==========================================================================
@@ -98,6 +106,15 @@ function getCellValue(item: unknown, column: string): unknown {
 function onRowClick(index: number): void {
   emit('select', index);
 }
+
+/**
+ * Get a stable key for a row, using the item's ID field value if available
+ */
+function getRowKey(item: unknown, index: number): string | number {
+  const id = getCellValue(item, props.idField);
+  if (id !== undefined && id !== null) return id as string | number;
+  return index;
+}
 </script>
 
 <template>
@@ -126,7 +143,7 @@ function onRowClick(index: number): void {
         <tbody>
           <tr
             v-for="(item, index) in items"
-            :key="index"
+            :key="getRowKey(item, index)"
             :class="['data-table__row', { 'data-table__row--selected': index === selectedIndex }]"
             @click="onRowClick(index)"
           >
