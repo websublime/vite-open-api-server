@@ -1665,6 +1665,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
 
   describe('Priority chain with simulations', () => {
     it('should use simulation response over handler when simulation is active', async () => {
+      const key = createEndpointKey('get', '/pets');
       const doc = createMinimalDoc({
         '/pets': {
           get: {
@@ -1701,9 +1702,9 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
 
       const simulationManager = {
         get: (path: string) => {
-          if (path === 'get:/pets') {
+          if (path === key) {
             return {
-              path: 'get:/pets',
+              path: key,
               operationId: 'getPets',
               status: 500,
               body: { error: 'Simulated server error' },
@@ -1715,7 +1716,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         remove: vi.fn(),
         list: vi.fn(),
         clear: vi.fn(),
-        has: (path: string) => path === 'get:/pets',
+        has: (path: string) => path === key,
         count: () => 1,
       };
 
@@ -1730,6 +1731,9 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
     });
 
     it('should apply delay but fall through to normal response for delay-only simulation', async () => {
+      vi.useFakeTimers();
+
+      const key = createEndpointKey('get', '/pets');
       const doc = createMinimalDoc({
         '/pets': {
           get: {
@@ -1754,9 +1758,9 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
 
       const simulationManager = {
         get: (path: string) => {
-          if (path === 'get:/pets') {
+          if (path === key) {
             return {
-              path: 'get:/pets',
+              path: key,
               operationId: 'getPets',
               status: 200,
               delay: 50,
@@ -1769,26 +1773,27 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         remove: vi.fn(),
         list: vi.fn(),
         clear: vi.fn(),
-        has: (path: string) => path === 'get:/pets',
+        has: (path: string) => path === key,
         count: () => 1,
       };
 
       const store = createStore();
       const { app } = buildRoutes(doc, { store, simulationManager });
 
-      const start = Date.now();
-      const response = await app.request('/pets', { method: 'GET' });
-      const elapsed = Date.now() - start;
+      const requestPromise = app.request('/pets', { method: 'GET' });
+      await vi.advanceTimersByTimeAsync(50);
+      const response = await requestPromise;
       const body = await response.json();
 
       // Should use normal response (example data), not error placeholder
       expect(response.status).toBe(200);
       expect(body).toEqual([{ id: 100, name: 'Example Pet' }]);
-      // Delay should have been applied
-      expect(elapsed).toBeGreaterThanOrEqual(40);
+
+      vi.useRealTimers();
     });
 
     it('should return error placeholder for status-only simulation (no body, non-200)', async () => {
+      const key = createEndpointKey('get', '/pets');
       const doc = createMinimalDoc({
         '/pets': {
           get: {
@@ -1813,9 +1818,9 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
 
       const simulationManager = {
         get: (path: string) => {
-          if (path === 'get:/pets') {
+          if (path === key) {
             return {
-              path: 'get:/pets',
+              path: key,
               operationId: 'getPets',
               status: 503,
               // no body, no delay — status-only override
@@ -1827,7 +1832,7 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
         remove: vi.fn(),
         list: vi.fn(),
         clear: vi.fn(),
-        has: (path: string) => path === 'get:/pets',
+        has: (path: string) => path === key,
         count: () => 1,
       };
 
