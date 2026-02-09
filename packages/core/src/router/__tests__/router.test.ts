@@ -1733,63 +1733,65 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
     it('should apply delay but fall through to normal response for delay-only simulation', async () => {
       vi.useFakeTimers();
 
-      const key = createEndpointKey('get', '/pets');
-      const doc = createMinimalDoc({
-        '/pets': {
-          get: {
-            operationId: 'getPets',
-            responses: {
-              '200': {
-                description: 'Success',
-                content: {
-                  'application/json': {
-                    example: [{ id: 100, name: 'Example Pet' }],
-                    schema: {
-                      type: 'array',
-                      items: { title: 'Pet', type: 'object' },
+      try {
+        const key = createEndpointKey('get', '/pets');
+        const doc = createMinimalDoc({
+          '/pets': {
+            get: {
+              operationId: 'getPets',
+              responses: {
+                '200': {
+                  description: 'Success',
+                  content: {
+                    'application/json': {
+                      example: [{ id: 100, name: 'Example Pet' }],
+                      schema: {
+                        type: 'array',
+                        items: { title: 'Pet', type: 'object' },
+                      },
                     },
                   },
                 },
               },
             },
           },
-        },
-      });
+        });
 
-      const simulationManager = {
-        get: (path: string) => {
-          if (path === key) {
-            return {
-              path: key,
-              operationId: 'getPets',
-              status: 200,
-              delay: 50,
-              // no body — delay-only simulation
-            };
-          }
-          return undefined;
-        },
-        set: vi.fn(),
-        remove: vi.fn(),
-        list: vi.fn(),
-        clear: vi.fn(),
-        has: (path: string) => path === key,
-        count: () => 1,
-      };
+        const simulationManager = {
+          get: (path: string) => {
+            if (path === key) {
+              return {
+                path: key,
+                operationId: 'getPets',
+                status: 200,
+                delay: 50,
+                // no body — delay-only simulation
+              };
+            }
+            return undefined;
+          },
+          set: vi.fn(),
+          remove: vi.fn(),
+          list: vi.fn(),
+          clear: vi.fn(),
+          has: (path: string) => path === key,
+          count: () => 1,
+        };
 
-      const store = createStore();
-      const { app } = buildRoutes(doc, { store, simulationManager });
+        const store = createStore();
+        const { app } = buildRoutes(doc, { store, simulationManager });
 
-      const requestPromise = app.request('/pets', { method: 'GET' });
-      await vi.advanceTimersByTimeAsync(50);
-      const response = await requestPromise;
-      const body = await response.json();
+        const requestPromise = app.request('/pets', { method: 'GET' });
+        await vi.advanceTimersByTimeAsync(50);
+        const response = await requestPromise;
+        const body = await response.json();
 
-      // Should use normal response (example data), not error placeholder
-      expect(response.status).toBe(200);
-      expect(body).toEqual([{ id: 100, name: 'Example Pet' }]);
-
-      vi.useRealTimers();
+        // Should use normal response (example data), not error placeholder
+        expect(response.status).toBe(200);
+        expect(body).toEqual([{ id: 100, name: 'Example Pet' }]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should return error placeholder for status-only simulation (no body, non-200)', async () => {
