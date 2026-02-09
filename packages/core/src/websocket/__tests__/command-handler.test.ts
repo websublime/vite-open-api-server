@@ -204,6 +204,30 @@ describe('createCommandHandler', () => {
       expect((message.data as { success: boolean }).success).toBe(true);
       expect((message.data as { count: number }).count).toBe(2);
     });
+
+    it('should broadcast store:updated to other clients', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+
+      const sender = createMockClient();
+      const observer = createMockClient();
+      deps.wsHub.addClient(sender);
+      deps.wsHub.addClient(observer);
+      sender.messages.length = 0;
+      observer.messages.length = 0;
+
+      handler(sender, {
+        type: 'set:store',
+        data: { schema: 'Pet', items: [{ id: 1, name: 'Buddy' }] },
+      });
+
+      // Observer should receive broadcast store:updated
+      const observerMsg = JSON.parse(observer.messages[0]);
+      expect(observerMsg.type).toBe('store:updated');
+      expect(observerMsg.data.schema).toBe('Pet');
+      expect(observerMsg.data.action).toBe('bulk');
+      expect(observerMsg.data.count).toBe(1);
+    });
   });
 
   describe('clear:store', () => {

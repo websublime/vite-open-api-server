@@ -143,6 +143,11 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Send store items for a schema to the requesting client
    */
   function handleGetStore(client: WebSocketClient, data: { schema: string }): void {
+    if (!data?.schema) {
+      sendError(client, 'get:store', 'Missing required field: schema');
+      return;
+    }
+
     const items = store.list(data.schema);
 
     sendTo(client, {
@@ -158,6 +163,11 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
     client: WebSocketClient,
     data: { schema: string; items: unknown[] },
   ): void {
+    if (!data?.schema || !Array.isArray(data.items)) {
+      sendError(client, 'set:store', 'Missing required fields: schema, items');
+      return;
+    }
+
     store.clear(data.schema);
 
     let created = 0;
@@ -185,6 +195,11 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Clear schema data and broadcast update
    */
   function handleClearStore(client: WebSocketClient, data: { schema: string }): void {
+    if (!data?.schema) {
+      sendError(client, 'clear:store', 'Missing required field: schema');
+      return;
+    }
+
     store.clear(data.schema);
 
     wsHub.broadcast({
@@ -203,11 +218,16 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    */
   function handleSetSimulation(
     client: WebSocketClient,
-    data: { path: string; status: number; delay?: number; body?: unknown },
+    data: { path: string; operationId?: string; status: number; delay?: number; body?: unknown },
   ): void {
+    if (!data?.path || typeof data.status !== 'number') {
+      sendError(client, 'set:simulation', 'Missing required fields: path, status');
+      return;
+    }
+
     simulationManager.set({
       path: data.path,
-      operationId: '',
+      operationId: data.operationId ?? '',
       status: data.status,
       delay: data.delay,
       body: data.body,
@@ -228,6 +248,11 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Remove a simulation and broadcast
    */
   function handleClearSimulation(client: WebSocketClient, data: { path: string }): void {
+    if (!data?.path) {
+      sendError(client, 'clear:simulation', 'Missing required field: path');
+      return;
+    }
+
     const removed = simulationManager.remove(data.path);
 
     if (removed) {
@@ -246,17 +271,12 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
   /**
    * Clear timeline and broadcast
    */
-  function handleClearTimeline(client: WebSocketClient): void {
+  function handleClearTimeline(_client: WebSocketClient): void {
     const count = timeline.length;
     timeline.length = 0;
 
+    // Broadcast covers all clients including the sender
     wsHub.broadcast({
-      type: 'timeline:cleared',
-      data: { count },
-    });
-
-    // Send confirmation to requesting client
-    sendTo(client, {
       type: 'timeline:cleared',
       data: { count },
     });
@@ -265,7 +285,7 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
   /**
    * Re-insert seed data into the store and broadcast
    */
-  function handleReseed(client: WebSocketClient): void {
+  function handleReseed(_client: WebSocketClient): void {
     store.clearAll();
 
     const seeds = deps.getSeeds();
@@ -281,12 +301,8 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
       schemas.push(schemaName);
     }
 
+    // Broadcast covers all clients including the sender
     wsHub.broadcast({
-      type: 'reseeded',
-      data: { success: true, schemas },
-    });
-
-    sendTo(client, {
       type: 'reseeded',
       data: { success: true, schemas },
     });
@@ -297,5 +313,13 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    */
   function sendTo(client: WebSocketClient, event: ServerEvent): void {
     wsHub.sendTo(client, event);
+  }
+
+  /**
+   * Send an error event to a specific client
+   */
+  function sendError(client: WebSocketClient, command: string, message: string): void {
+    logger.warn(`[CommandHandler] Validation failed for ${command}: ${message}`);
+    sendTo(client, { type: 'error', data: { command, message } });
   }
 }
