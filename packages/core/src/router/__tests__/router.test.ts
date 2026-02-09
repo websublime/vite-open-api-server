@@ -1728,6 +1728,173 @@ describe('Response Priority Chain (Handler > Seed > Example > Generated)', () =>
       expect(response.status).toBe(500);
       expect(body).toEqual({ error: 'Simulated server error' });
     });
+
+    it('should apply delay but fall through to normal response for delay-only simulation', async () => {
+      const doc = createMinimalDoc({
+        '/pets': {
+          get: {
+            operationId: 'getPets',
+            responses: {
+              '200': {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    example: [{ id: 100, name: 'Example Pet' }],
+                    schema: {
+                      type: 'array',
+                      items: { title: 'Pet', type: 'object' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const simulationManager = {
+        get: (path: string) => {
+          if (path === 'get:/pets') {
+            return {
+              path: 'get:/pets',
+              operationId: 'getPets',
+              status: 200,
+              delay: 50,
+              // no body — delay-only simulation
+            };
+          }
+          return undefined;
+        },
+        set: vi.fn(),
+        remove: vi.fn(),
+        list: vi.fn(),
+        clear: vi.fn(),
+        has: (path: string) => path === 'get:/pets',
+        count: () => 1,
+      };
+
+      const store = createStore();
+      const { app } = buildRoutes(doc, { store, simulationManager });
+
+      const start = Date.now();
+      const response = await app.request('/pets', { method: 'GET' });
+      const elapsed = Date.now() - start;
+      const body = await response.json();
+
+      // Should use normal response (example data), not error placeholder
+      expect(response.status).toBe(200);
+      expect(body).toEqual([{ id: 100, name: 'Example Pet' }]);
+      // Delay should have been applied
+      expect(elapsed).toBeGreaterThanOrEqual(40);
+    });
+
+    it('should return error placeholder for status-only simulation (no body, non-200)', async () => {
+      const doc = createMinimalDoc({
+        '/pets': {
+          get: {
+            operationId: 'getPets',
+            responses: {
+              '200': {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    example: [{ id: 100, name: 'Example Pet' }],
+                    schema: {
+                      type: 'array',
+                      items: { title: 'Pet', type: 'object' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const simulationManager = {
+        get: (path: string) => {
+          if (path === 'get:/pets') {
+            return {
+              path: 'get:/pets',
+              operationId: 'getPets',
+              status: 503,
+              // no body, no delay — status-only override
+            };
+          }
+          return undefined;
+        },
+        set: vi.fn(),
+        remove: vi.fn(),
+        list: vi.fn(),
+        clear: vi.fn(),
+        has: (path: string) => path === 'get:/pets',
+        count: () => 1,
+      };
+
+      const store = createStore();
+      const { app } = buildRoutes(doc, { store, simulationManager });
+
+      const response = await app.request('/pets', { method: 'GET' });
+      const body = await response.json();
+
+      expect(response.status).toBe(503);
+      expect(body).toEqual({ error: 'Simulated error', status: 503 });
+    });
+
+    it('should not match simulation when path format does not include method prefix', async () => {
+      const doc = createMinimalDoc({
+        '/pets': {
+          get: {
+            operationId: 'getPets',
+            responses: {
+              '200': {
+                description: 'Success',
+                content: {
+                  'application/json': {
+                    example: [{ id: 100, name: 'Example Pet' }],
+                    schema: {
+                      type: 'array',
+                      items: { title: 'Pet', type: 'object' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      // Simulation stored with OLD path-only format (no method prefix)
+      const simulationManager = {
+        get: (path: string) => {
+          if (path === '/pets') {
+            return {
+              path: '/pets',
+              operationId: 'getPets',
+              status: 500,
+              body: { error: 'Should not match' },
+            };
+          }
+          return undefined;
+        },
+        set: vi.fn(),
+        remove: vi.fn(),
+        list: vi.fn(),
+        clear: vi.fn(),
+        has: (path: string) => path === '/pets',
+        count: () => 1,
+      };
+
+      const store = createStore();
+      const { app } = buildRoutes(doc, { store, simulationManager });
+
+      const response = await app.request('/pets', { method: 'GET' });
+      const body = await response.json();
+
+      // Should NOT match because router uses 'get:/pets', not '/pets'
+      expect(response.status).toBe(200);
+      expect(body).toEqual([{ id: 100, name: 'Example Pet' }]);
+    });
   });
 
   describe('Priority chain edge cases', () => {

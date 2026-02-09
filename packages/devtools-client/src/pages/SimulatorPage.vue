@@ -311,10 +311,12 @@ onUnmounted(() => {
   }
 });
 
-// Re-fetch simulations when connection is (re)established
+// Re-fetch simulations when connection is (re)established, clear loading on disconnect
 watch(connected, (isConnected) => {
   if (isConnected) {
     fetchSimulations();
+  } else {
+    simulationStore.setLoading(false);
   }
 });
 </script>
