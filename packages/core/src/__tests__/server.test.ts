@@ -734,13 +734,11 @@ describe('createOpenApiServer', () => {
         spec: minimalDocument,
       });
 
-      // When @hono/node-ws is available (devDependency), the upgradeWebSocket
-      // middleware is active. A regular HTTP request without upgrade headers
-      // will not be handled by the middleware (it returns undefined), so Hono
-      // responds with 404. This confirms the route exists and the middleware
-      // is in place — actual WebSocket connections are tested via integration.
+      // @hono/node-ws is a devDependency so the upgradeWebSocket middleware
+      // is active. A plain HTTP request (no Upgrade header) is not handled
+      // by the middleware — it returns undefined and Hono replies 404.
       const response = await server.app.request('/_ws');
-      expect([200, 404]).toContain(response.status);
+      expect(response.status).toBe(404);
     });
 
     it('should have command handler wired to WebSocket hub', async () => {
