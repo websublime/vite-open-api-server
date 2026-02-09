@@ -219,8 +219,8 @@ export function buildRoutes(
         let response: HandlerResponse;
         let simulated = false;
 
-        // Check for active simulation first
-        const simulation = simulationManager?.get(path);
+        // Check for active simulation first (use method:path key to match DevTools format)
+        const simulation = simulationManager?.get(createEndpointKey(method, path));
         if (simulation) {
           simulated = true;
           // Apply delay if configured
