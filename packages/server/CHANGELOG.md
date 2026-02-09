@@ -1,3 +1,28 @@
+## [0.22.2] - 2026-02-09
+
+### Bug Fixes
+
+- add min-height to stacked panels in responsive layout (27f3cd8)
+- split Models page into side-by-side JSON editor and data table (437a07d)
+- address PR review comments for Models page (372594e)
+- address code review findings for DataTable component (625dd94)
+- use item identity check for selection reset watcher (546ae2b)
+- extract shared .models-panel CSS class to remove duplication (d568636)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-pjl-models-page-split-layout (57cc66f)
+- fix missing trailing newlines in package.json files (2bb9543)
+- sync changeset for fix/vite-pjl-models-page-split-layout (bb06385)
+- sync changeset for fix/vite-pjl-models-page-split-layout (fd1718d)
+- sync changeset for fix/vite-pjl-models-page-split-layout (1bc2395)
+- sync changeset for fix/vite-pjl-models-page-split-layout (b83b1c7)
+- sync changeset for fix/vite-pjl-models-page-split-layout (c6a6c68)
+- sync changeset for fix/vite-pjl-models-page-split-layout (24e4f50)
+
+
+
 ## [0.22.1] - 2026-02-09
 
 ### Features

@@ -1,3 +1,54 @@
+## [0.8.1] - 2026-02-09
+
+### Bug Fixes
+
+- add min-height to stacked panels in responsive layout (27f3cd8)
+- extract shared .models-panel CSS class to remove duplication (d568636)
+- address code review findings for DataTable component (625dd94)
+- address PR review comments for Models page (372594e)
+- use item identity check for selection reset watcher (546ae2b)
+- split Models page into side-by-side JSON editor and data table (437a07d)
+- wrap simulation:active data in object with simulations property (c8066cf)
+- use method:path key for simulation lookup in route builder (15b6282)
+- re-fetch simulations on SimulatorPage mount and reconnect (14765a5)
+- delay-only simulations now pass through to normal handler (f197a79)
+
+
+### Code Refactoring
+
+- address PR review comments (4eb8286)
+- wrap fake timers test in try/finally for safe cleanup (478c8bf)
+
+
+### Tests
+
+- add simulation variant tests and fix loading state on disconnect (bf0f533)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-pjl-models-page-split-layout (24e4f50)
+- sync changeset for fix/vite-pjl-models-page-split-layout (fd1718d)
+- sync changeset for fix/vite-pjl-models-page-split-layout (b83b1c7)
+- sync changeset for fix/vite-pjl-models-page-split-layout (bb06385)
+- sync changeset for fix/vite-pjl-models-page-split-layout (c6a6c68)
+- fix missing trailing newlines in package.json files (2bb9543)
+- sync changeset for fix/vite-pjl-models-page-split-layout (57cc66f)
+- sync changeset for fix/vite-pjl-models-page-split-layout (1bc2395)
+- bump versions (cf55500)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (06ba5cf)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (82e16a3)
+- add server package to changeset and fix trailing newline (8a027b9)
+- fix trailing newline in package.json files (644d113)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (5ac9b5e)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (afba3e7)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (b13be68)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (2ae48c6)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (14c119d)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (0025469)
+
+
+
 ## [0.8.0] - 2026-02-09
 
 ### Features
