@@ -8,6 +8,8 @@
  * @module websocket
  */
 
+export { type CommandHandlerDeps, createCommandHandler } from './command-handler.js';
+
 export {
   type CommandHandler,
   createWebSocketHub,

@@ -19,7 +19,7 @@ import { processOpenApiDocument } from './parser/index.js';
 import { buildRoutes, type EndpointRegistry } from './router/index.js';
 import { createSimulationManager, type SimulationManager } from './simulation/index.js';
 import { createStore, type Store } from './store/index.js';
-import { createWebSocketHub, type WebSocketHub } from './websocket/index.js';
+import { createCommandHandler, createWebSocketHub, type WebSocketHub } from './websocket/index.js';
 
 /**
  * Server configuration options
@@ -306,17 +306,62 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
 
   // ==========================================================================
   // WebSocket Route (/_ws)
-  // TODO: Full WebSocket implementation in Task 4.1
   // ==========================================================================
 
-  app.get('/_ws', (c) => {
-    // WebSocket upgrade will be handled by the Vite plugin
-    // For now, return info about the endpoint
-    return c.json({
-      message: 'WebSocket endpoint - use ws:// protocol',
-      note: 'Full implementation in Task 4.1',
-    });
+  // Wire command handler so the hub can process client commands
+  const commandHandler = createCommandHandler({
+    store,
+    registry,
+    simulationManager,
+    wsHub,
+    timeline,
+    timelineLimit,
+    document,
+    getSeeds: () => currentSeeds,
+    logger,
   });
+  wsHub.setCommandHandler(commandHandler);
+
+  // Try to set up WebSocket upgrade via @hono/node-ws
+  // Falls back to a placeholder JSON response when the package is unavailable
+  // (e.g., in test environments or when running without standalone mode)
+  // biome-ignore lint/suspicious/noExplicitAny: @hono/node-ws types expect node http.Server but we store generically
+  let injectWebSocket: ((server: any) => void) | null = null;
+
+  try {
+    const { createNodeWebSocket } = await import('@hono/node-ws');
+    const nodeWs = createNodeWebSocket({ app });
+    injectWebSocket = nodeWs.injectWebSocket;
+
+    app.get(
+      '/_ws',
+      nodeWs.upgradeWebSocket(() => ({
+        onOpen(_event, ws) {
+          wsHub.addClient(ws);
+        },
+        onMessage(event, ws) {
+          wsHub.handleMessage(ws, event.data);
+        },
+        onClose(_event, ws) {
+          wsHub.removeClient(ws);
+        },
+      })),
+    );
+
+    logger.debug('[vite-plugin-open-api-core] WebSocket upgrade enabled at /_ws');
+  } catch {
+    // @hono/node-ws not available - serve placeholder
+    app.get('/_ws', (c) => {
+      return c.json({
+        message: 'WebSocket endpoint - use ws:// protocol',
+        note: 'Install @hono/node-ws to enable WebSocket support',
+      });
+    });
+
+    logger.debug(
+      '[vite-plugin-open-api-core] @hono/node-ws not available, WebSocket upgrade disabled',
+    );
+  }
 
   // ==========================================================================
   // API Routes (mount the router)
@@ -361,6 +406,12 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         fetch: app.fetch,
         port,
       });
+
+      // Inject WebSocket support into the Node.js HTTP server
+      // This hooks into the server's 'upgrade' event for WebSocket handshakes
+      if (injectWebSocket) {
+        injectWebSocket(serverInstance);
+      }
 
       // Handle runtime server errors (e.g., EADDRINUSE)
       (serverInstance as { on?: (event: string, handler: (err: Error) => void) => void }).on?.(

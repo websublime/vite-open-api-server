@@ -26,5 +26,8 @@ export default defineConfig({
     '@scalar/openapi-types',
     '@scalar/openapi-upgrader',
     'hono',
+    // Optional peer dependencies - consumers provide at runtime
+    '@hono/node-server',
+    '@hono/node-ws',
   ],
 });

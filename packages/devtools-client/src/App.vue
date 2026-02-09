@@ -11,6 +11,7 @@ import { Clock, Database, Route, Wifi, WifiOff, Zap } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { routes } from '@/router';
+import { useWebSocket } from '@/composables/useWebSocket';
 
 const route = useRoute();
 const router = useRouter();
@@ -52,8 +53,8 @@ function getIcon(iconName: string): typeof Route {
   return icon ?? Route;
 }
 
-// TODO: Connection status will be provided by WebSocket composable
-const isConnected = computed(() => false);
+// Connection status from WebSocket composable
+const { connected: isConnected } = useWebSocket();
 </script>
 
 <template>
@@ -252,8 +253,10 @@ const isConnected = computed(() => false);
   flex-direction: column;
   overflow: hidden;
 }
+</style>
 
-/* Page transition */
+<style>
+/* Page transition - must be unscoped to apply to router-view children */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity var(--devtools-transition-normal);
