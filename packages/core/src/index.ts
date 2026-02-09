@@ -109,6 +109,7 @@ export type {
   ClientCommandData,
   ClientCommandType,
   CommandHandler,
+  CommandHandlerDeps,
   RequestLogEntry,
   ResponseLogEntry,
   ServerEvent,
@@ -121,7 +122,11 @@ export type {
   WebSocketHubLogger,
   WebSocketHubOptions,
 } from './websocket/index.js';
-export { CLIENT_COMMAND_TYPES, createWebSocketHub } from './websocket/index.js';
+export {
+  CLIENT_COMMAND_TYPES,
+  createCommandHandler,
+  createWebSocketHub,
+} from './websocket/index.js';
 
 // =============================================================================
 // Simulation Module - Error and Delay Simulation
