@@ -113,7 +113,7 @@ describe('createCommandHandler', () => {
 
       const simulationMsg = JSON.parse(client.messages[1]);
       expect(simulationMsg.type).toBe('simulation:active');
-      expect(simulationMsg.data).toEqual([]);
+      expect(simulationMsg.data).toEqual({ simulations: [] });
     });
   });
 

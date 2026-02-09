@@ -144,7 +144,7 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
 
     // Also send current simulation state so Simulator page gets initial data
     const simulations = simulationManager.list();
-    sendTo(client, { type: 'simulation:active', data: simulations });
+    sendTo(client, { type: 'simulation:active', data: { simulations } });
   }
 
   /**
