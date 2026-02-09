@@ -221,15 +221,27 @@ export function buildRoutes(
 
         // Check for active simulation first (use method:path key to match DevTools format)
         const simulation = simulationManager?.get(createEndpointKey(method, path));
-        if (simulation) {
+
+        // Apply simulation delay if configured (applies to both delay-only and full override)
+        if (simulation?.delay && simulation.delay > 0) {
           simulated = true;
-          // Apply delay if configured
-          if (simulation.delay && simulation.delay > 0) {
-            await delay(simulation.delay);
-          }
+          await delay(simulation.delay);
+        }
+
+        if (simulation?.body !== undefined) {
+          // Full override: use simulation status + body
+          simulated = true;
           response = {
             status: simulation.status,
-            data: simulation.body ?? { error: 'Simulated error', status: simulation.status },
+            data: simulation.body,
+            headers: simulation.headers,
+          };
+        } else if (simulation && !simulation.body && simulation.status !== 200) {
+          // Status-only override (no body, non-200): return error placeholder
+          simulated = true;
+          response = {
+            status: simulation.status,
+            data: { error: 'Simulated error', status: simulation.status },
             headers: simulation.headers,
           };
         } else {
