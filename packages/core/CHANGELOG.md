@@ -1,3 +1,39 @@
+## [0.12.1] - 2026-02-09
+
+### Bug Fixes
+
+- use method:path key for simulation lookup in route builder (15b6282)
+- re-fetch simulations on SimulatorPage mount and reconnect (14765a5)
+- wrap simulation:active data in object with simulations property (c8066cf)
+- delay-only simulations now pass through to normal handler (f197a79)
+
+
+### Code Refactoring
+
+- wrap fake timers test in try/finally for safe cleanup (478c8bf)
+- address PR review comments (4eb8286)
+
+
+### Tests
+
+- add simulation variant tests and fix loading state on disconnect (bf0f533)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (b13be68)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (afba3e7)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (14c119d)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (5ac9b5e)
+- fix trailing newline in package.json files (644d113)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (2ae48c6)
+- add server package to changeset and fix trailing newline (8a027b9)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (82e16a3)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (0025469)
+- sync changeset for fix/vite-bzb-simulation-path-mismatch (06ba5cf)
+
+
+
 ## [0.12.0] - 2026-02-09
 
 ### Features
