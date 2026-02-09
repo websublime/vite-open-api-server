@@ -269,6 +269,7 @@ onMounted(() => {
   unsubscribers = [
     on('simulation:active', (data: SimulationActiveEvent) => {
       simulationStore.setSimulations(data.simulations);
+      simulationStore.setLoading(false);
     }),
 
     on('simulation:added', (data: SimulationPathEvent) => {
