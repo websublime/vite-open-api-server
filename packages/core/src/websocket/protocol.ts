@@ -86,7 +86,7 @@ export type ServerEvent =
   | { type: 'seeds:updated'; data: { count: number } }
 
   // Simulation events
-  | { type: 'simulation:active'; data: SimulationState[] }
+  | { type: 'simulation:active'; data: { simulations: SimulationState[] } }
   | { type: 'simulation:added'; data: { path: string } }
   | { type: 'simulation:removed'; data: { path: string } }
   | { type: 'simulations:cleared'; data: { count: number } }
