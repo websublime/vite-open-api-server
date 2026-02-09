@@ -314,7 +314,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     registry,
     simulationManager,
     wsHub,
-    timeline,
+    getTimeline: () => timeline,
     timelineLimit,
     getSeeds: () => currentSeeds,
     logger,
@@ -349,12 +349,15 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
 
     logger.debug('[vite-plugin-open-api-core] WebSocket upgrade enabled at /_ws');
   } catch {
-    // @hono/node-ws not available - serve placeholder
+    // @hono/node-ws not available - serve 501 Not Implemented placeholder
     app.get('/_ws', (c) => {
-      return c.json({
-        message: 'WebSocket endpoint - use ws:// protocol',
-        note: 'Install @hono/node-ws to enable WebSocket support',
-      });
+      return c.json(
+        {
+          message: 'WebSocket endpoint - use ws:// protocol',
+          note: 'Install @hono/node-ws to enable WebSocket support',
+        },
+        501,
+      );
     });
 
     logger.debug(

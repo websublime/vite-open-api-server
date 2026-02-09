@@ -53,7 +53,7 @@ function createTestDeps(overrides: Partial<CommandHandlerDeps> = {}): CommandHan
   const registry = buildRegistry(minimalDocument);
   const simulationManager = createSimulationManager();
   const wsHub = createWebSocketHub();
-  const timeline: CommandHandlerDeps['timeline'] = [];
+  const timeline: ReturnType<CommandHandlerDeps['getTimeline']> = [];
   const seeds = new Map<string, unknown[]>();
 
   const silentLogger = {
@@ -69,7 +69,7 @@ function createTestDeps(overrides: Partial<CommandHandlerDeps> = {}): CommandHan
     registry,
     simulationManager,
     wsHub,
-    timeline,
+    getTimeline: () => timeline,
     timelineLimit: 100,
     getSeeds: () => seeds,
     logger: silentLogger,
@@ -123,7 +123,7 @@ describe('createCommandHandler', () => {
         { id: '1', timestamp: '2026-01-01T00:00:00Z', type: 'request' as const, data: {} },
         { id: '2', timestamp: '2026-01-01T00:00:01Z', type: 'response' as const, data: {} },
       ];
-      const deps = createTestDeps({ timeline });
+      const deps = createTestDeps({ getTimeline: () => timeline });
       const handler = createCommandHandler(deps);
       const client = createMockClient();
       deps.wsHub.addClient(client);
@@ -144,7 +144,7 @@ describe('createCommandHandler', () => {
         type: 'request' as const,
         data: {},
       }));
-      const deps = createTestDeps({ timeline });
+      const deps = createTestDeps({ getTimeline: () => timeline });
       const handler = createCommandHandler(deps);
       const client = createMockClient();
       deps.wsHub.addClient(client);
@@ -314,7 +314,7 @@ describe('createCommandHandler', () => {
       const timeline = [
         { id: '1', timestamp: '2026-01-01T00:00:00Z', type: 'request' as const, data: {} },
       ];
-      const deps = createTestDeps({ timeline });
+      const deps = createTestDeps({ getTimeline: () => timeline });
       const handler = createCommandHandler(deps);
       const client = createMockClient();
       deps.wsHub.addClient(client);
