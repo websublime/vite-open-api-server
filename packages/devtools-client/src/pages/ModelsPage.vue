@@ -84,6 +84,7 @@ on('store:updated', (data) => {
   }
 
   modelsStore.handleStoreUpdate(data as { schema: string; action: string; count: number });
+  selectedItemIndex.value = -1;
 });
 
 // Handle reseed completion
@@ -101,6 +102,7 @@ on('reseeded', (data) => {
   }
 
   modelsStore.handleReseedComplete(data as { success: boolean; schemas: string[] });
+  selectedItemIndex.value = -1;
 });
 
 // ==========================================================================
@@ -611,6 +613,18 @@ function onTableRowSelect(index: number): void {
   display: flex;
   flex-direction: column;
   background-color: var(--devtools-bg);
+}
+
+/* Responsive: stack panels vertically on narrow viewports */
+@media (max-width: 840px) {
+  .models-panels {
+    flex-direction: column;
+  }
+
+  .models-editor-panel,
+  .models-table-panel {
+    min-width: 0;
+  }
 }
 
 /* Loading Overlay */
