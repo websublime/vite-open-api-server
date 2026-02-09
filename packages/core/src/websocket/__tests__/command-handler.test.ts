@@ -71,7 +71,6 @@ function createTestDeps(overrides: Partial<CommandHandlerDeps> = {}): CommandHan
     wsHub,
     timeline,
     timelineLimit: 100,
-    document: minimalDocument,
     getSeeds: () => seeds,
     logger: silentLogger,
     ...overrides,
@@ -374,6 +373,111 @@ describe('createCommandHandler', () => {
       // Should have V2 data, not V1
       expect(deps.store.get('Pet', 2)).toEqual({ id: 2, name: 'V2' });
       expect(deps.store.get('Pet', 1)).toBeNull();
+    });
+  });
+
+  describe('unknown command', () => {
+    it('should warn on unhandled command type', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, { type: 'unknown:command' } as unknown as Parameters<typeof handler>[1]);
+
+      expect(deps.logger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Unhandled command type'),
+      );
+      expect(client.messages).toHaveLength(0);
+    });
+  });
+
+  describe('validation errors', () => {
+    it('should send error when get:store schema is missing', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, { type: 'get:store', data: { schema: '' } } as unknown as Parameters<
+        typeof handler
+      >[1]);
+
+      const message = getLastMessage(client);
+      expect(message.type).toBe('error');
+      expect((message.data as { command: string }).command).toBe('get:store');
+    });
+
+    it('should send error when set:store items is not an array', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, {
+        type: 'set:store',
+        data: { schema: 'Pet', items: 'not-an-array' },
+      } as unknown as Parameters<typeof handler>[1]);
+
+      const message = getLastMessage(client);
+      expect(message.type).toBe('error');
+      expect((message.data as { command: string }).command).toBe('set:store');
+    });
+
+    it('should send error when set:simulation has invalid status code', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, {
+        type: 'set:simulation',
+        data: { path: '/pets', status: 99 },
+      });
+
+      const message = getLastMessage(client);
+      expect(message.type).toBe('error');
+      expect((message.data as { command: string }).command).toBe('set:simulation');
+      expect((message.data as { message: string }).message).toContain('status');
+    });
+
+    it('should send error when set:simulation has negative delay', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, {
+        type: 'set:simulation',
+        data: { path: '/pets', status: 500, delay: -1 },
+      });
+
+      const message = getLastMessage(client);
+      expect(message.type).toBe('error');
+      expect((message.data as { command: string }).command).toBe('set:simulation');
+      expect((message.data as { message: string }).message).toContain('delay');
+    });
+
+    it('should send error when clear:simulation path is missing', () => {
+      const deps = createTestDeps();
+      const handler = createCommandHandler(deps);
+      const client = createMockClient();
+      deps.wsHub.addClient(client);
+      client.messages.length = 0;
+
+      handler(client, {
+        type: 'clear:simulation',
+        data: { path: '' },
+      } as unknown as Parameters<typeof handler>[1]);
+
+      const message = getLastMessage(client);
+      expect(message.type).toBe('error');
+      expect((message.data as { command: string }).command).toBe('clear:simulation');
     });
   });
 });
