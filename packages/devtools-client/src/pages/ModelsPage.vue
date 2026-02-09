@@ -15,6 +15,7 @@
 <script setup lang="ts">
 import { Database, RefreshCw, Save, Trash2, X } from 'lucide-vue-next';
 import { nextTick, onMounted, ref, watch } from 'vue';
+import DataTable from '@/components/DataTable.vue';
 // biome-ignore lint/style/useImportType: Component needs to be available at runtime
 import JsonEditor from '@/components/JsonEditor.vue';
 import { useNotifications } from '@/composables/useNotifications';
@@ -38,6 +39,9 @@ const jsonEditorRef = ref<InstanceType<typeof JsonEditor> | null>(null);
 
 /** Confirmation dialog state */
 const showClearConfirm = ref(false);
+
+/** Currently selected row index in the data table */
+const selectedItemIndex = ref(-1);
 
 // ==========================================================================
 // Lifecycle
@@ -107,6 +111,7 @@ on('reseeded', (data) => {
 watch(
   () => modelsStore.selectedSchema,
   async () => {
+    selectedItemIndex.value = -1;
     if (jsonEditorRef.value && modelsStore.currentItems.length > 0) {
       // Wait for next tick to ensure editor is updated
       await nextTick();
@@ -224,6 +229,13 @@ async function reseedAll(): Promise<void> {
 function onJsonEditorUpdate(value: unknown): void {
   modelsStore.updateItems(value);
 }
+
+/**
+ * Handle data table row selection (toggle)
+ */
+function onTableRowSelect(index: number): void {
+  selectedItemIndex.value = selectedItemIndex.value === index ? -1 : index;
+}
 </script>
 
 <template>
@@ -334,15 +346,25 @@ function onJsonEditorUpdate(value: unknown): void {
           <span>⚠️ {{ modelsStore.error }}</span>
         </div>
 
-        <!-- JSON Editor -->
-        <div class="models-editor">
-          <JsonEditor
-            ref="jsonEditorRef"
-            :model-value="modelsStore.currentItems"
-            :readonly="modelsStore.loading"
-            :min-height="400"
-            @update:model-value="onJsonEditorUpdate"
-          />
+        <!-- Split Panels: Editor + Data Table -->
+        <div class="models-panels">
+          <div class="models-editor-panel">
+            <JsonEditor
+              ref="jsonEditorRef"
+              :model-value="modelsStore.currentItems"
+              :readonly="modelsStore.loading"
+              :min-height="400"
+              @update:model-value="onJsonEditorUpdate"
+            />
+          </div>
+          <div class="models-table-panel">
+            <DataTable
+              :items="modelsStore.currentItems"
+              :id-field="modelsStore.currentSchema?.idField ?? 'id'"
+              :selected-index="selectedItemIndex"
+              @select="onTableRowSelect"
+            />
+          </div>
         </div>
 
         <!-- Loading Overlay -->
@@ -564,12 +586,31 @@ function onJsonEditorUpdate(value: unknown): void {
   font-size: var(--font-size-0);
 }
 
-/* Editor */
-.models-editor {
+/* Split Panels */
+.models-panels {
+  display: flex;
   flex: 1;
+  gap: 1px;
+  overflow: hidden;
+  background-color: var(--devtools-border);
+}
+
+.models-editor-panel {
+  flex: 1;
+  min-width: 300px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  background-color: var(--devtools-bg);
+}
+
+.models-table-panel {
+  flex: 1;
+  min-width: 300px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--devtools-bg);
 }
 
 /* Loading Overlay */
