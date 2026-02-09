@@ -10,8 +10,8 @@
 import { Clock, Database, Route, Wifi, WifiOff, Zap } from 'lucide-vue-next';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { routes } from '@/router';
 import { useWebSocket } from '@/composables/useWebSocket';
+import { routes } from '@/router';
 
 const route = useRoute();
 const router = useRouter();
