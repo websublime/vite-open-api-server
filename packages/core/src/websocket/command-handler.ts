@@ -191,11 +191,13 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
       }
     }
 
+    // Broadcast notification to all clients (including sender) about the store change
     wsHub.broadcast({
       type: 'store:updated',
       data: { schema: data.schema, action: 'bulk', count: created },
     });
 
+    // Send direct acknowledgment to the sender with operation result
     sendTo(client, {
       type: 'store:set',
       data: { schema: data.schema, success: true, count: created },
@@ -213,11 +215,13 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
 
     store.clear(data.schema);
 
+    // Broadcast notification to all clients (including sender) about the store change
     wsHub.broadcast({
       type: 'store:updated',
       data: { schema: data.schema, action: 'clear', count: 0 },
     });
 
+    // Send direct acknowledgment to the sender with operation result
     sendTo(client, {
       type: 'store:cleared',
       data: { schema: data.schema, success: true },
@@ -253,11 +257,13 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
       return;
     }
 
+    // Broadcast notification to all clients (including sender) about the new simulation
     wsHub.broadcast({
       type: 'simulation:added',
       data: { path: data.path },
     });
 
+    // Send direct acknowledgment to the sender with operation result
     sendTo(client, {
       type: 'simulation:set',
       data: { path: data.path, success: true },
@@ -276,12 +282,14 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
     const removed = simulationManager.remove(data.path);
 
     if (removed) {
+      // Broadcast notification to all clients (including sender) about the removal
       wsHub.broadcast({
         type: 'simulation:removed',
         data: { path: data.path },
       });
     }
 
+    // Send direct acknowledgment to the sender with operation result
     sendTo(client, {
       type: 'simulation:cleared',
       data: { path: data.path, success: removed },
