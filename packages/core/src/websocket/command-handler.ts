@@ -34,8 +34,14 @@ export interface CommandHandlerDeps {
   /** WebSocket hub for broadcasting updates */
   wsHub: WebSocketHub;
 
-  /** Request/response timeline */
-  timeline: TimelineEntry[];
+  /**
+   * Getter for the current timeline array
+   *
+   * A function instead of a direct reference so the command handler
+   * always operates on the live shared array, even if the server
+   * reassigns the timeline variable in the future.
+   */
+  getTimeline: () => TimelineEntry[];
 
   /** Maximum timeline entries */
   timelineLimit: number;
@@ -64,10 +70,11 @@ export interface CommandHandlerDeps {
  * @returns CommandHandler function
  */
 export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
-  const { store, registry, simulationManager, wsHub, timeline, timelineLimit, logger } = deps;
+  const { store, registry, simulationManager, wsHub, timelineLimit, logger } = deps;
 
-  // Cached registry serialization — invalidated when handler/seed counts change
+  // Cached registry serialization — invalidated when endpoints size or handler/seed counts change
   let cachedRegistryData: { endpoints: unknown[]; stats: unknown } | null = null;
+  let cachedEndpointsSize = -1;
   let cachedHandlerCount = -1;
   let cachedSeedCount = -1;
 
@@ -111,11 +118,13 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Send registry endpoints + stats to the requesting client
    */
   function handleGetRegistry(client: WebSocketClient): void {
+    const currentEndpointsSize = registry.endpoints.size;
     const currentHandlerCount = registry.stats.withCustomHandler;
     const currentSeedCount = registry.stats.withCustomSeed;
 
     if (
       !cachedRegistryData ||
+      cachedEndpointsSize !== currentEndpointsSize ||
       cachedHandlerCount !== currentHandlerCount ||
       cachedSeedCount !== currentSeedCount
     ) {
@@ -124,8 +133,9 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
           key,
           ...entry,
         })),
-        stats: registry.stats,
+        stats: { ...registry.stats },
       };
+      cachedEndpointsSize = currentEndpointsSize;
       cachedHandlerCount = currentHandlerCount;
       cachedSeedCount = currentSeedCount;
     }
@@ -142,11 +152,12 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    */
   function handleGetTimeline(client: WebSocketClient, data?: { limit?: number }): void {
     const limit = data?.limit ?? timelineLimit;
-    const entries = timeline.slice(-limit);
+    const currentTimeline = deps.getTimeline();
+    const entries = currentTimeline.slice(-limit);
 
     sendTo(client, {
       type: 'timeline',
-      data: { entries, count: entries.length, total: timeline.length },
+      data: { entries, count: entries.length, total: currentTimeline.length },
     });
   }
 
@@ -300,8 +311,9 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Clear timeline and broadcast
    */
   function handleClearTimeline(_client: WebSocketClient): void {
-    const count = timeline.length;
-    timeline.length = 0;
+    const currentTimeline = deps.getTimeline();
+    const count = currentTimeline.length;
+    currentTimeline.length = 0;
 
     // Broadcast covers all clients including the sender
     wsHub.broadcast({
