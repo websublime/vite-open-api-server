@@ -42,6 +42,7 @@ export interface ResponseLogEntry {
  */
 export interface SimulationBase {
   path: string;
+  operationId?: string;
   status: number;
   delay?: number;
   body?: unknown;

@@ -8,8 +8,6 @@
  * @module websocket/command-handler
  */
 
-import type { OpenAPIV3_1 } from '@scalar/openapi-types';
-
 import type { Logger } from '../handlers/index.js';
 import type { TimelineEntry } from '../internal-api.js';
 import type { EndpointRegistry } from '../router/index.js';
@@ -42,9 +40,6 @@ export interface CommandHandlerDeps {
   /** Maximum timeline entries */
   timelineLimit: number;
 
-  /** Processed OpenAPI document */
-  document: OpenAPIV3_1.Document;
-
   /**
    * Getter for current seed data
    *
@@ -70,6 +65,11 @@ export interface CommandHandlerDeps {
  */
 export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
   const { store, registry, simulationManager, wsHub, timeline, timelineLimit, logger } = deps;
+
+  // Cached registry serialization — invalidated when handler/seed counts change
+  let cachedRegistryData: { endpoints: unknown[]; stats: unknown } | null = null;
+  let cachedHandlerCount = -1;
+  let cachedSeedCount = -1;
 
   return (client: WebSocketClient, command: ClientCommand): void => {
     switch (command.type) {
@@ -111,15 +111,26 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
    * Send registry endpoints + stats to the requesting client
    */
   function handleGetRegistry(client: WebSocketClient): void {
-    const registryData = {
-      endpoints: Array.from(registry.endpoints.entries()).map(([key, entry]) => ({
-        key,
-        ...entry,
-      })),
-      stats: registry.stats,
-    };
+    const currentHandlerCount = registry.stats.withCustomHandler;
+    const currentSeedCount = registry.stats.withCustomSeed;
 
-    sendTo(client, { type: 'registry', data: registryData });
+    if (
+      !cachedRegistryData ||
+      cachedHandlerCount !== currentHandlerCount ||
+      cachedSeedCount !== currentSeedCount
+    ) {
+      cachedRegistryData = {
+        endpoints: Array.from(registry.endpoints.entries()).map(([key, entry]) => ({
+          key,
+          ...entry,
+        })),
+        stats: registry.stats,
+      };
+      cachedHandlerCount = currentHandlerCount;
+      cachedSeedCount = currentSeedCount;
+    }
+
+    sendTo(client, { type: 'registry', data: cachedRegistryData });
 
     // Also send current simulation state so Simulator page gets initial data
     const simulations = simulationManager.list();
@@ -225,13 +236,22 @@ export function createCommandHandler(deps: CommandHandlerDeps): CommandHandler {
       return;
     }
 
-    simulationManager.set({
-      path: data.path,
-      operationId: data.operationId ?? '',
-      status: data.status,
-      delay: data.delay,
-      body: data.body,
-    });
+    try {
+      simulationManager.set({
+        path: data.path,
+        operationId: data.operationId ?? '',
+        status: data.status,
+        delay: data.delay,
+        body: data.body,
+      });
+    } catch (error) {
+      sendError(
+        client,
+        'set:simulation',
+        error instanceof Error ? error.message : 'Invalid simulation configuration',
+      );
+      return;
+    }
 
     wsHub.broadcast({
       type: 'simulation:added',

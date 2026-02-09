@@ -316,7 +316,6 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     wsHub,
     timeline,
     timelineLimit,
-    document,
     getSeeds: () => currentSeeds,
     logger,
   });
