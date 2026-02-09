@@ -78,9 +78,15 @@ function createTestDeps(overrides: Partial<CommandHandlerDeps> = {}): CommandHan
 }
 
 /**
- * Parse the last message sent to a client
+ * Parse the last message sent to a client.
+ * Throws a descriptive error if the messages array is empty.
  */
 function getLastMessage(client: { messages: string[] }): ServerEvent {
+  if (client.messages.length === 0) {
+    throw new Error(
+      'getLastMessage: client.messages is empty — no messages were sent to this client',
+    );
+  }
   return JSON.parse(client.messages[client.messages.length - 1]);
 }
 
