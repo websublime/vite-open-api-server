@@ -387,7 +387,7 @@ function onTableRowSelect(index: number): void {
 
         <!-- Split Panels: Editor + Data Table -->
         <div class="models-panels">
-          <div class="models-editor-panel">
+          <div class="models-panel">
             <JsonEditor
               ref="jsonEditorRef"
               :model-value="modelsStore.currentItems"
@@ -396,7 +396,7 @@ function onTableRowSelect(index: number): void {
               @update:model-value="onJsonEditorUpdate"
             />
           </div>
-          <div class="models-table-panel">
+          <div class="models-panel">
             <DataTable
               :items="modelsStore.currentItems"
               :id-field="modelsStore.currentSchema?.idField ?? 'id'"
@@ -634,16 +634,7 @@ function onTableRowSelect(index: number): void {
   background-color: var(--devtools-border);
 }
 
-.models-editor-panel {
-  flex: 1;
-  min-width: 300px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--devtools-bg);
-}
-
-.models-table-panel {
+.models-panel {
   flex: 1;
   min-width: 300px;
   overflow: hidden;
@@ -658,8 +649,7 @@ function onTableRowSelect(index: number): void {
     flex-direction: column;
   }
 
-  .models-editor-panel,
-  .models-table-panel {
+  .models-panel {
     min-width: 0;
   }
 }
