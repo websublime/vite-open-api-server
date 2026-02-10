@@ -258,6 +258,7 @@ defineExpose({
   border-radius: var(--devtools-radius-md);
   overflow: hidden;
   height: 100%;
+  width: 100%;
 }
 
 /* Editor Container */
