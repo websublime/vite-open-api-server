@@ -1,3 +1,16 @@
+## [0.8.3] - 2026-02-10
+
+### Bug Fixes
+
+- add spacing between Models page split panels and make content full width (77378b8)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-r81-models-panel-spacing (c307297)
+
+
+
 ## [0.8.2] - 2026-02-10
 
 ### Bug Fixes

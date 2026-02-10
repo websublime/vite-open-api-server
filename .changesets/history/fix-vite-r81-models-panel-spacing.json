@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "fix/vite-r81-models-panel-spacing",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-devtools",
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "9593d60ef7ab808eabac0c4478409072a7756454"
+    ],
+    "created_at": "2026-02-10T13:05:34.697727Z",
+    "updated_at": "2026-02-10T13:06:50.069049Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-10T14:07:15.353165202Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "c30729714c1441242fd558c38fec5391f0c62d9b",
+    "versions": {
+      "@websublime/vite-plugin-open-api-server": "0.22.3",
+      "@websublime/vite-plugin-open-api-devtools": "0.8.3"
+    }
+  }
+}

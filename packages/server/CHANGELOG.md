@@ -1,3 +1,23 @@
+## [0.22.3] - 2026-02-10
+
+### Bug Fixes
+
+- add spacing between Models page split panels and make content full width (77378b8)
+- use height: 100% instead of 100vh for iframe-safe layout (636a53a)
+- constrain viewport height to prevent timeline list from growing unbounded (ef963b6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-r81-models-panel-spacing (c307297)
+- bump @websublime/vite-plugin-open-api-devtools to 0.8.2 (c2f4eab)
+- add missing trailing newlines to package.json files (fd0ce68)
+- sync changeset for fix/vite-um1-timeline-layout (5dc6463)
+- sync changeset for fix/vite-um1-timeline-layout (25d215a)
+- sync changeset for fix/vite-um1-timeline-layout (13b1915)
+
+
+
 ## [0.22.2] - 2026-02-09
 
 ### Bug Fixes
