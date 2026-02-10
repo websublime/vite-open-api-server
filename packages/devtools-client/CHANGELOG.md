@@ -1,3 +1,20 @@
+## [0.8.2] - 2026-02-10
+
+### Bug Fixes
+
+- constrain viewport height to prevent timeline list from growing unbounded (ef963b6)
+- use height: 100% instead of 100vh for iframe-safe layout (636a53a)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-um1-timeline-layout (25d215a)
+- sync changeset for fix/vite-um1-timeline-layout (13b1915)
+- add missing trailing newlines to package.json files (fd0ce68)
+- sync changeset for fix/vite-um1-timeline-layout (5dc6463)
+
+
+
 ## [0.8.1] - 2026-02-09
 
 ### Bug Fixes
