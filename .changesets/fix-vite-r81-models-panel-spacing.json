@@ -1,0 +1,14 @@
+{
+  "branch": "fix/vite-r81-models-panel-spacing",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-devtools",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-10T13:05:34.697727Z",
+  "updated_at": "2026-02-10T13:05:34.698825Z"
+}

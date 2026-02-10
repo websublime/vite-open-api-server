@@ -573,7 +573,7 @@ function onTableRowSelect(index: number): void {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: var(--devtools-space-md);
+  padding: var(--devtools-space-md) 0;
   overflow: hidden;
 }
 
@@ -583,6 +583,7 @@ function onTableRowSelect(index: number): void {
   align-items: center;
   justify-content: space-between;
   gap: var(--devtools-space-md);
+  padding: 0 var(--devtools-space-md);
   margin-bottom: var(--devtools-space-md);
 }
 
@@ -617,7 +618,7 @@ function onTableRowSelect(index: number): void {
 /* Error Display */
 .models-error {
   padding: var(--devtools-space-sm) var(--devtools-space-md);
-  margin-bottom: var(--devtools-space-md);
+  margin: 0 var(--devtools-space-md) var(--devtools-space-md);
   background-color: color-mix(in srgb, var(--devtools-error) 10%, transparent);
   border: 1px solid var(--devtools-error);
   border-radius: var(--devtools-radius-sm);
@@ -629,9 +630,8 @@ function onTableRowSelect(index: number): void {
 .models-panels {
   display: flex;
   flex: 1;
-  gap: 1px;
+  gap: var(--devtools-space-md);
   overflow: hidden;
-  background-color: var(--devtools-border);
 }
 
 .models-panel {
