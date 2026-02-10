@@ -265,6 +265,7 @@ defineExpose({
   display: flex;
   overflow: hidden;
   flex: 1;
+  min-width: 0;
 }
 
 /* Line Numbers */
@@ -293,6 +294,7 @@ defineExpose({
 /* Textarea */
 .json-editor__textarea {
   flex: 1;
+  width: 0;
   padding: var(--devtools-space-sm);
   background-color: var(--devtools-surface);
   color: var(--devtools-text);
