@@ -1,0 +1,13 @@
+{
+  "branch": "fix/vite-19u-models-panel-ui-fixes",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-devtools"
+  ],
+  "changes": [],
+  "created_at": "2026-02-10T14:15:12.956543Z",
+  "updated_at": "2026-02-10T14:15:12.957356Z"
+}
