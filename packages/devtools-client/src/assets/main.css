@@ -126,11 +126,14 @@
   box-sizing: border-box;
 }
 
-html,
+html {
+  height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
-  height: 100vh;
+  height: 100%;
   font-family: var(--devtools-font-sans);
   background-color: var(--devtools-bg);
   color: var(--devtools-text);
