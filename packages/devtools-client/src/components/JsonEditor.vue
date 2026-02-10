@@ -263,7 +263,7 @@ defineExpose({
 /* Editor Container */
 .json-editor__container {
   display: flex;
-  overflow: auto;
+  overflow: hidden;
   flex: 1;
 }
 
@@ -276,6 +276,7 @@ defineExpose({
   border-right: 1px solid var(--devtools-border);
   user-select: none;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 .json-editor__line-number {
@@ -297,14 +298,15 @@ defineExpose({
   color: var(--devtools-text);
   border: none;
   outline: none;
-  resize: vertical;
+  resize: none;
   font-family: var(--devtools-font-mono);
   font-size: var(--font-size-0);
   line-height: 1.5;
   tab-size: 2;
   white-space: pre;
   overflow-wrap: normal;
-  overflow-x: auto;
+  overflow: auto;
+  min-height: 0;
 }
 
 .json-editor__textarea::placeholder {
