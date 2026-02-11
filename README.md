@@ -129,6 +129,7 @@ Handlers receive a context object with:
 | `store` | In-memory data store |
 | `faker` | Faker.js instance |
 | `logger` | Console logger |
+| `security` | Security context (scheme, credentials, scopes) |
 
 ## Seed Data
 
@@ -205,6 +206,63 @@ The plugin adds a custom tab to Vue DevTools with:
 | Request Timeout | 30000ms delay |
 | Empty Response | HTTP 200 with empty body |
 | Unauthorized (401) | HTTP 401 response |
+
+## Security Handling
+
+The plugin automatically enforces OpenAPI security schemes defined in your spec. This is a **mock/stub** implementation designed for local development — it validates that credentials are **present** but accepts any non-empty value.
+
+### Supported Schemes
+
+| Scheme | Location | Validation |
+|--------|----------|-----------|
+| HTTP Bearer | `Authorization: Bearer <token>` | Non-empty token |
+| HTTP Basic | `Authorization: Basic <base64>` | Non-empty string |
+| API Key (header) | Custom header (e.g., `X-API-Key`) | Non-empty value |
+| API Key (query) | Query parameter | Non-empty value |
+| API Key (cookie) | Cookie | Non-empty value |
+| OAuth2 | `Authorization: Bearer <token>` | Non-empty token |
+
+### Behavior
+
+- **Public endpoints** (no `security` in spec) are unrestricted
+- **Secured endpoints** return `401 Unauthorized` when credentials are missing
+- **Any non-empty value** is accepted — no real token/key validation
+- **OR logic** between multiple security requirements (e.g., `[{bearerAuth: []}, {apiKey: []}]` — either one satisfies the requirement)
+- `WWW-Authenticate` header is included in 401 responses
+
+### Security Context in Handlers
+
+Custom handlers receive a `security` property in the context:
+
+```typescript
+export default defineHandlers({
+  getSecuredResource: ({ security, store }) => {
+    // security.authenticated — boolean, whether the endpoint requires auth
+    // security.scheme       — name of the satisfied scheme (e.g., 'bearerAuth')
+    // security.credentials  — raw credential value from the request
+    // security.scopes       — required scopes from the OpenAPI spec
+
+    console.log(`Authenticated via: ${security.scheme}`);
+    return { type: 'raw', data: store.list('Resource') };
+  },
+});
+```
+
+### Frontend Integration
+
+When your OpenAPI spec defines security, your frontend code must send the appropriate headers:
+
+```typescript
+// For Bearer/OAuth2 endpoints
+fetch('/api/v3/pets', {
+  headers: { Authorization: 'Bearer my-dev-token' },
+});
+
+// For API Key (header) endpoints
+fetch('/api/v3/store/inventory', {
+  headers: { 'api_key': 'any-value' },
+});
+```
 
 ## Response Priority
 
