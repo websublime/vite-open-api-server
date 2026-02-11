@@ -454,5 +454,120 @@ describe('validateSecurity', () => {
 
       expect(result.ok).toBe(false);
     });
+
+    it('should warn via logger when scheme is unknown', () => {
+      const requirements: SecurityRequirement[] = [{ name: 'nonexistent_scheme', scopes: [] }];
+
+      const mockLogger = {
+        log: () => {},
+        info: () => {},
+        warn: vi.fn(),
+        error: () => {},
+        debug: () => {},
+      };
+
+      validateSecurity(requirements, new Map(), { headers: {}, query: {} }, { logger: mockLogger });
+
+      expect(mockLogger.warn).toHaveBeenCalledOnce();
+      expect(mockLogger.warn).toHaveBeenCalledWith(expect.stringContaining('nonexistent_scheme'));
+    });
+
+    it('should not warn when no logger is provided', () => {
+      const requirements: SecurityRequirement[] = [{ name: 'nonexistent_scheme', scopes: [] }];
+
+      // Should not throw even without logger
+      expect(() => {
+        validateSecurity(requirements, new Map(), { headers: {}, query: {} });
+      }).not.toThrow();
+    });
+  });
+
+  describe('HTTP Basic pass-through behavior', () => {
+    const requirements: SecurityRequirement[] = [{ name: 'basicAuth', scopes: [] }];
+    const schemes = createSchemes(basicScheme);
+
+    it('should accept malformed base64 as credential (presence-only check)', () => {
+      // The mock validator only checks presence, not validity of base64
+      const result = validateSecurity(requirements, schemes, {
+        headers: { authorization: 'Basic not-valid-base64!!!' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.credentials).toBe('not-valid-base64!!!');
+    });
+
+    it('should accept any non-empty string after Basic prefix', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { authorization: 'Basic x' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.credentials).toBe('x');
+    });
+  });
+
+  describe('API key special characters and edge cases', () => {
+    const requirements: SecurityRequirement[] = [{ name: 'api_key', scopes: [] }];
+    const schemes = createSchemes(apiKeyHeaderScheme);
+
+    it('should accept API key with special characters', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { 'x-api-key': 'sk-abc123!@#$%^&*()' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.credentials).toBe('sk-abc123!@#$%^&*()');
+    });
+
+    it('should accept API key with unicode characters', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { 'x-api-key': 'key-日本語-中文' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.credentials).toBe('key-日本語-中文');
+    });
+
+    it('should accept very long API key values', () => {
+      const longKey = 'k'.repeat(1000);
+      const result = validateSecurity(requirements, schemes, {
+        headers: { 'x-api-key': longKey },
+        query: {},
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.credentials).toBe(longKey);
+    });
+
+    it('should reject API key that is only whitespace', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { 'x-api-key': '  \t\n  ' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('public endpoint singleton context', () => {
+    it('should return frozen context for public endpoints', () => {
+      const result = validateSecurity([], new Map(), { headers: {}, query: {} });
+
+      expect(result.ok).toBe(true);
+      expect(result.context.authenticated).toBe(false);
+      expect(result.context.scopes).toEqual([]);
+      expect(Object.isFrozen(result.context)).toBe(true);
+    });
+
+    it('should return the same context object reference for multiple public calls', () => {
+      const result1 = validateSecurity([], new Map(), { headers: {}, query: {} });
+      const result2 = validateSecurity([], new Map(), { headers: {}, query: {} });
+
+      expect(result1.context).toBe(result2.context);
+    });
   });
 });

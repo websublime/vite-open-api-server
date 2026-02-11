@@ -986,6 +986,143 @@ describe('security handling', () => {
   });
 });
 
+describe('document-level security fallback', () => {
+  /**
+   * OpenAPI document with top-level security that applies to all operations
+   * unless overridden at the operation level.
+   */
+  const documentLevelSecurityDoc: OpenAPIV3_1.Document = {
+    openapi: '3.1.0',
+    info: { title: 'Document Security API', version: '1.0.0' },
+    // Document-level security applies to all operations by default
+    security: [{ bearerAuth: [] }],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+        },
+      },
+    },
+    paths: {
+      '/protected': {
+        get: {
+          operationId: 'getProtected',
+          // No operation-level security — inherits from document level
+          responses: { '200': { description: 'Protected endpoint' } },
+        },
+      },
+      '/public-override': {
+        get: {
+          operationId: 'getPublicOverride',
+          // Empty security array overrides document-level to make this public
+          security: [],
+          responses: { '200': { description: 'Public endpoint' } },
+        },
+      },
+    },
+  };
+
+  it('should require auth for endpoints inheriting document-level security', async () => {
+    const server = await createOpenApiServer({ spec: documentLevelSecurityDoc });
+
+    // Without credentials — should get 401
+    const response = await server.app.request('/protected');
+    expect(response.status).toBe(401);
+  });
+
+  it('should allow auth for endpoints inheriting document-level security', async () => {
+    const server = await createOpenApiServer({ spec: documentLevelSecurityDoc });
+
+    // With credentials — should pass
+    const response = await server.app.request('/protected', {
+      headers: { Authorization: 'Bearer my-token' },
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('should allow access to endpoints with empty security override (security: [])', async () => {
+    const server = await createOpenApiServer({ spec: documentLevelSecurityDoc });
+
+    // Empty security override makes endpoint public
+    const response = await server.app.request('/public-override');
+    expect(response.status).toBe(200);
+  });
+});
+
+describe('security + simulation interaction', () => {
+  const securedSimDoc: OpenAPIV3_1.Document = {
+    openapi: '3.1.0',
+    info: { title: 'Secured Sim API', version: '1.0.0' },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+        },
+      },
+    },
+    paths: {
+      '/data': {
+        get: {
+          operationId: 'getData',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Data',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { value: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  };
+
+  it('should reject unauthenticated requests even when simulation is active', async () => {
+    const server = await createOpenApiServer({ spec: securedSimDoc });
+
+    // Set up a simulation for this endpoint
+    server.simulationManager.set({
+      path: 'get:/data',
+      operationId: 'getData',
+      status: 500,
+      body: { error: 'Simulated error' },
+    });
+
+    // Without auth — security should reject BEFORE simulation runs
+    const response = await server.app.request('/data');
+    expect(response.status).toBe(401);
+
+    const data = await response.json();
+    expect(data.error).toBe('Unauthorized');
+  });
+
+  it('should apply simulation when request is authenticated', async () => {
+    const server = await createOpenApiServer({ spec: securedSimDoc });
+
+    // Set up a simulation
+    server.simulationManager.set({
+      path: 'get:/data',
+      operationId: 'getData',
+      status: 503,
+      body: { error: 'Service unavailable' },
+    });
+
+    // With auth — security passes, simulation should take effect
+    const response = await server.app.request('/data', {
+      headers: { Authorization: 'Bearer valid-token' },
+    });
+    expect(response.status).toBe(503);
+
+    const data = await response.json();
+    expect(data.error).toBe('Service unavailable');
+  });
+});
+
 describe('createSimulationManager', () => {
   it('should be accessible via server instance', async () => {
     const server = await createOpenApiServer({

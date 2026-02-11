@@ -139,6 +139,7 @@ export type {
   SecuritySchemeIn,
   SecuritySchemeType,
   SecurityValidationResult,
+  ValidateSecurityOptions,
 } from './security/index.js';
 export { resolveSecuritySchemes, validateSecurity } from './security/index.js';
 

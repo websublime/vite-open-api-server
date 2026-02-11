@@ -58,6 +58,7 @@ function createMockContext(overrides: Partial<HandlerContext> = {}): HandlerCont
       error: vi.fn(),
       debug: vi.fn(),
     },
+    security: { authenticated: false, scopes: [] },
     ...overrides,
   };
 }

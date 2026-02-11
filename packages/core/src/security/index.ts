@@ -15,5 +15,9 @@ export type {
   SecuritySchemeIn,
   SecuritySchemeType,
 } from './types.js';
-export type { SecurityRequest, SecurityValidationResult } from './validator.js';
+export type {
+  SecurityRequest,
+  SecurityValidationResult,
+  ValidateSecurityOptions,
+} from './validator.js';
 export { validateSecurity } from './validator.js';
