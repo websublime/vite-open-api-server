@@ -16,6 +16,19 @@ export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'options'
 
 /**
  * Security requirement from OpenAPI spec
+ *
+ * @remarks
+ * **Simplification:** In the OpenAPI spec, a single security requirement object
+ * can list multiple schemes (e.g., `{ bearerAuth: [], apiKey: [] }`), meaning
+ * ALL listed schemes must be satisfied (AND logic). However,
+ * `extractSecurityRequirements` in the registry builder **flattens** compound
+ * requirements into individual entries — each scheme becomes its own
+ * `SecurityRequirement`. As a result, `validateSecurity` treats all entries
+ * with OR logic (first matching scheme wins), and true AND-within-OR semantics
+ * are not supported.
+ *
+ * This is a known limitation. Supporting grouped/AND semantics is potential
+ * future work (would require a nested structure like `SecurityRequirement[][]`).
  */
 export interface SecurityRequirement {
   name: string;

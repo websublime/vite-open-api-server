@@ -10,7 +10,7 @@
 
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 
-import type { ResolvedSecurityScheme, SecuritySchemeType } from './types.js';
+import type { ResolvedSecurityScheme } from './types.js';
 
 /**
  * Resolve all security schemes from an OpenAPI document
@@ -93,7 +93,7 @@ function resolveApiKeyScheme(
 
   return {
     name,
-    type: 'apiKey' as SecuritySchemeType,
+    type: 'apiKey',
     in: location as 'header' | 'query' | 'cookie',
     paramName: apiKeyScheme.name,
   };
@@ -112,7 +112,7 @@ function resolveHttpScheme(
 
   return {
     name,
-    type: 'http' as SecuritySchemeType,
+    type: 'http',
     in: 'header',
     paramName: 'authorization',
     scheme: httpScheme.scheme?.toLowerCase(),
@@ -127,7 +127,7 @@ function resolveHttpScheme(
 function resolveOAuth2Scheme(name: string): ResolvedSecurityScheme {
   return {
     name,
-    type: 'oauth2' as SecuritySchemeType,
+    type: 'oauth2',
     in: 'header',
     paramName: 'authorization',
     scheme: 'bearer',

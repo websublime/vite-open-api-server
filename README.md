@@ -230,6 +230,14 @@ The plugin automatically enforces OpenAPI security schemes defined in your spec.
 - **OR logic** between multiple security requirements (e.g., `[{bearerAuth: []}, {apiKey: []}]` — either one satisfies the requirement)
 - `WWW-Authenticate` header is included in 401 responses
 
+> **Note — simplified semantics:** The OpenAPI spec supports AND logic within a
+> single security requirement object (e.g., `{ bearerAuth: [], apiKey: [] }` means
+> *both* are required). This plugin flattens compound requirements into individual
+> entries and applies OR logic across all of them, so a compound AND requirement
+> is treated as either/or. This covers the vast majority of real-world specs where
+> each requirement lists a single scheme. Supporting grouped AND-within-OR semantics
+> is potential future work.
+
 ### Security Context in Handlers
 
 Custom handlers receive a `security` property in the context:

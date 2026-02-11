@@ -43,16 +43,6 @@ export interface ResolvedSecurityScheme {
 }
 
 /**
- * Credentials extracted from an incoming request for a single scheme
- */
-export interface SecurityCredentials {
-  /** The scheme that was matched */
-  schemeName: string;
-  /** The raw credential value extracted from the request */
-  value: string;
-}
-
-/**
  * Security context passed to custom handlers
  *
  * Allows handlers to inspect which security scheme was used and

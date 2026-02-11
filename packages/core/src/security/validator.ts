@@ -41,14 +41,24 @@ export interface SecurityRequest {
 /**
  * Validate security requirements for a request
  *
- * OpenAPI security uses OR between top-level requirements and AND between
- * schemes within a single requirement. For this mock validator, we simplify:
- * each SecurityRequirement from the registry represents one scheme name + scopes.
- * Multiple requirements mean OR (any one must pass).
+ * Implements **OR logic** across all requirements: the first matching scheme
+ * wins and the request is considered authenticated.
+ *
+ * **Important — simplified semantics:** The OpenAPI spec defines OR between
+ * top-level security requirement objects and AND between schemes within a
+ * single object. However, `extractSecurityRequirements` in the registry
+ * builder flattens compound requirement objects (e.g.,
+ * `{ bearerAuth: [], apiKey: [] }`) into separate `SecurityRequirement`
+ * entries. This means **AND semantics are not preserved** — a compound
+ * requirement that should require *both* schemes is treated as *either*.
+ *
+ * This is a known simplification for the mock validator. Supporting grouped
+ * AND-within-OR semantics is potential future work and would require a nested
+ * data structure (e.g., `SecurityRequirement[][]`).
  *
  * An empty `requirements` array means the endpoint is public (no auth needed).
  *
- * @param requirements - Security requirements from the endpoint registry
+ * @param requirements - Security requirements from the endpoint registry (flattened)
  * @param schemes - Resolved security schemes from the document
  * @param request - Incoming request data
  * @returns Validation result with security context

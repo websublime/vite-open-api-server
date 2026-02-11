@@ -865,16 +865,18 @@ describe('security handling', () => {
     },
   };
 
-  it('should allow access to public endpoints without credentials', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
+  let server: OpenApiServer;
 
+  beforeEach(async () => {
+    server = await createOpenApiServer({ spec: securedDocument });
+  });
+
+  it('should allow access to public endpoints without credentials', async () => {
     const response = await server.app.request('/public');
     expect(response.status).toBe(200);
   });
 
   it('should return 401 when Bearer token is missing', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-bearer');
     expect(response.status).toBe(401);
 
@@ -884,16 +886,12 @@ describe('security handling', () => {
   });
 
   it('should return WWW-Authenticate header on 401', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-bearer');
     expect(response.status).toBe(401);
     expect(response.headers.get('www-authenticate')).toContain('Bearer');
   });
 
   it('should allow access with valid Bearer token', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-bearer', {
       headers: { Authorization: 'Bearer any-token-works' },
     });
@@ -901,15 +899,11 @@ describe('security handling', () => {
   });
 
   it('should return 401 when API key header is missing', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-apikey');
     expect(response.status).toBe(401);
   });
 
   it('should allow access with valid API key', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-apikey', {
       headers: { 'X-API-Key': 'any-key-works' },
     });
@@ -917,8 +911,6 @@ describe('security handling', () => {
   });
 
   it('should allow access with either scheme when OR logic is used', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     // Bearer should work
     const r1 = await server.app.request('/secured-either', {
       headers: { Authorization: 'Bearer token' },
@@ -933,8 +925,6 @@ describe('security handling', () => {
   });
 
   it('should return 401 when neither scheme is satisfied for OR endpoint', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
     const response = await server.app.request('/secured-either');
     expect(response.status).toBe(401);
   });
@@ -952,12 +942,13 @@ describe('security handling', () => {
       ],
     ]);
 
-    const server = await createOpenApiServer({
+    // Create a dedicated server with custom handlers
+    const handlerServer = await createOpenApiServer({
       spec: securedDocument,
       handlers,
     });
 
-    await server.app.request('/secured-bearer', {
+    await handlerServer.app.request('/secured-bearer', {
       headers: { Authorization: 'Bearer test-token-123' },
     });
 
@@ -969,9 +960,7 @@ describe('security handling', () => {
     });
   });
 
-  it('should log 401 responses to timeline', async () => {
-    const server = await createOpenApiServer({ spec: securedDocument });
-
+  it('should log both request and 401 response to timeline', async () => {
     // Make an unauthenticated request
     await server.app.request('/secured-bearer');
 
@@ -981,7 +970,14 @@ describe('security handling', () => {
 
     expect(data.count).toBeGreaterThan(0);
 
-    // Should have both request and response logged
+    // Should have the request entry logged
+    const requestEntry = data.entries.find(
+      (e: { type: string; data: { path?: string } }) =>
+        e.type === 'request' && e.data?.path === '/secured-bearer',
+    );
+    expect(requestEntry).toBeDefined();
+
+    // Should have the 401 response entry logged
     const responseEntry = data.entries.find(
       (e: { type: string; data: { status?: number } }) =>
         e.type === 'response' && e.data?.status === 401,
