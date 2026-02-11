@@ -189,18 +189,19 @@ function extractAuthorizationValue(headerValue: string, scheme?: string): string
   }
 
   const parts = headerValue.trim().split(/\s+/);
-  if (parts.length < 2) {
+  if (parts.length !== 2) {
+    // Reject malformed values: must be exactly "<scheme> <token>" with no extra parts
     return undefined;
   }
 
   const prefix = parts[0].toLowerCase();
-  const token = parts.slice(1).join(' ');
+  const token = parts[1];
 
   if (prefix !== scheme.toLowerCase()) {
     return undefined;
   }
 
-  return token.trim() || undefined;
+  return token || undefined;
 }
 
 /**

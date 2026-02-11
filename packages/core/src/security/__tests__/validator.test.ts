@@ -4,7 +4,7 @@
  * @see Task 5.4: Security Handling
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { SecurityRequirement } from '../../router/types.js';
 import type { ResolvedSecurityScheme } from '../types.js';
@@ -144,6 +144,15 @@ describe('validateSecurity', () => {
     it('should fail when Bearer token is empty after prefix', () => {
       const result = validateSecurity(requirements, schemes, {
         headers: { authorization: 'Bearer ' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(false);
+    });
+
+    it('should reject Bearer token with spaces (must be single token)', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { authorization: 'Bearer token with spaces' },
         query: {},
       });
 
@@ -505,6 +514,15 @@ describe('validateSecurity', () => {
 
       expect(result.ok).toBe(true);
       expect(result.context.credentials).toBe('x');
+    });
+
+    it('should reject token with spaces (must be single token)', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { authorization: 'Basic part1 part2' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(false);
     });
   });
 
