@@ -236,6 +236,9 @@ function extractFromCookie(
   }
 
   // Parse cookie header: "name1=value1; name2=value2"
+  // Note: This is a simplified parser for presence-only checks. It does not
+  // fully implement RFC 6265 — quoted cookie values (e.g., session_id="abc123")
+  // will retain their quotes. Extend here if stricter parsing is needed.
   const cookies = cookieHeader.split(';');
   for (const cookie of cookies) {
     const [name, ...valueParts] = cookie.trim().split('=');
@@ -257,8 +260,8 @@ function extractFromCookie(
 function findHeader(headers: Record<string, string>, name: string): string | undefined {
   const lower = name.toLowerCase();
 
-  // Fast path: direct lookup (works when headers are pre-normalized to lowercase)
-  if (lower in headers) {
+  // Fast path: direct own-property lookup (works when headers are pre-normalized to lowercase)
+  if (Object.hasOwn(headers, lower)) {
     return headers[lower];
   }
 
