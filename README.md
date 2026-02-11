@@ -385,7 +385,10 @@ The plugin integrates with Vue DevTools via a custom tab, and also provides a st
 
 ### WebSocket
 
-The DevTools SPA communicates with the server via WebSocket at `ws://localhost:<port>/_ws` for real-time updates (timeline events, store changes, simulation state). WebSocket support requires `@hono/node-ws` as an optional peer dependency. The DevTools SPA falls back to HTTP polling if WebSocket is unavailable.
+- **Connection URL**: `ws://localhost:<port>/_ws`
+- **Purpose**: Real-time updates for timeline events, store changes, and simulation state
+- **Dependency**: Requires `@hono/node-ws` as an optional peer dependency
+- **Fallback**: The DevTools SPA falls back to HTTP polling if WebSocket is unavailable
 
 ## Security Handling
 
@@ -526,7 +529,7 @@ Another process is using the configured port. Either stop that process or change
 
 - Verify the seed file matches the naming pattern: `*.seeds.{ts,js,mjs}`
 - Verify the schema name key matches a schema in your OpenAPI spec's `components.schemas`
-- Ensure the seed function returns an array (even for single items, use `seed([item])`)
+- Ensure the seed function returns an array — for single items, use either `seed([item])` (explicit array) or `seed(() => item)` (factory form)
 - If using cross-schema references, ensure referenced schemas are defined before the dependent one in the seed file
 
 ### Hot Reload Not Working
