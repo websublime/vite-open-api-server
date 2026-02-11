@@ -1,0 +1,14 @@
+{
+  "branch": "feature/vite-open-api-server-c9v.4-security-handling",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-11T10:34:26.005687Z",
+  "updated_at": "2026-02-11T10:34:26.006497Z"
+}
