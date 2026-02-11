@@ -58,6 +58,7 @@ export type {
   HandlerDefinition,
   HandlerFn,
   HandlerReturn,
+  SecurityContext,
   SeedContext,
   SeedDefinition,
   SeedFn,
