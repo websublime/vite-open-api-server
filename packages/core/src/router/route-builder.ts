@@ -14,6 +14,9 @@ import { Hono, type Context as HonoContext } from 'hono';
 
 import type { HandlerContext, HandlerFn, Logger } from '../handlers/context.js';
 import type { HandlerResponse } from '../handlers/executor.js';
+import { resolveSecuritySchemes } from '../security/resolver.js';
+import type { ResolvedSecurityScheme } from '../security/types.js';
+import { validateSecurity } from '../security/validator.js';
 import type { SimulationManager } from '../simulation/simulator.js';
 import type { Store } from '../store/store.js';
 import type { RequestLogEntry, ResponseLogEntry } from '../websocket/protocol.js';
@@ -75,6 +78,12 @@ export interface RouteBuilderResult {
    * Endpoint registry for DevTools access
    */
   registry: EndpointRegistry;
+
+  /**
+   * Resolved security schemes from the OpenAPI document
+   * Useful for startup logging and DevTools display
+   */
+  securitySchemes: Map<string, ResolvedSecurityScheme>;
 }
 
 /**
@@ -139,6 +148,9 @@ export function buildRoutes(
     seedSchemaNames: new Set(seeds.keys()),
   };
   const registry = buildRegistry(document, registryOptions);
+
+  // Resolve security schemes from document for credential validation
+  const securitySchemes = resolveSecuritySchemes(document);
 
   // Create Hono app
   const app = new Hono();
@@ -216,6 +228,39 @@ export function buildRoutes(
         // Emit request event
         onRequest?.(requestLogEntry);
 
+        // Validate security requirements (before any handler/simulation logic)
+        const securityResult = validateSecurity(endpoint.security, securitySchemes, {
+          headers: requestHeaders,
+          query: queryParams,
+        });
+
+        if (!securityResult.ok) {
+          const duration = Date.now() - startTime;
+          const unauthorizedResponse: HandlerResponse = {
+            status: 401,
+            data: { error: 'Unauthorized', message: securityResult.error },
+            headers: { 'WWW-Authenticate': buildWwwAuthenticate(endpoint, securitySchemes) },
+          };
+
+          const responseLogEntry: ResponseLogEntry = {
+            id: crypto.randomUUID(),
+            requestId,
+            status: 401,
+            duration,
+            headers: unauthorizedResponse.headers ?? {},
+            body: unauthorizedResponse.data,
+            simulated: false,
+          };
+          onResponse?.(responseLogEntry);
+
+          if (unauthorizedResponse.headers) {
+            for (const [headerName, headerValue] of Object.entries(unauthorizedResponse.headers)) {
+              c.header(headerName, headerValue);
+            }
+          }
+          return c.json(unauthorizedResponse.data, 401);
+        }
+
         let response: HandlerResponse;
         let simulated = false;
 
@@ -262,6 +307,7 @@ export function buildRoutes(
             store,
             faker,
             logger,
+            security: securityResult.context,
           };
 
           // Response priority: Handler > Seed > Example > Generated
@@ -322,7 +368,7 @@ export function buildRoutes(
     }
   }
 
-  return { app, registry };
+  return { app, registry, securitySchemes };
 }
 
 /**
@@ -769,6 +815,38 @@ function generateNumberValue(
   }
 
   return faker.number.float({ min, max, fractionDigits: 2 });
+}
+
+/**
+ * Build a WWW-Authenticate header value for 401 responses
+ *
+ * Uses the endpoint's security requirements to determine the appropriate
+ * authentication challenge(s).
+ *
+ * @param endpoint - Endpoint entry with security requirements
+ * @param schemes - Resolved security schemes
+ * @returns WWW-Authenticate header value
+ */
+function buildWwwAuthenticate(
+  endpoint: EndpointEntry,
+  schemes: Map<string, ResolvedSecurityScheme>,
+): string {
+  const challenges: string[] = [];
+
+  for (const req of endpoint.security) {
+    const scheme = schemes.get(req.name);
+    if (!scheme) continue;
+
+    if (scheme.type === 'http' || scheme.type === 'oauth2') {
+      const schemeName = scheme.scheme === 'basic' ? 'Basic' : 'Bearer';
+      challenges.push(`${schemeName} realm="OpenAPI Mock Server"`);
+    } else if (scheme.type === 'apiKey') {
+      // API key doesn't have a standard WWW-Authenticate, use Bearer as fallback
+      challenges.push(`ApiKey realm="OpenAPI Mock Server", param="${scheme.paramName}"`);
+    }
+  }
+
+  return challenges.length > 0 ? challenges.join(', ') : 'Bearer realm="OpenAPI Mock Server"';
 }
 
 // Re-export types for convenience

@@ -129,6 +129,21 @@ export {
 } from './websocket/index.js';
 
 // =============================================================================
+// Security Module - OpenAPI Security Scheme Handling
+// =============================================================================
+
+export type {
+  ResolvedSecurityScheme,
+  SecurityContext,
+  SecurityCredentials,
+  SecurityRequest,
+  SecuritySchemeIn,
+  SecuritySchemeType,
+  SecurityValidationResult,
+} from './security/index.js';
+export { resolveSecuritySchemes, validateSecurity } from './security/index.js';
+
+// =============================================================================
 // Simulation Module - Error and Delay Simulation
 // =============================================================================
 
