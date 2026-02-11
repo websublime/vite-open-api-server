@@ -219,7 +219,7 @@ defineExpose({
         :value="text"
         :readonly="readonly"
         :placeholder="placeholder"
-        :style="{ minHeight: `${minHeight}px` }"
+        :style="{ '--json-editor-min-height': `${minHeight}px` }"
         class="json-editor__textarea"
         spellcheck="false"
         @input="handleInput"
@@ -309,7 +309,7 @@ defineExpose({
   white-space: pre;
   overflow-wrap: normal;
   overflow: auto;
-  min-height: 0;
+  min-height: var(--json-editor-min-height, 0);
 }
 
 .json-editor__textarea::placeholder {
