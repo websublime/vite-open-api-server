@@ -1,0 +1,29 @@
+{
+  "changeset": {
+    "branch": "fix/vite-19u-models-panel-ui-fixes",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-devtools"
+    ],
+    "changes": [
+      "d28516737796413dfec4290b4322d71916b75038",
+      "e9dcdb34da2df30c0216770d9b2587f5411842ff",
+      "b5f1b6f480573dd59b227d1c2497c957e6b26439",
+      "8fd2f4594a8d2a2f3498032ac8acad829d32ed64",
+      "a8fafbe61d124821aeaeabac3d42cf7f459402c9"
+    ],
+    "created_at": "2026-02-10T14:15:12.956543Z",
+    "updated_at": "2026-02-11T09:14:07.911860Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-11T09:48:49.079027714Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "561e0113e0636ac6df10def176717668d9db79ff",
+    "versions": {
+      "@websublime/vite-plugin-open-api-devtools": "0.8.4"
+    }
+  }
+}
