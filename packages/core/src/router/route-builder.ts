@@ -234,7 +234,9 @@ export function buildRoutes(
           normalizedHeaders[key.toLowerCase()] = value;
         }
 
-        // Validate security requirements (before any handler/simulation logic)
+        // Validate security requirements before any handler/simulation logic.
+        // This is intentional per FR-008: even simulated endpoints require valid
+        // credentials, so a simulation will return 401 if auth is missing/invalid.
         const securityResult = validateSecurity(
           endpoint.security,
           securitySchemes,

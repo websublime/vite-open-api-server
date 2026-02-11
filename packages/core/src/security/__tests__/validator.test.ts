@@ -353,6 +353,16 @@ describe('validateSecurity', () => {
       expect(result.ok).toBe(true);
       expect(result.context.credentials).toBe('abc=def=ghi');
     });
+
+    it('should fail when cookie value is empty', () => {
+      const result = validateSecurity(requirements, schemes, {
+        headers: { cookie: 'session_id=' },
+        query: {},
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.context.credentials).toBeUndefined();
+    });
   });
 
   describe('OAuth2 (treated as Bearer)', () => {
