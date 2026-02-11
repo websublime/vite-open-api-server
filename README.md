@@ -189,7 +189,8 @@ export default defineHandlers({
 
   // Full: custom status + custom headers
   updatePet: ({ req, store }) => {
-    const updated = store.update('Pet', req.params.petId, req.body as Record<string, unknown>);
+    const petId = Number.parseInt(req.params.petId, 10);
+    const updated = store.update('Pet', petId, req.body as Record<string, unknown>);
     return {
       type: 'full',
       status: 200,
@@ -368,6 +369,7 @@ The plugin integrates with Vue DevTools via a custom tab, and also provides a st
 | **Timeline** | Real-time request/response log with method, path, status code, duration, and simulated flag. Supports detail inspection and clearing. |
 | **Models** | JSON editor for inspecting and modifying store data per schema. View item counts, add/modify items, or bulk replace via JSON. |
 | **Simulator** | Configure simulations for specific endpoints — set custom status codes, delays, and response bodies. Includes preset simulations. |
+| **Console** | Interactive request/response console for sending test requests, viewing raw responses, and replaying saved requests. |
 
 ### Simulation Presets
 
@@ -507,7 +509,7 @@ The server exposes internal HTTP endpoints at `/_api/*` for programmatic access 
 
 ### Port Already in Use
 
-```
+```text
 Error: Port 4000 is already in use
 ```
 
