@@ -633,6 +633,18 @@ Contributions are welcome! This project uses:
 - **Biome** for linting and formatting
 - **Conventional commits** for commit messages
 
+## Built with AI — Responsibly
+
+This project was developed using **Claude** (Anthropic) as the primary coding agent — but this was not unstructured "vibe coding". Every line of code was produced through a deliberate, engineering-driven process:
+
+1. **Product Requirements & Technical Specification** — Before any code was written, we iterated on a detailed PRD and technical spec (`history/PRODUCT-REQUIREMENTS-DOC.md`, `history/TECHNICAL-SPECIFICATION.md`) that defined scope, architecture, and acceptance criteria.
+2. **Implementation Plan** — Each epic was broken down into a phased plan (`history/PLAN.md`) with clear subtasks, dependencies, and references to the spec.
+3. **AI Issue Tracking (Beads)** — [Beads](https://github.com/steveyegge/beads) served as the git-backed issue tracker, enforcing linear, dependency-aware development. Every task was created, claimed, and closed through `bd` commands — no work happened outside tracked issues.
+4. **Agentic Workflow with Human Oversight** — Three specialized agents (`/developer`, `/coder`, `/review`) handled implementation, deep code analysis, and code review respectively. The developer (human) reviewed and intervened at every decision point — approving plans, rejecting approaches, iterating on PR feedback, and steering architectural choices.
+5. **Structured Rules** — `CLAUDE.md` and `AGENTS.md` defined strict conventions for commit strategy, code patterns, testing, and session workflows that the AI agents followed consistently.
+
+The result is a codebase with the quality, consistency, and traceability you would expect from a well-run engineering team — with AI as the force multiplier, not the decision maker.
+
 ## License
 
 [MIT](./LICENSE) © WebSublime
