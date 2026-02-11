@@ -1,0 +1,14 @@
+{
+  "branch": "feature/vite-open-api-server-03j.2-documentation",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server",
+    "@websublime/vite-plugin-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-02-11T15:57:22.017863Z",
+  "updated_at": "2026-02-11T15:57:22.018908Z"
+}
