@@ -12,6 +12,10 @@ import { computed, ref } from 'vue';
 // API base path (proxied by Vite to the mock server)
 const API_BASE = '/api/v3';
 
+// Mock auth credentials for secured endpoints (any non-empty value is accepted)
+const MOCK_BEARER_TOKEN = 'dev-playground-token';
+const MOCK_API_KEY = 'dev-playground-key';
+
 // State
 const activeTab = ref<'pets' | 'store' | 'user'>('pets');
 const loading = ref(false);
@@ -45,6 +49,8 @@ async function apiCall(url: string, options: RequestInit = {}) {
     const res = await fetch(`${API_BASE}${url}`, {
       ...options,
       headers: {
+        Authorization: `Bearer ${MOCK_BEARER_TOKEN}`,
+        api_key: MOCK_API_KEY,
         'Content-Type': 'application/json',
         ...options.headers,
       },
