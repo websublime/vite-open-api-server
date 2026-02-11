@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-server",
-  "version": "0.22.4",
+  "version": "0.23.0",
   "description": "Vite plugin for OpenAPI mock server with DevTools integration",
   "keywords": [
     "vite",
@@ -23,24 +23,24 @@
     "directory": "packages/server"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "copy:devtools-spa": "node scripts/copy-devtools-spa.mjs",
     "dev": "tsup --watch",
-    "build": "tsup && pnpm run copy:devtools-spa"
+    "build": "tsup && pnpm run copy:devtools-spa",
+    "typecheck": "tsc --noEmit",
+    "copy:devtools-spa": "node scripts/copy-devtools-spa.mjs"
   },
   "dependencies": {
     "fast-glob": "^3.3.3",
-    "@vue/devtools-api": "^8.0.6",
     "picocolors": "^1.1.1",
-    "@websublime/vite-plugin-open-api-core": "workspace:*",
-    "chokidar": "^5.0.0"
+    "chokidar": "^5.0.0",
+    "@vue/devtools-api": "^8.0.6",
+    "@websublime/vite-plugin-open-api-core": "workspace:*"
   },
   "devDependencies": {
-    "vue": "^3.5.27",
+    "tsup": "^8.5.0",
+    "vite": "^7.0.0",
     "typescript": "^5.9.0",
     "@websublime/vite-plugin-open-api-devtools": "workspace:*",
-    "vite": "^7.0.0",
-    "tsup": "^8.5.0"
+    "vue": "^3.5.27"
   },
   "peerDependencies": {
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0",

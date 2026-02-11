@@ -1,3 +1,40 @@
+## [0.13.0] - 2026-02-11
+
+### Features
+
+- implement OpenAPI security scheme handling (411b894)
+- re-export SecurityContext type from core (ebe630a)
+
+
+### Bug Fixes
+
+- address code review findings from deep analysis (7c7fc57)
+
+
+### Documentation
+
+- add security handling docs and playground auth headers (c8c62b3)
+
+
+### Code Refactoring
+
+- reuse PUBLIC_ENDPOINT_CONTEXT for failed validation (ccae165)
+- address PR review comments (70880f8)
+- address PR review comments (4bef91d)
+- address second round of PR review comments (abad4f7)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (fea2139)
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (4b792ab)
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (c0d8545)
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (868eaca)
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (12a5704)
+- sync changeset for feature/vite-open-api-server-c9v.4-security-handling (c5bedd3)
+
+
+
 ## [0.12.2] - 2026-02-11
 
 ### Bug Fixes
