@@ -1,3 +1,52 @@
+## [0.12.2] - 2026-02-11
+
+### Bug Fixes
+
+- move 'types' condition before 'import' and 'require' in package.json exports (f3a60f9)
+- force JsonEditor textarea to fill full panel width (4f2af14)
+- replace inline minHeight with CSS custom property on textarea (e7b5746)
+- fix JsonEditor dual scrollbar and textarea not filling panel width (3ca323d)
+- sync line numbers scroll position with textarea in JsonEditor (561e011)
+- fix Models page panel margins, full-width layout, and duplicate scrollbars (c505895)
+- add width: 100% to JsonEditor root so it fills panel width (28d9bbd)
+- add spacing between Models page split panels and make content full width (77378b8)
+- constrain viewport height to prevent timeline list from growing unbounded (ef963b6)
+- use height: 100% instead of 100vh for iframe-safe layout (636a53a)
+- extract shared .models-panel CSS class to remove duplication (d568636)
+- use item identity check for selection reset watcher (546ae2b)
+- add min-height to stacked panels in responsive layout (27f3cd8)
+- address PR review comments for Models page (372594e)
+- address code review findings for DataTable component (625dd94)
+- split Models page into side-by-side JSON editor and data table (437a07d)
+
+
+### Other Changes
+
+- bump @websublime/vite-plugin-open-api-devtools to 0.8.4 (3fb986f)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (911b8ec)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (a045731)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (04052ce)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (55647ad)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (5116960)
+- bump versions (9a0a65a)
+- sync changeset for fix/vite-r81-models-panel-spacing (c307297)
+- bump @websublime/vite-plugin-open-api-devtools to 0.8.2 (c2f4eab)
+- sync changeset for fix/vite-um1-timeline-layout (25d215a)
+- sync changeset for fix/vite-um1-timeline-layout (5dc6463)
+- add missing trailing newlines to package.json files (fd0ce68)
+- sync changeset for fix/vite-um1-timeline-layout (13b1915)
+- bump versions (dbc7447)
+- sync changeset for fix/vite-pjl-models-page-split-layout (c6a6c68)
+- sync changeset for fix/vite-pjl-models-page-split-layout (b83b1c7)
+- sync changeset for fix/vite-pjl-models-page-split-layout (bb06385)
+- sync changeset for fix/vite-pjl-models-page-split-layout (24e4f50)
+- sync changeset for fix/vite-pjl-models-page-split-layout (1bc2395)
+- sync changeset for fix/vite-pjl-models-page-split-layout (57cc66f)
+- sync changeset for fix/vite-pjl-models-page-split-layout (fd1718d)
+- fix missing trailing newlines in package.json files (2bb9543)
+
+
+
 ## [0.12.1] - 2026-02-09
 
 ### Bug Fixes

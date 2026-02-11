@@ -1,3 +1,27 @@
+## [0.22.4] - 2026-02-11
+
+### Bug Fixes
+
+- move 'types' condition before 'import' and 'require' in package.json exports (f3a60f9)
+- fix JsonEditor dual scrollbar and textarea not filling panel width (3ca323d)
+- force JsonEditor textarea to fill full panel width (4f2af14)
+- add width: 100% to JsonEditor root so it fills panel width (28d9bbd)
+- replace inline minHeight with CSS custom property on textarea (e7b5746)
+- sync line numbers scroll position with textarea in JsonEditor (561e011)
+- fix Models page panel margins, full-width layout, and duplicate scrollbars (c505895)
+
+
+### Other Changes
+
+- bump @websublime/vite-plugin-open-api-devtools to 0.8.4 (3fb986f)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (5116960)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (04052ce)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (a045731)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (55647ad)
+- sync changeset for fix/vite-19u-models-panel-ui-fixes (911b8ec)
+
+
+
 ## [0.22.3] - 2026-02-10
 
 ### Bug Fixes

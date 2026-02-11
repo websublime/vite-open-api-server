@@ -1,0 +1,27 @@
+{
+  "changeset": {
+    "branch": "fix/vite-aud-types-condition-order",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-core",
+      "@websublime/vite-plugin-open-api-server",
+      "@websublime/vite-plugin-open-api-devtools"
+    ],
+    "changes": [],
+    "created_at": "2026-02-11T09:58:20.411189Z",
+    "updated_at": "2026-02-11T09:58:20.411876Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-11T10:10:54.301066604Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "f3a60f922302292d6921b6b4591d1d0e3651db86",
+    "versions": {
+      "@websublime/vite-plugin-open-api-devtools": "0.8.5",
+      "@websublime/vite-plugin-open-api-core": "0.12.2",
+      "@websublime/vite-plugin-open-api-server": "0.22.4"
+    }
+  }
+}

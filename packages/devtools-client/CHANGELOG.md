@@ -1,3 +1,11 @@
+## [0.8.5] - 2026-02-11
+
+### Bug Fixes
+
+- move 'types' condition before 'import' and 'require' in package.json exports (f3a60f9)
+
+
+
 ## [0.8.4] - 2026-02-11
 
 ### Bug Fixes
