@@ -12,7 +12,6 @@ export { resolveSecuritySchemes } from './resolver.js';
 export type {
   ResolvedSecurityScheme,
   SecurityContext,
-  SecurityCredentials,
   SecuritySchemeIn,
   SecuritySchemeType,
 } from './types.js';

@@ -135,7 +135,6 @@ export {
 export type {
   ResolvedSecurityScheme,
   SecurityContext,
-  SecurityCredentials,
   SecurityRequest,
   SecuritySchemeIn,
   SecuritySchemeType,

@@ -259,5 +259,23 @@ describe('resolveSecuritySchemes', () => {
       const schemes = resolveSecuritySchemes(doc);
       expect(schemes.size).toBe(0);
     });
+
+    it('should skip $ref security scheme entries', () => {
+      const doc: OpenAPIV3_1.Document = {
+        openapi: '3.1.0',
+        info: { title: 'Test', version: '1.0.0' },
+        paths: {},
+        components: {
+          securitySchemes: {
+            externalAuth: {
+              $ref: '#/components/schemas/SomeScheme',
+            } as unknown as OpenAPIV3_1.SecuritySchemeObject,
+          },
+        },
+      };
+
+      const schemes = resolveSecuritySchemes(doc);
+      expect(schemes.size).toBe(0);
+    });
   });
 });

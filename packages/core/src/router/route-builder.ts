@@ -838,10 +838,13 @@ function buildWwwAuthenticate(
     if (!scheme) continue;
 
     if (scheme.type === 'http' || scheme.type === 'oauth2') {
+      // Non-basic HTTP auth schemes (e.g., digest, hoba) are collapsed to "Bearer"
+      // as a pragmatic simplification for the mock server. API key is handled
+      // separately below with its own challenge format. Adjust here if more
+      // precise scheme handling is needed in the future.
       const schemeName = scheme.scheme === 'basic' ? 'Basic' : 'Bearer';
       challenges.push(`${schemeName} realm="OpenAPI Mock Server"`);
     } else if (scheme.type === 'apiKey') {
-      // API key doesn't have a standard WWW-Authenticate, use Bearer as fallback
       challenges.push(`ApiKey realm="OpenAPI Mock Server", param="${scheme.paramName}"`);
     }
   }
