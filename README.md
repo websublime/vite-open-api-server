@@ -345,6 +345,12 @@ Items are stored as shallow copies. The `idFields` plugin option pre-configures 
 
 The plugin integrates with Vue DevTools via a custom tab, and also provides a standalone DevTools SPA.
 
+To enable the Vue DevTools tab, install the DevTools API in your project:
+
+```bash
+pnpm add -D @vue/devtools-api
+```
+
 ### Accessing DevTools
 
 - **Vue DevTools tab** — Automatically registered when `devtools: true` (default). Appears as an "OpenAPI Server" tab in Vue DevTools.
