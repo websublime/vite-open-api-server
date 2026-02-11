@@ -228,11 +228,22 @@ export function buildRoutes(
         // Emit request event
         onRequest?.(requestLogEntry);
 
+        // Pre-normalize headers to lowercase keys for efficient case-insensitive lookup
+        const normalizedHeaders: Record<string, string> = {};
+        for (const [key, value] of Object.entries(requestHeaders)) {
+          normalizedHeaders[key.toLowerCase()] = value;
+        }
+
         // Validate security requirements (before any handler/simulation logic)
-        const securityResult = validateSecurity(endpoint.security, securitySchemes, {
-          headers: requestHeaders,
-          query: queryParams,
-        });
+        const securityResult = validateSecurity(
+          endpoint.security,
+          securitySchemes,
+          {
+            headers: normalizedHeaders,
+            query: queryParams,
+          },
+          { logger },
+        );
 
         if (!securityResult.ok) {
           const duration = Date.now() - startTime;
@@ -845,7 +856,9 @@ function buildWwwAuthenticate(
       const schemeName = scheme.scheme === 'basic' ? 'Basic' : 'Bearer';
       challenges.push(`${schemeName} realm="OpenAPI Mock Server"`);
     } else if (scheme.type === 'apiKey') {
-      challenges.push(`ApiKey realm="OpenAPI Mock Server", param="${scheme.paramName}"`);
+      // Sanitize paramName to prevent header injection from malicious specs
+      const safeParamName = scheme.paramName.replace(/[\r\n"]/g, '');
+      challenges.push(`ApiKey realm="OpenAPI Mock Server", param="${safeParamName}"`);
     }
   }
 

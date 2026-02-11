@@ -13,8 +13,17 @@
  * @module security/validator
  */
 
+import type { Logger } from '../handlers/context.js';
 import type { SecurityRequirement } from '../router/types.js';
 import type { ResolvedSecurityScheme, SecurityContext } from './types.js';
+
+/**
+ * Shared context for public endpoints — avoids allocating a new object per request
+ */
+const PUBLIC_ENDPOINT_CONTEXT: SecurityContext = Object.freeze({
+  authenticated: false,
+  scopes: [],
+});
 
 /**
  * Result of validating security for a single request
@@ -32,10 +41,19 @@ export interface SecurityValidationResult {
  * Request data needed for security validation
  *
  * Mirrors what's available from Hono's Context without coupling to it.
+ * Headers should be pre-normalized to lowercase keys for efficient lookup.
  */
 export interface SecurityRequest {
   headers: Record<string, string>;
   query: Record<string, string | string[]>;
+}
+
+/**
+ * Options for security validation
+ */
+export interface ValidateSecurityOptions {
+  /** Logger for warning about unknown scheme references */
+  logger?: Logger;
 }
 
 /**
@@ -61,18 +79,20 @@ export interface SecurityRequest {
  * @param requirements - Security requirements from the endpoint registry (flattened)
  * @param schemes - Resolved security schemes from the document
  * @param request - Incoming request data
+ * @param options - Optional validation options (logger, etc.)
  * @returns Validation result with security context
  */
 export function validateSecurity(
   requirements: SecurityRequirement[],
   schemes: Map<string, ResolvedSecurityScheme>,
   request: SecurityRequest,
+  options?: ValidateSecurityOptions,
 ): SecurityValidationResult {
   // No security requirements = public endpoint
   if (requirements.length === 0) {
     return {
       ok: true,
-      context: { authenticated: false, scopes: [] },
+      context: PUBLIC_ENDPOINT_CONTEXT,
     };
   }
 
@@ -80,7 +100,11 @@ export function validateSecurity(
   for (const requirement of requirements) {
     const scheme = schemes.get(requirement.name);
     if (!scheme) {
-      // Unknown scheme referenced — skip (don't block)
+      // Unknown scheme referenced — warn and skip (don't block)
+      options?.logger?.warn(
+        `[security] Unknown security scheme "${requirement.name}" referenced in operation. ` +
+          'Check that the scheme name matches a key in components.securitySchemes.',
+      );
       continue;
     }
 
@@ -225,9 +249,19 @@ function extractFromCookie(
 
 /**
  * Case-insensitive header lookup
+ *
+ * Tries direct lowercase key lookup first (fast path for pre-normalized headers),
+ * then falls back to a linear scan with case-insensitive comparison.
  */
 function findHeader(headers: Record<string, string>, name: string): string | undefined {
   const lower = name.toLowerCase();
+
+  // Fast path: direct lookup (works when headers are pre-normalized to lowercase)
+  if (lower in headers) {
+    return headers[lower];
+  }
+
+  // Slow path: case-insensitive scan for non-normalized headers
   for (const [key, value] of Object.entries(headers)) {
     if (key.toLowerCase() === lower) {
       return value;
