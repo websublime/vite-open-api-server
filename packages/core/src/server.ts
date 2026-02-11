@@ -243,7 +243,11 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   let currentSeeds = seeds;
 
   // Build routes from OpenAPI document
-  const { app: apiRouter, registry } = buildRoutes(document, {
+  const {
+    app: apiRouter,
+    registry,
+    securitySchemes,
+  } = buildRoutes(document, {
     store,
     handlers: currentHandlers,
     seeds: currentSeeds,
@@ -258,6 +262,16 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     },
     logger,
   });
+
+  // Log security schemes detected in the spec
+  if (securitySchemes.size > 0) {
+    const schemeList = Array.from(securitySchemes.values())
+      .map(
+        (s) => `${s.name} (${s.type}${s.scheme ? `:${s.scheme}` : ''} via ${s.in}:${s.paramName})`,
+      )
+      .join(', ');
+    logger.info(`[vite-plugin-open-api-core] Security schemes: ${schemeList}`);
+  }
 
   // Create main Hono app
   const app = new Hono();

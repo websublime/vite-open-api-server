@@ -30,6 +30,7 @@
 
 import type { Faker } from '@faker-js/faker';
 
+import type { SecurityContext } from '../security/types.js';
 import type { Store } from '../store/index.js';
 
 /**
@@ -73,6 +74,14 @@ export interface HandlerContext {
   store: Store;
   faker: Faker;
   logger: Logger;
+  /**
+   * Security context for the current request
+   *
+   * Contains information about which security scheme was satisfied
+   * and what credentials were provided. Only populated when the
+   * endpoint has security requirements defined in the OpenAPI spec.
+   */
+  security: SecurityContext;
 }
 
 /**

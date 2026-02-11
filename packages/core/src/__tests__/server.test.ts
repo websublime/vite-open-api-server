@@ -805,6 +805,191 @@ describe('createOpenApiServer', () => {
   });
 });
 
+describe('security handling', () => {
+  /**
+   * OpenAPI document with security schemes and a secured endpoint
+   */
+  const securedDocument: OpenAPIV3_1.Document = {
+    openapi: '3.1.0',
+    info: { title: 'Secured API', version: '1.0.0' },
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+        },
+        apiKey: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'X-API-Key',
+        },
+      },
+    },
+    paths: {
+      '/public': {
+        get: {
+          operationId: 'getPublic',
+          responses: { '200': { description: 'Public endpoint' } },
+        },
+      },
+      '/secured-bearer': {
+        get: {
+          operationId: 'getSecuredBearer',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            '200': {
+              description: 'Secured endpoint',
+              content: {
+                'application/json': {
+                  schema: { type: 'object', properties: { ok: { type: 'boolean' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      '/secured-apikey': {
+        get: {
+          operationId: 'getSecuredApiKey',
+          security: [{ apiKey: [] }],
+          responses: { '200': { description: 'Secured endpoint' } },
+        },
+      },
+      '/secured-either': {
+        get: {
+          operationId: 'getSecuredEither',
+          security: [{ bearerAuth: [] }, { apiKey: [] }],
+          responses: { '200': { description: 'Secured endpoint' } },
+        },
+      },
+    },
+  };
+
+  it('should allow access to public endpoints without credentials', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/public');
+    expect(response.status).toBe(200);
+  });
+
+  it('should return 401 when Bearer token is missing', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-bearer');
+    expect(response.status).toBe(401);
+
+    const data = await response.json();
+    expect(data.error).toBe('Unauthorized');
+    expect(data.message).toContain('bearerAuth');
+  });
+
+  it('should return WWW-Authenticate header on 401', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-bearer');
+    expect(response.status).toBe(401);
+    expect(response.headers.get('www-authenticate')).toContain('Bearer');
+  });
+
+  it('should allow access with valid Bearer token', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-bearer', {
+      headers: { Authorization: 'Bearer any-token-works' },
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('should return 401 when API key header is missing', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-apikey');
+    expect(response.status).toBe(401);
+  });
+
+  it('should allow access with valid API key', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-apikey', {
+      headers: { 'X-API-Key': 'any-key-works' },
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it('should allow access with either scheme when OR logic is used', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    // Bearer should work
+    const r1 = await server.app.request('/secured-either', {
+      headers: { Authorization: 'Bearer token' },
+    });
+    expect(r1.status).toBe(200);
+
+    // API key should also work
+    const r2 = await server.app.request('/secured-either', {
+      headers: { 'X-API-Key': 'key' },
+    });
+    expect(r2.status).toBe(200);
+  });
+
+  it('should return 401 when neither scheme is satisfied for OR endpoint', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    const response = await server.app.request('/secured-either');
+    expect(response.status).toBe(401);
+  });
+
+  it('should pass security context to custom handlers', async () => {
+    let capturedSecurity: unknown = null;
+
+    const handlers = new Map<string, HandlerFn>([
+      [
+        'getSecuredBearer',
+        (ctx) => {
+          capturedSecurity = ctx.security;
+          return { type: 'raw', data: { ok: true } };
+        },
+      ],
+    ]);
+
+    const server = await createOpenApiServer({
+      spec: securedDocument,
+      handlers,
+    });
+
+    await server.app.request('/secured-bearer', {
+      headers: { Authorization: 'Bearer test-token-123' },
+    });
+
+    expect(capturedSecurity).toEqual({
+      authenticated: true,
+      scheme: 'bearerAuth',
+      credentials: 'test-token-123',
+      scopes: [],
+    });
+  });
+
+  it('should log 401 responses to timeline', async () => {
+    const server = await createOpenApiServer({ spec: securedDocument });
+
+    // Make an unauthenticated request
+    await server.app.request('/secured-bearer');
+
+    // Check timeline
+    const timelineResponse = await server.app.request('/_api/timeline');
+    const data = await timelineResponse.json();
+
+    expect(data.count).toBeGreaterThan(0);
+
+    // Should have both request and response logged
+    const responseEntry = data.entries.find(
+      (e: { type: string; data: { status?: number } }) =>
+        e.type === 'response' && e.data?.status === 401,
+    );
+    expect(responseEntry).toBeDefined();
+  });
+});
+
 describe('createSimulationManager', () => {
   it('should be accessible via server instance', async () => {
     const server = await createOpenApiServer({
