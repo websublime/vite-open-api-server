@@ -126,7 +126,7 @@ export function validateSecurity(
   const schemeNames = requirements.map((r) => r.name).join(', ');
   return {
     ok: false,
-    context: { authenticated: false, scopes: [] },
+    context: PUBLIC_ENDPOINT_CONTEXT,
     error: `Missing credentials. Required security scheme(s): ${schemeNames}`,
   };
 }
