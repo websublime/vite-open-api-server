@@ -9,8 +9,9 @@
     "@websublime/vite-plugin-open-api-core"
   ],
   "changes": [
-    "27f86edfbe51c71406b61708ea73d7708c2584d1"
+    "27f86edfbe51c71406b61708ea73d7708c2584d1",
+    "d5e08843451d6a8b2d7ac55fcfad0e4ce8a5ce95"
   ],
   "created_at": "2026-02-11T15:57:22.017863Z",
-  "updated_at": "2026-02-11T16:01:03.225862Z"
+  "updated_at": "2026-02-11T16:30:56.305586Z"
 }
