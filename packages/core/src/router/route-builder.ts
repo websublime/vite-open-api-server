@@ -246,30 +246,20 @@ export function buildRoutes(
         );
 
         if (!securityResult.ok) {
-          const duration = Date.now() - startTime;
-          const unauthorizedResponse: HandlerResponse = {
-            status: 401,
-            data: { error: 'Unauthorized', message: securityResult.error },
-            headers: { 'WWW-Authenticate': buildWwwAuthenticate(endpoint, securitySchemes) },
-          };
-
-          const responseLogEntry: ResponseLogEntry = {
-            id: crypto.randomUUID(),
-            requestId,
-            status: 401,
-            duration,
-            headers: unauthorizedResponse.headers ?? {},
-            body: unauthorizedResponse.data,
-            simulated: false,
-          };
-          onResponse?.(responseLogEntry);
-
-          if (unauthorizedResponse.headers) {
-            for (const [headerName, headerValue] of Object.entries(unauthorizedResponse.headers)) {
-              c.header(headerName, headerValue);
-            }
-          }
-          return c.json(unauthorizedResponse.data, 401);
+          return sendResponse(
+            c,
+            {
+              status: 401,
+              data: { error: 'Unauthorized', message: securityResult.error },
+              headers: { 'WWW-Authenticate': buildWwwAuthenticate(endpoint, securitySchemes) },
+            },
+            {
+              requestId,
+              duration: Date.now() - startTime,
+              simulated: false,
+              onResponse,
+            },
+          );
         }
 
         let response: HandlerResponse;
@@ -349,37 +339,55 @@ export function buildRoutes(
           }
         }
 
-        // Calculate duration
-        const duration = Date.now() - startTime;
-
-        // Build response log entry
-        const responseLogEntry: ResponseLogEntry = {
-          id: crypto.randomUUID(),
+        // Send response (log, set headers, return JSON)
+        return sendResponse(c, response, {
           requestId,
-          status: response.status,
-          duration,
-          headers: response.headers ?? {},
-          body: response.data,
+          duration: Date.now() - startTime,
           simulated,
-        };
-
-        // Emit response event
-        onResponse?.(responseLogEntry);
-
-        // Set response headers if provided
-        if (response.headers) {
-          for (const [headerName, headerValue] of Object.entries(response.headers)) {
-            c.header(headerName, headerValue);
-          }
-        }
-
-        // Return JSON response
-        return c.json(response.data, response.status as 200);
+          onResponse,
+        });
       });
     }
   }
 
   return { app, registry, securitySchemes };
+}
+
+/**
+ * Send a JSON response, log it, and set headers in a single call.
+ *
+ * Centralizes the response-construction pattern used by both the security
+ * rejection branch and the normal response path so header setting, timeline
+ * logging, and `c.json()` are not duplicated.
+ */
+function sendResponse(
+  c: HonoContext,
+  response: HandlerResponse,
+  opts: {
+    requestId: string;
+    duration: number;
+    simulated: boolean;
+    onResponse?: (entry: ResponseLogEntry) => void;
+  },
+) {
+  const responseLogEntry: ResponseLogEntry = {
+    id: crypto.randomUUID(),
+    requestId: opts.requestId,
+    status: response.status,
+    duration: opts.duration,
+    headers: response.headers ?? {},
+    body: response.data,
+    simulated: opts.simulated,
+  };
+  opts.onResponse?.(responseLogEntry);
+
+  if (response.headers) {
+    for (const [headerName, headerValue] of Object.entries(response.headers)) {
+      c.header(headerName, headerValue);
+    }
+  }
+
+  return c.json(response.data, response.status as 200);
 }
 
 /**
