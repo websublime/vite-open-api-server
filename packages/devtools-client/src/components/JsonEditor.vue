@@ -69,6 +69,9 @@ const lineNumbers = computed(() => {
   return Array.from({ length: lineCount.value }, (_, i) => i + 1);
 });
 
+/** Reference to the line numbers container for scroll synchronization */
+const linesRef = ref<HTMLDivElement | null>(null);
+
 // ==========================================================================
 // Initialization
 // ==========================================================================
@@ -190,6 +193,17 @@ function handleKeyDown(event: KeyboardEvent): void {
 }
 
 // ==========================================================================
+/**
+ * Synchronize line numbers scroll position with textarea
+ */
+function syncLineScroll(event: Event): void {
+  const target = event.target as HTMLTextAreaElement;
+  if (linesRef.value) {
+    linesRef.value.scrollTop = target.scrollTop;
+  }
+}
+
+// ==========================================================================
 // Expose methods
 // ==========================================================================
 
@@ -204,7 +218,7 @@ defineExpose({
     <!-- Editor Container -->
     <div class="json-editor__container">
       <!-- Line Numbers -->
-      <div class="json-editor__lines" aria-hidden="true">
+      <div ref="linesRef" class="json-editor__lines" aria-hidden="true">
         <div
           v-for="lineNum in lineNumbers"
           :key="lineNum"
@@ -224,6 +238,7 @@ defineExpose({
         spellcheck="false"
         @input="handleInput"
         @keydown="handleKeyDown"
+        @scroll="syncLineScroll"
       />
     </div>
 
