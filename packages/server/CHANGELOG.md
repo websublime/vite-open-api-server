@@ -1,3 +1,25 @@
+## [0.23.1] - 2026-02-11
+
+### Documentation
+
+- add @vue/devtools-api install instruction to DevTools section (6a0b4fe)
+- comprehensive README update with guides, screenshots, and troubleshooting (eeb9803)
+- address PR review comments (7a3d0c5)
+- address second round of PR review comments (0c43c03)
+- add 'Built with AI — Responsibly' section to README (514d68a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-open-api-server-03j.2-documentation (9bca96b)
+- sync changeset for feature/vite-open-api-server-03j.2-documentation (e8d8e15)
+- sync changeset for feature/vite-open-api-server-03j.2-documentation (c74cb94)
+- sync changeset for feature/vite-open-api-server-03j.2-documentation (1e22f14)
+- add trailing newlines to package.json files (biome format) (94a08e2)
+- sync changeset for feature/vite-open-api-server-03j.2-documentation (dac1724)
+
+
+
 ## [0.23.0] - 2026-02-11
 
 ### Features
