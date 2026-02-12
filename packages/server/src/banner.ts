@@ -144,6 +144,7 @@ export function extractBannerInfo(
 ): BannerInfo {
   return {
     port: options.port,
+    // @ts-expect-error TODO: banner.ts will be rewritten for multi-spec in Epic 5 (vite-qq9)
     proxyPath: options.proxyPath,
     title: document.info.title,
     version: document.info.version,

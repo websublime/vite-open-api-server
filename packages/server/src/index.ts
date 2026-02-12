@@ -18,7 +18,14 @@ export { openApiServer } from './plugin.js';
 // Type Exports
 // =============================================================================
 
-export type { OpenApiServerOptions, ResolvedOptions } from './types.js';
+export type {
+  OpenApiServerOptions,
+  ResolvedOptions,
+  ResolvedSpecConfig,
+  SpecConfig,
+  ValidationErrorCode,
+} from './types.js';
+export { ValidationError } from './types.js';
 
 // =============================================================================
 // Handler Loading (for advanced use cases)
