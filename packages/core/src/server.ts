@@ -149,7 +149,7 @@ export interface OpenApiServer {
    *
    * @returns Timeline entries array (most recent last)
    */
-  getTimeline(): TimelineEntry[];
+  getTimeline(): readonly TimelineEntry[];
 
   /**
    * Clear the timeline for this server instance
@@ -500,13 +500,19 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
     },
 
-    getTimeline(): TimelineEntry[] {
+    getTimeline(): readonly TimelineEntry[] {
       return timeline;
     },
 
     clearTimeline(): number {
       const count = timeline.length;
       timeline.length = 0;
+
+      wsHub.broadcast({
+        type: 'timeline:cleared',
+        data: { count },
+      });
+
       return count;
     },
 
