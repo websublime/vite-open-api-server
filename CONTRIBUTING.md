@@ -281,7 +281,9 @@ describe('parseOpenApiPath', () => {
 ### Submitting a PR
 
 1. Push your branch to your fork
-2. Open a pull request against the `main` branch
+2. Open a pull request against the appropriate branch:
+   - **`next`**: For v1.0.0 development (multi-spec features, breaking changes)
+   - **`main`**: For patches to the current stable release (0.x)
 3. Fill out the PR template with:
    - Description of changes
    - Related issues

@@ -134,6 +134,17 @@ For visual changes (new UI, modified display):
    <!-- TODO: Add screenshot for X (see bdel-xxx) -->
    ```
 
+## Branch Strategy
+
+Active development for v1.0.0 happens on the `next` branch:
+- **`next`**: v1.0.0 multi-spec development. PRs and feature branches target here.
+- **`main`**: Stable 0.x releases. Only hotfixes and patches.
+
+Pre-release versions (e.g., `1.0.0-next.0`) are published to npm with the `next` dist-tag.
+Users installing without `@next` continue to get stable 0.x versions.
+
+When v1.0.0 is complete, `next` merges into `main` for the stable release.
+
 ## Session Completion
 
 Work is NOT complete until `git push` succeeds:
