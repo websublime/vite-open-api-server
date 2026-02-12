@@ -63,7 +63,16 @@ export function deriveSpecId(explicitId: string, document: OpenAPIV3_1.Document)
     );
   }
 
-  return slugify(title);
+  const id = slugify(title);
+  if (!id) {
+    throw new ValidationError(
+      'SPEC_ID_MISSING',
+      `Cannot derive spec ID: info.title "${title}" produces an empty slug. ` +
+        'Please set an explicit id in the spec configuration.',
+    );
+  }
+
+  return id;
 }
 
 /**
