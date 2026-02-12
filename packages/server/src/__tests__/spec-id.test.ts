@@ -17,14 +17,12 @@ import { ValidationError } from '../types.js';
  * Assert that `fn` throws a ValidationError with the expected code.
  */
 function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
-  let caught: unknown;
-  try {
-    fn();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(ValidationError);
-  expect((caught as ValidationError).code).toBe(expectedCode);
+  expect(fn).toThrow(
+    expect.objectContaining({
+      name: 'ValidationError',
+      code: expectedCode,
+    }),
+  );
 }
 
 /**
@@ -111,12 +109,12 @@ describe('slugify', () => {
   // ---------------------------------------------------------------------------
 
   describe('unicode handling', () => {
-    it('should replace unicode characters with hyphens', () => {
-      expect(slugify('café')).toBe('caf');
+    it('should preserve base letters after NFD decomposition', () => {
+      expect(slugify('café')).toBe('cafe');
     });
 
     it('should handle accented characters', () => {
-      expect(slugify('Ünit Tëst')).toBe('nit-t-st');
+      expect(slugify('Ünit Tëst')).toBe('unit-test');
     });
 
     it('should handle CJK characters', () => {
@@ -284,13 +282,7 @@ describe('deriveSpecId', () => {
     });
 
     it('should include guidance in the error message', () => {
-      let caught: unknown;
-      try {
-        deriveSpecId('', makeDocument(''));
-      } catch (error) {
-        caught = error;
-      }
-      expect((caught as ValidationError).message).toContain('explicit id');
+      expect(() => deriveSpecId('', makeDocument(''))).toThrow(/explicit id/);
     });
 
     it('should throw when explicit id is whitespace-only', () => {
@@ -339,24 +331,25 @@ describe('validateUniqueIds', () => {
     });
 
     it('should include the duplicate ID in the error message', () => {
-      let caught: unknown;
-      try {
-        validateUniqueIds(['petstore', 'inventory', 'petstore']);
-      } catch (error) {
-        caught = error;
-      }
-      expect((caught as ValidationError).message).toContain('petstore');
+      expect(() => validateUniqueIds(['petstore', 'inventory', 'petstore'])).toThrow(/petstore/);
     });
 
-    it('should detect first duplicate when multiple exist', () => {
+    it('should collect all duplicates in a single error', () => {
+      expect(() => validateUniqueIds(['a', 'b', 'a', 'b'])).toThrow(/a, b/);
+    });
+
+    it('should report each duplicate only once', () => {
       let caught: unknown;
       try {
-        validateUniqueIds(['a', 'b', 'a', 'b']);
+        validateUniqueIds(['x', 'x', 'x']);
       } catch (error) {
         caught = error;
       }
       expect(caught).toBeInstanceOf(ValidationError);
-      expect((caught as ValidationError).message).toContain('"a"');
+      // "x" should appear once in the list, not multiple times
+      const msg = (caught as ValidationError).message;
+      const matches = msg.match(/\bx\b/g);
+      expect(matches).toHaveLength(1);
     });
   });
 

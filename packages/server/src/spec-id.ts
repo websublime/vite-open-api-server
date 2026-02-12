@@ -25,10 +25,12 @@ import { ValidationError } from './types.js';
  * @example
  * slugify("Swagger Petstore") → "swagger-petstore"
  * slugify("Billing API v2")   → "billing-api-v2"
- * slugify("User Service")     → "user-service"
+ * slugify("café")             → "cafe"
  */
 export function slugify(input: string): string {
   return input
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -67,19 +69,26 @@ export function deriveSpecId(explicitId: string, document: OpenAPIV3_1.Document)
 /**
  * Validate spec IDs are unique across all specs
  *
+ * Collects all duplicated IDs and reports them in a single error.
+ *
  * @param ids - Array of resolved spec IDs
  * @throws {ValidationError} SPEC_ID_DUPLICATE if duplicate IDs found
  */
 export function validateUniqueIds(ids: string[]): void {
   const seen = new Set<string>();
+  const duplicates = new Set<string>();
   for (const id of ids) {
     if (seen.has(id)) {
-      throw new ValidationError(
-        'SPEC_ID_DUPLICATE',
-        `Duplicate spec ID "${id}". Each spec must have a unique ID. ` +
-          'Set explicit ids in spec configuration to resolve.',
-      );
+      duplicates.add(id);
     }
     seen.add(id);
+  }
+  if (duplicates.size > 0) {
+    const list = [...duplicates].join(', ');
+    throw new ValidationError(
+      'SPEC_ID_DUPLICATE',
+      `Duplicate spec IDs: ${list}. Each spec must have a unique ID. ` +
+        'Set explicit ids in spec configuration to resolve.',
+    );
   }
 }
