@@ -141,6 +141,26 @@ export interface OpenApiServer {
   updateSeeds(seeds: Map<string, unknown[]>): void;
 
   /**
+   * Get the request/response timeline for this server instance
+   *
+   * Returns the internal timeline array. The orchestrator uses this
+   * to serve per-spec timeline data via the aggregated internal API
+   * and multi-spec WebSocket commands.
+   *
+   * @returns Timeline entries array (most recent last)
+   */
+  getTimeline(): TimelineEntry[];
+
+  /**
+   * Clear the timeline for this server instance
+   *
+   * Used by the orchestrator for spec-scoped `clear:timeline` commands.
+   *
+   * @returns Number of entries cleared
+   */
+  clearTimeline(): number;
+
+  /**
    * Get the configured port
    */
   readonly port: number;
@@ -478,6 +498,16 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       });
 
       logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
+    },
+
+    getTimeline(): TimelineEntry[] {
+      return timeline;
+    },
+
+    clearTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
     },
 
     /**
