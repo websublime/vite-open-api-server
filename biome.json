@@ -13,7 +13,8 @@
       "!.beads",
       "!.changesets",
       "!*.md",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!package.json"
     ],
     "ignoreUnknown": false
   },
