@@ -208,7 +208,9 @@ export interface OpenApiServerOptions {
 
 /**
  * Resolved spec config with all defaults applied
- * @internal
+ *
+ * Exported for advanced use cases (e.g., custom orchestrators or
+ * test utilities that need to inspect resolved configuration).
  */
 export interface ResolvedSpecConfig {
   spec: string;
@@ -216,7 +218,13 @@ export interface ResolvedSpecConfig {
   id: string;
   /** Guaranteed to be set after orchestrator resolution */
   proxyPath: string;
-  /** How proxyPath was determined — used for banner display */
+  /**
+   * How proxyPath was determined — used for banner display.
+   *
+   * Set during static option resolution. The orchestrator (Task 1.7)
+   * will pass this to the multi-spec banner so it can show
+   * "(auto-derived)" vs "(explicit)" next to each proxy path.
+   */
   proxyPathSource: 'auto' | 'explicit';
   handlersDir: string;
   seedsDir: string;
@@ -225,7 +233,9 @@ export interface ResolvedSpecConfig {
 
 /**
  * Resolved options with defaults applied
- * @internal
+ *
+ * Exported for advanced use cases (e.g., custom orchestrators or
+ * test utilities that need to inspect resolved configuration).
  */
 export interface ResolvedOptions {
   specs: ResolvedSpecConfig[];

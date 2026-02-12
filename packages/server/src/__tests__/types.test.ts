@@ -12,6 +12,7 @@ import {
   type OpenApiServerOptions,
   type ResolvedOptions,
   resolveOptions,
+  type SpecConfig,
   ValidationError,
 } from '../types.js';
 
@@ -53,6 +54,16 @@ describe('ValidationError', () => {
   it('should store the message', () => {
     const error = new ValidationError('SPECS_EMPTY', 'No specs configured');
     expect(error.message).toBe('No specs configured');
+  });
+
+  it('should enforce ValidationErrorCode type at compile time', () => {
+    // Valid code compiles fine
+    const valid = new ValidationError('SPECS_EMPTY', 'test');
+    expect(valid.code).toBe('SPECS_EMPTY');
+
+    // @ts-expect-error - Invalid error code should not compile
+    const invalid = new ValidationError('INVALID_CODE', 'test');
+    expect(invalid.code).toBe('INVALID_CODE');
   });
 
   it('should support all Appendix B error codes', () => {
@@ -175,6 +186,27 @@ describe('resolveOptions', () => {
       }
       expect((caught as ValidationError).message).toContain('specs[0]');
       expect((caught as ValidationError).message).toContain('broken-api');
+    });
+
+    it('should throw SPEC_NOT_FOUND for non-object spec entry', () => {
+      expectValidationError(
+        () => resolveOptions({ specs: ['./api.yaml' as unknown as SpecConfig] }),
+        'SPEC_NOT_FOUND',
+      );
+    });
+
+    it('should report first validation error when multiple specs are invalid', () => {
+      let caught: unknown;
+      try {
+        resolveOptions({
+          specs: [{ spec: '' }, { spec: '   ' }, { spec: null as unknown as string }],
+        });
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(ValidationError);
+      expect((caught as ValidationError).code).toBe('SPEC_NOT_FOUND');
+      expect((caught as ValidationError).message).toContain('specs[0]');
     });
   });
 
