@@ -194,7 +194,10 @@ export type MultiSpecServerEvent =
   | { type: 'connected'; data: { serverVersion: string; specs: SpecInfo[] } }
   | { type: 'request'; data: RequestLogEntry & { specId: string } }
   | { type: 'response'; data: ResponseLogEntry & { specId: string } }
-  | { type: 'store:updated'; data: { specId: string; schema: string; action: string; count?: number } }
+  | {
+      type: 'store:updated';
+      data: { specId: string; schema: string; action: string; count?: number };
+    }
   | { type: 'handlers:updated'; data: { specId: string; count: number } }
   | { type: 'seeds:updated'; data: { specId: string; count: number } }
   | { type: 'simulation:added'; data: { specId: string; path: string } }
