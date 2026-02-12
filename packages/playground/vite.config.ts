@@ -15,18 +15,22 @@ export default defineConfig({
   plugins: [
     vue(),
     openApiServer({
-      spec: './openapi/petstore.yaml',
+      specs: [
+        {
+          spec: './openapi/petstore.yaml',
+          proxyPath: '/api/v3',
+          handlersDir: './mocks/handlers',
+          seedsDir: './mocks/seeds',
+          idFields: {
+            Pet: 'id',
+            Order: 'id',
+            User: 'id',
+            Category: 'id',
+            Tag: 'id',
+          },
+        },
+      ],
       port: 4000,
-      proxyPath: '/api/v3',
-      handlersDir: './mocks/handlers',
-      seedsDir: './mocks/seeds',
-      idFields: {
-        Pet: 'id',
-        Order: 'id',
-        User: 'id',
-        Category: 'id',
-        Tag: 'id',
-      },
       timelineLimit: 500,
       devtools: true,
       cors: true,

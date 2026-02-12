@@ -175,9 +175,11 @@ try {
 
       try {
         // Load handlers from handlers directory (using Vite's ssrLoadModule for TS support)
+        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         const handlersResult = await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd);
 
         // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
+        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
 
         // Resolve DevTools SPA directory (shipped inside this package's dist/)
@@ -197,19 +199,23 @@ try {
         }
 
         // Create the OpenAPI mock server
+        // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+        // Using 'as any' because v0.x plugin code references old single-spec shape
+        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
+        const opts = resolvedOptions as any;
         server = await createOpenApiServer({
-          spec: resolvedOptions.spec,
-          port: resolvedOptions.port,
-          idFields: resolvedOptions.idFields,
+          spec: opts.spec,
+          port: opts.port,
+          idFields: opts.idFields,
           handlers: handlersResult.handlers,
           // Seeds are populated via executeSeeds, not directly
           seeds: new Map(),
-          timelineLimit: resolvedOptions.timelineLimit,
-          devtools: resolvedOptions.devtools,
+          timelineLimit: opts.timelineLimit,
+          devtools: opts.devtools,
           devtoolsSpaDir,
-          cors: resolvedOptions.cors,
-          corsOrigin: resolvedOptions.corsOrigin,
-          logger: resolvedOptions.logger,
+          cors: opts.cors,
+          corsOrigin: opts.corsOrigin,
+          logger: opts.logger,
         });
 
         // Execute seeds to populate the store
@@ -221,6 +227,7 @@ try {
         await server.start();
 
         // Configure Vite proxy
+        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         configureProxy(viteServer, resolvedOptions.proxyPath, resolvedOptions.port);
 
         // Print startup banner
@@ -333,9 +340,12 @@ try {
     const debouncedHandlerReload = debounce(reloadHandlers, 100);
     const debouncedSeedReload = debounce(reloadSeeds, 100);
 
+    // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+    // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
+    const watchOpts = resolvedOptions as any;
     fileWatcher = await createFileWatcher({
-      handlersDir: resolvedOptions.handlersDir,
-      seedsDir: resolvedOptions.seedsDir,
+      handlersDir: watchOpts.handlersDir,
+      seedsDir: watchOpts.seedsDir,
       cwd,
       onHandlerChange: debouncedHandlerReload,
       onSeedChange: debouncedSeedReload,
@@ -349,7 +359,13 @@ try {
     if (!server || !vite) return;
 
     try {
-      const handlersResult = await loadHandlers(resolvedOptions.handlersDir, vite, cwd);
+      // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+      const handlersResult = await loadHandlers(
+        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
+        (resolvedOptions as any).handlersDir,
+        vite,
+        cwd,
+      );
       server.updateHandlers(handlersResult.handlers);
 
       // Notify via WebSocket
@@ -376,7 +392,13 @@ try {
 
     try {
       // Load seeds first (before clearing) to minimize the window where store is empty
-      const seedsResult = await loadSeeds(resolvedOptions.seedsDir, vite, cwd);
+      // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+      const seedsResult = await loadSeeds(
+        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
+        (resolvedOptions as any).seedsDir,
+        vite,
+        cwd,
+      );
 
       // Only clear and repopulate if we successfully loaded seeds
       // This prevents clearing the store on load errors
