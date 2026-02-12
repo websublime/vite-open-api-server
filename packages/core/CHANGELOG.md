@@ -1,3 +1,51 @@
+## [0.14.0-next.1] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+
+
+### Bug Fixes
+
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- address coder review findings for types, banner, and tests (eb6b058)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+
+
+
+## [0.14.0-next.1] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+
+
+### Bug Fixes
+
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- address coder review findings for types, banner, and tests (eb6b058)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+
+
+
 ## [0.14.0-next.0] - 2026-02-12
 
 ### Features

@@ -1,3 +1,103 @@
+## [0.24.0-next.0] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+- add autoConnect option to WebSocketHubOptions (c7405dd)
+- add MultiSpecServerEvent and MultiSpecClientCommand types (b6f231e)
+- define and export SpecInfo interface (e3a5927)
+- add getTimeline() and clearTimeline() to OpenApiServer (48cbda0)
+
+
+### Bug Fixes
+
+- address coder review findings for types, banner, and tests (eb6b058)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address code review findings for core package extensions (13343a2)
+
+
+### Documentation
+
+- update agent/contributor docs for next branch strategy (e6b9993)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Continuous Integration
+
+- add next branch support for pre-release workflow (fb40789)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- bump @websublime/vite-plugin-open-api-core to 0.14.0-next.0 (f717863)
+- fix formatting in core exports and protocol types (bab5bf8)
+- add changeset for core package minor extensions (fbb4f22)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (e83671e)
+- update changeset for code review fixes (f37cec1)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (9639b34)
+- beads gitignore update (f2a89db)
+- update beads gitignore (doctor --fix) (4b4bf32)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
+## [0.24.0-next.0] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+- add autoConnect option to WebSocketHubOptions (c7405dd)
+- add MultiSpecServerEvent and MultiSpecClientCommand types (b6f231e)
+- define and export SpecInfo interface (e3a5927)
+- add getTimeline() and clearTimeline() to OpenApiServer (48cbda0)
+
+
+### Bug Fixes
+
+- address coder review findings for types, banner, and tests (eb6b058)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address code review findings for core package extensions (13343a2)
+
+
+### Documentation
+
+- update agent/contributor docs for next branch strategy (e6b9993)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Continuous Integration
+
+- add next branch support for pre-release workflow (fb40789)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- bump @websublime/vite-plugin-open-api-core to 0.14.0-next.0 (f717863)
+- fix formatting in core exports and protocol types (bab5bf8)
+- add changeset for core package minor extensions (fbb4f22)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (e83671e)
+- update changeset for code review fixes (f37cec1)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (9639b34)
+- beads gitignore update (f2a89db)
+- update beads gitignore (doctor --fix) (4b4bf32)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
 ## [0.23.1] - 2026-02-11
 
 ### Documentation
