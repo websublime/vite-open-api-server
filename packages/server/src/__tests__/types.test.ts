@@ -7,12 +7,28 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import type { ValidationErrorCode } from '../types.js';
 import {
   type OpenApiServerOptions,
   type ResolvedOptions,
   resolveOptions,
   ValidationError,
 } from '../types.js';
+
+/**
+ * Assert that `fn` throws a ValidationError with the expected code.
+ * Calls `fn` exactly once.
+ */
+function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
+  let caught: unknown;
+  try {
+    fn();
+  } catch (error) {
+    caught = error;
+  }
+  expect(caught).toBeInstanceOf(ValidationError);
+  expect((caught as ValidationError).code).toBe(expectedCode);
+}
 
 // =============================================================================
 // ValidationError
@@ -70,60 +86,32 @@ describe('resolveOptions', () => {
 
   describe('specs validation', () => {
     it('should throw SPECS_EMPTY for missing specs', () => {
-      expect(() => resolveOptions({} as OpenApiServerOptions)).toThrow(ValidationError);
-
-      try {
-        resolveOptions({} as OpenApiServerOptions);
-      } catch (error) {
-        expect(error).toBeInstanceOf(ValidationError);
-        expect((error as ValidationError).code).toBe('SPECS_EMPTY');
-      }
+      expectValidationError(() => resolveOptions({} as OpenApiServerOptions), 'SPECS_EMPTY');
     });
 
     it('should throw SPECS_EMPTY for empty specs array', () => {
-      expect(() => resolveOptions({ specs: [] })).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: [] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPECS_EMPTY');
-      }
+      expectValidationError(() => resolveOptions({ specs: [] }), 'SPECS_EMPTY');
     });
 
     it('should throw SPECS_EMPTY for null specs', () => {
-      expect(() =>
-        resolveOptions({ specs: null as unknown as OpenApiServerOptions['specs'] }),
-      ).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: null as unknown as OpenApiServerOptions['specs'] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPECS_EMPTY');
-      }
+      expectValidationError(
+        () => resolveOptions({ specs: null as unknown as OpenApiServerOptions['specs'] }),
+        'SPECS_EMPTY',
+      );
     });
 
     it('should throw SPECS_EMPTY for undefined specs', () => {
-      expect(() =>
-        resolveOptions({ specs: undefined as unknown as OpenApiServerOptions['specs'] }),
-      ).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: undefined as unknown as OpenApiServerOptions['specs'] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPECS_EMPTY');
-      }
+      expectValidationError(
+        () => resolveOptions({ specs: undefined as unknown as OpenApiServerOptions['specs'] }),
+        'SPECS_EMPTY',
+      );
     });
 
     it('should throw SPECS_EMPTY for non-array specs', () => {
-      expect(() =>
-        resolveOptions({ specs: 'not-an-array' as unknown as OpenApiServerOptions['specs'] }),
-      ).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: 'not-an-array' as unknown as OpenApiServerOptions['specs'] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPECS_EMPTY');
-      }
+      expectValidationError(
+        () => resolveOptions({ specs: 'not-an-array' as unknown as OpenApiServerOptions['specs'] }),
+        'SPECS_EMPTY',
+      );
     });
   });
 
@@ -133,67 +121,60 @@ describe('resolveOptions', () => {
 
   describe('spec entry validation', () => {
     it('should throw SPEC_NOT_FOUND for empty spec string', () => {
-      expect(() => resolveOptions({ specs: [{ spec: '' }] })).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: [{ spec: '' }] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPEC_NOT_FOUND');
-      }
+      expectValidationError(() => resolveOptions({ specs: [{ spec: '' }] }), 'SPEC_NOT_FOUND');
     });
 
     it('should throw SPEC_NOT_FOUND for whitespace-only spec', () => {
-      expect(() => resolveOptions({ specs: [{ spec: '   ' }] })).toThrow(ValidationError);
-
-      try {
-        resolveOptions({ specs: [{ spec: '   ' }] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPEC_NOT_FOUND');
-      }
+      expectValidationError(() => resolveOptions({ specs: [{ spec: '   ' }] }), 'SPEC_NOT_FOUND');
     });
 
     it('should throw SPEC_NOT_FOUND for null spec field', () => {
-      expect(() => resolveOptions({ specs: [{ spec: null as unknown as string }] })).toThrow(
-        ValidationError,
+      expectValidationError(
+        () => resolveOptions({ specs: [{ spec: null as unknown as string }] }),
+        'SPEC_NOT_FOUND',
       );
-
-      try {
-        resolveOptions({ specs: [{ spec: null as unknown as string }] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPEC_NOT_FOUND');
-      }
     });
 
     it('should throw SPEC_NOT_FOUND for undefined spec field', () => {
-      expect(() => resolveOptions({ specs: [{ spec: undefined as unknown as string }] })).toThrow(
-        ValidationError,
+      expectValidationError(
+        () => resolveOptions({ specs: [{ spec: undefined as unknown as string }] }),
+        'SPEC_NOT_FOUND',
       );
-
-      try {
-        resolveOptions({ specs: [{ spec: undefined as unknown as string }] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPEC_NOT_FOUND');
-      }
     });
 
     it('should throw SPEC_NOT_FOUND for non-string spec field', () => {
-      expect(() => resolveOptions({ specs: [{ spec: 123 as unknown as string }] })).toThrow(
-        ValidationError,
+      expectValidationError(
+        () => resolveOptions({ specs: [{ spec: 123 as unknown as string }] }),
+        'SPEC_NOT_FOUND',
       );
-
-      try {
-        resolveOptions({ specs: [{ spec: 123 as unknown as string }] });
-      } catch (error) {
-        expect((error as ValidationError).code).toBe('SPEC_NOT_FOUND');
-      }
     });
 
     it('should validate all spec entries, not just the first', () => {
-      expect(() =>
-        resolveOptions({
-          specs: [{ spec: './valid.yaml' }, { spec: '' }],
-        }),
-      ).toThrow(ValidationError);
+      expectValidationError(
+        () => resolveOptions({ specs: [{ spec: './valid.yaml' }, { spec: '' }] }),
+        'SPEC_NOT_FOUND',
+      );
+    });
+
+    it('should include the failing spec index in the error message', () => {
+      let caught: unknown;
+      try {
+        resolveOptions({ specs: [{ spec: './valid.yaml' }, { spec: '' }] });
+      } catch (error) {
+        caught = error;
+      }
+      expect((caught as ValidationError).message).toContain('specs[1]');
+    });
+
+    it('should include the spec id in the error message when available', () => {
+      let caught: unknown;
+      try {
+        resolveOptions({ specs: [{ spec: '', id: 'broken-api' }] });
+      } catch (error) {
+        caught = error;
+      }
+      expect((caught as ValidationError).message).toContain('specs[0]');
+      expect((caught as ValidationError).message).toContain('broken-api');
     });
   });
 

@@ -255,22 +255,28 @@ export interface ResolvedOptions {
  * @throws {ValidationError} SPECS_EMPTY if specs array is missing or empty
  * @throws {ValidationError} SPEC_NOT_FOUND if a spec entry has empty spec field
  */
-export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
-  if (!options.specs || !Array.isArray(options.specs) || options.specs.length === 0) {
+function validateSpecs(specs: SpecConfig[]): void {
+  if (!specs || !Array.isArray(specs) || specs.length === 0) {
     throw new ValidationError(
       'SPECS_EMPTY',
       'specs is required and must be a non-empty array of SpecConfig',
     );
   }
 
-  for (const spec of options.specs) {
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
     if (!spec.spec || typeof spec.spec !== 'string' || spec.spec.trim() === '') {
+      const identifier = spec.id ? ` (id: "${spec.id}")` : '';
       throw new ValidationError(
         'SPEC_NOT_FOUND',
-        'Each spec entry must have a non-empty spec field (path or URL to OpenAPI spec)',
+        `specs[${i}]${identifier}: spec field is required and must be a non-empty string (path or URL to OpenAPI spec)`,
       );
     }
   }
+}
+
+export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
+  validateSpecs(options.specs);
 
   return {
     specs: options.specs.map((s) => ({
