@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest';
 
 import { deriveSpecId, slugify, validateUniqueIds } from '../spec-id.js';
 import type { ValidationErrorCode } from '../types.js';
-import { ValidationError } from '../types.js';
 
 /**
  * Assert that `fn` throws a ValidationError with the expected code.
@@ -343,17 +342,10 @@ describe('validateUniqueIds', () => {
     });
 
     it('should report each duplicate only once', () => {
-      let caught: unknown;
-      try {
-        validateUniqueIds(['x', 'x', 'x']);
-      } catch (error) {
-        caught = error;
-      }
-      expect(caught).toBeInstanceOf(ValidationError);
-      // "x" should appear once in the list, not multiple times
-      const msg = (caught as ValidationError).message;
-      const matches = msg.match(/\bx\b/g);
-      expect(matches).toHaveLength(1);
+      const fn = () => validateUniqueIds(['x', 'x', 'x']);
+      expectValidationError(fn, 'SPEC_ID_DUPLICATE');
+      // "x" should appear exactly once in the duplicate list
+      expect(fn).toThrow(/\bx\b(?!.*\bx\b)/);
     });
   });
 
