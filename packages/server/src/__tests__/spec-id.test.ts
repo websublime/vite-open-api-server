@@ -288,6 +288,10 @@ describe('deriveSpecId', () => {
     it('should throw when explicit id is whitespace-only', () => {
       expectValidationError(() => deriveSpecId('   ', makeDocument('')), 'SPEC_ID_MISSING');
     });
+
+    it('should throw SPEC_ID_MISSING when title is non-ASCII-only and slugify returns empty', () => {
+      expectValidationError(() => deriveSpecId('', makeDocument('テスト')), 'SPEC_ID_MISSING');
+    });
   });
 });
 
