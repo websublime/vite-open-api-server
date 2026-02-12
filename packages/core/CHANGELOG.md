@@ -1,3 +1,43 @@
+## [0.14.0-next.0] - 2026-02-12
+
+### Features
+
+- define and export SpecInfo interface (e3a5927)
+- add autoConnect option to WebSocketHubOptions (c7405dd)
+- add getTimeline() and clearTimeline() to OpenApiServer (48cbda0)
+- add MultiSpecServerEvent and MultiSpecClientCommand types (b6f231e)
+
+
+### Bug Fixes
+
+- address code review findings for core package extensions (13343a2)
+
+
+### Documentation
+
+- update agent/contributor docs for next branch strategy (e6b9993)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Continuous Integration
+
+- add next branch support for pre-release workflow (fb40789)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (e83671e)
+- update changeset for code review fixes (f37cec1)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (9639b34)
+- add changeset for core package minor extensions (fbb4f22)
+- fix formatting in core exports and protocol types (bab5bf8)
+- beads gitignore update (f2a89db)
+- update beads gitignore (doctor --fix) (4b4bf32)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
 ## [0.13.1] - 2026-02-11
 
 ### Documentation
