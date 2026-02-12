@@ -166,6 +166,21 @@ describe('createWebSocketHub', () => {
       expect(event.type).toBe('connected');
     });
 
+    it('should handle commands when autoConnect is false and no connected event sent', () => {
+      const commandHandler = vi.fn();
+      const hub = createWebSocketHub({ autoConnect: false, onCommand: commandHandler });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      expect(client.messages).toHaveLength(0);
+
+      // Commands should work even without a prior connected event
+      hub.handleMessage(client, JSON.stringify({ type: 'get:registry' }));
+
+      expect(commandHandler).toHaveBeenCalledTimes(1);
+      expect(commandHandler).toHaveBeenCalledWith(client, { type: 'get:registry' });
+    });
+
     it('should still receive broadcasts when autoConnect is false', () => {
       const hub = createWebSocketHub({ autoConnect: false });
       const client = createMockClient();
