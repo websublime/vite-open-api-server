@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-qq9.3-spec-id-derivation",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-12T16:49:04.503197Z",
+  "updated_at": "2026-02-12T16:49:04.503680Z"
+}
