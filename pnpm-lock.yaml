@@ -122,6 +122,9 @@ importers:
 
   packages/server:
     dependencies:
+      '@scalar/openapi-types':
+        specifier: ^0.5.3
+        version: 0.5.3
       '@vue/devtools-api':
         specifier: ^8.0.6
         version: 8.0.6
