@@ -33,8 +33,12 @@ vite-open-api-server/
 │   ├── vite-plugin/                  # Vite plugin wrapper
 │   └── playground/                   # Demo application
 ├── history/                          # Planning and architecture docs
-│   ├── PRODUCT-REQUIREMENTS-DOC.md   # Product Requirements Document
-│   └── TECHNICAL-SPECIFICATION.md   # Technical Specification
+│   ├── PRODUCT-REQUIREMENTS-DOC-V2.md # Product Requirements Document (v1.0.0)
+│   ├── TECHNICAL-SPECIFICATION-V2.md  # Technical Specification (v1.0.0)
+│   ├── PLAN-V2.md                     # Development Plan (v1.0.0)
+│   ├── PRODUCT-REQUIREMENTS-DOC.md    # [Legacy] PRD (v0.x)
+│   ├── TECHNICAL-SPECIFICATION.md     # [Legacy] Tech Spec (v0.x)
+│   └── PLAN.md                        # [Legacy] Plan (v0.x)
 ├── .github/workflows/                # CI/CD workflows
 └── biome.json, tsconfig.json, etc.   # Configuration files
 ```

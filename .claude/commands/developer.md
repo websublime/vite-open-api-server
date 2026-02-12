@@ -57,7 +57,7 @@ git status
 
 ### 1.2 Decision Tree
 
-First read the history/PRODUCT-REQUIREMENTS-DOC.md and history/TECHNICAL-SPECIFICATION.md document.
+First read the history/PRODUCT-REQUIREMENTS-DOC-V2.md and history/TECHNICAL-SPECIFICATION-V2.md documents.
 
 **If there's a task in_progress:**
 - Continue from where it left off
@@ -96,14 +96,14 @@ bd sync
 
 ### 1.5 Load Task Context
 
-**CRITICAL**: Always read the PLAN.md section for the task before implementation.
+**CRITICAL**: Always read the PLAN-V2.md section for the task before implementation.
 
 ```bash
-# Get task details to find PLAN.md line references
+# Get task details to find PLAN-V2.md line references
 bd show <task-id> --json
 ```
 
-Then read the relevant section from `history/PLAN.md` using the line numbers from the task description (e.g., `📖 history/PLAN.md#L533-950`).
+Then read the relevant section from `history/PLAN-V2.md` using the line numbers from the task description (e.g., `📖 history/PLAN-V2.md#L533-950`).
 
 ---
 
@@ -139,7 +139,7 @@ bd update <subtask-id> --status in_progress --json
 
 ### 2.3 Implement
 
-Execute the subtask according to its description and the PLAN.md specifications.
+Execute the subtask according to its description and the PLAN-V2.md specifications.
 
 **During implementation, ensure:**
 - Follow existing code patterns and conventions
@@ -418,7 +418,7 @@ Closes: <issue-id>
 4. **Atomic commits** - Each commit corresponds to exactly one subtask
 5. **Descriptive close reasons** - Document what was accomplished
 6. **Sync bd frequently** - After every subtask completion
-7. **Read the PLAN** - Always load context from PLAN.md before implementation
+7. **Read the PLAN** - Always load context from PLAN-V2.md before implementation
 8. **Create changeset early** - Run `workspace changeset create` right after creating the feature branch
 
 ---

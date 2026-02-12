@@ -628,8 +628,9 @@ pnpm format
 
 ## Documentation
 
-- [Product Requirements](./history/PRODUCT-REQUIREMENTS-DOC.md) - Product vision and features
-- [Technical Specification](./history/TECHNICAL-SPECIFICATION.md) - Architecture and implementation details
+- [Product Requirements (v1.0)](./history/PRODUCT-REQUIREMENTS-DOC-V2.md) - Product vision and features
+- [Technical Specification (v1.0)](./history/TECHNICAL-SPECIFICATION-V2.md) - Architecture and implementation details
+- [Development Plan (v1.0)](./history/PLAN-V2.md) - Epics, tasks, and subtasks
 
 ## Contributing
 
@@ -643,8 +644,8 @@ Contributions are welcome! This project uses:
 
 This project was developed using **Claude** (Anthropic) as the primary coding agent — but this was not unstructured "vibe coding". Every line of code was produced through a deliberate, engineering-driven process:
 
-1. **Product Requirements & Technical Specification** — Before any code was written, we iterated on a detailed PRD and technical spec (`history/PRODUCT-REQUIREMENTS-DOC.md`, `history/TECHNICAL-SPECIFICATION.md`) that defined scope, architecture, and acceptance criteria.
-2. **Implementation Plan** — Each epic was broken down into a phased plan (`history/PLAN.md`) with clear subtasks, dependencies, and references to the spec.
+1. **Product Requirements & Technical Specification** — Before any code was written, we iterated on a detailed PRD and technical spec (`history/PRODUCT-REQUIREMENTS-DOC-V2.md`, `history/TECHNICAL-SPECIFICATION-V2.md`) that defined scope, architecture, and acceptance criteria.
+2. **Implementation Plan** — Each epic was broken down into a phased plan (`history/PLAN-V2.md`) with clear subtasks, dependencies, and references to the spec.
 3. **AI Issue Tracking (Beads)** — [Beads](https://github.com/steveyegge/beads) served as the git-backed issue tracker, enforcing linear, dependency-aware development. Every task was created, claimed, and closed through `bd` commands — no work happened outside tracked issues.
 4. **Agentic Workflow with Human Oversight** — Three specialized agents (`/developer`, `/coder`, `/review`) handled implementation, deep code analysis, and code review respectively. The developer (human) reviewed and intervened at every decision point — approving plans, rejecting approaches, iterating on PR feedback, and steering architectural choices.
 5. **Structured Rules** — `CLAUDE.md` and `AGENTS.md` defined strict conventions for commit strategy, code patterns, testing, and session workflows that the AI agents followed consistently.

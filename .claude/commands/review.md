@@ -33,8 +33,8 @@ bd show <task-id> --json
 
 Before reviewing, read the project context:
 
-1. **Read the Requirements**: `history/PRODUCT-REQUIREMENTS-DOC.md` and `history/TECHNICAL-SPECIFICATION.md` - Understand the product goals
-2. **Read the Plan**: `history/PLAN.md` - Understand the implementation details (use line references from task description)
+1. **Read the Requirements**: `history/PRODUCT-REQUIREMENTS-DOC-V2.md` and `history/TECHNICAL-SPECIFICATION-V2.md` - Understand the product goals
+2. **Read the Plan**: `history/PLAN-V2.md` - Understand the implementation details (use line references from task description)
 3. **Read CLAUDE.md**: Check for project-specific coding standards
 
 ### Step 3: Checkout Branch and Get Diff
