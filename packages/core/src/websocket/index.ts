@@ -8,27 +8,27 @@
  * @module websocket
  */
 
-export { type CommandHandlerDeps, createCommandHandler } from './command-handler.js';
+export { createCommandHandler, type CommandHandlerDeps } from './command-handler.js';
 
 export {
-  type CommandHandler,
-  createWebSocketHub,
-  type WebSocketClient,
-  type WebSocketHub,
-  type WebSocketHubLogger,
-  type WebSocketHubOptions,
+    createWebSocketHub, type CommandHandler, type WebSocketClient,
+    type WebSocketHub,
+    type WebSocketHubLogger,
+    type WebSocketHubOptions
 } from './hub.js';
 
 export {
-  CLIENT_COMMAND_TYPES,
-  type ClientCommand,
-  type ClientCommandData,
-  type ClientCommandType,
-  type RequestLogEntry,
-  type ResponseLogEntry,
-  type ServerEvent,
-  type ServerEventData,
-  type SimulationBase,
-  type SimulationConfig,
-  type SimulationState,
+    CLIENT_COMMAND_TYPES,
+    type ClientCommand,
+    type ClientCommandData,
+    type ClientCommandType,
+    type RequestLogEntry,
+    type ResponseLogEntry,
+    type ServerEvent,
+    type ServerEventData,
+    type SimulationBase,
+    type SimulationConfig,
+    type SimulationState,
+    type SpecInfo
 } from './protocol.js';
+

@@ -9,6 +9,30 @@
  */
 
 /**
+ * Spec metadata for DevTools and WebSocket protocol
+ *
+ * Represents a single OpenAPI spec instance in a multi-spec setup.
+ * Used by the orchestrator to describe available specs in the
+ * `connected` event and DevTools spec selector.
+ */
+export interface SpecInfo {
+  /** Unique spec identifier (explicit or auto-derived from info.title) */
+  id: string;
+  /** Human-readable spec title from OpenAPI info.title */
+  title: string;
+  /** Spec version from OpenAPI info.version */
+  version: string;
+  /** Proxy path for this spec (e.g., /api/pets/v1) */
+  proxyPath: string;
+  /** Deterministic color for UI display */
+  color: string;
+  /** Number of endpoints in this spec */
+  endpointCount: number;
+  /** Number of schemas in this spec */
+  schemaCount: number;
+}
+
+/**
  * Request log entry for timeline
  * Note: query allows string[] to match HandlerRequest.query for multi-value params
  */
