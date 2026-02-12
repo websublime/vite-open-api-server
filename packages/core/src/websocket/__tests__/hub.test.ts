@@ -112,6 +112,79 @@ describe('createWebSocketHub', () => {
     });
   });
 
+  describe('autoConnect option', () => {
+    it('should send connected event by default (autoConnect not specified)', () => {
+      const hub = createWebSocketHub();
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      expect(client.messages).toHaveLength(1);
+      const event = JSON.parse(client.messages[0]) as ServerEvent;
+      expect(event.type).toBe('connected');
+      expect(event.data).toEqual({ serverVersion: '2.0.0' });
+    });
+
+    it('should send connected event when autoConnect is explicitly true', () => {
+      const hub = createWebSocketHub({ autoConnect: true });
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      expect(client.messages).toHaveLength(1);
+      const event = JSON.parse(client.messages[0]) as ServerEvent;
+      expect(event.type).toBe('connected');
+    });
+
+    it('should not send connected event when autoConnect is false', () => {
+      const hub = createWebSocketHub({ autoConnect: false });
+      const client = createMockClient();
+
+      hub.addClient(client);
+
+      expect(client.messages).toHaveLength(0);
+      expect(hub.hasClient(client)).toBe(true);
+      expect(hub.getClientCount()).toBe(1);
+    });
+
+    it('should still allow manual event sending when autoConnect is false', () => {
+      const hub = createWebSocketHub({ autoConnect: false });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      expect(client.messages).toHaveLength(0);
+
+      // Orchestrator sends its own connected event with spec metadata
+      const customEvent: ServerEvent = {
+        type: 'connected',
+        data: { serverVersion: '2.0.0' },
+      };
+      hub.sendTo(client, customEvent);
+
+      expect(client.messages).toHaveLength(1);
+      const event = JSON.parse(client.messages[0]) as ServerEvent;
+      expect(event.type).toBe('connected');
+    });
+
+    it('should still receive broadcasts when autoConnect is false', () => {
+      const hub = createWebSocketHub({ autoConnect: false });
+      const client = createMockClient();
+
+      hub.addClient(client);
+      expect(client.messages).toHaveLength(0);
+
+      const event: ServerEvent = {
+        type: 'handlers:updated',
+        data: { count: 5 },
+      };
+      hub.broadcast(event);
+
+      expect(client.messages).toHaveLength(1);
+      const parsed = JSON.parse(client.messages[0]) as ServerEvent;
+      expect(parsed.type).toBe('handlers:updated');
+    });
+  });
+
   describe('removeClient', () => {
     it('should remove a client from the hub', () => {
       const hub = createWebSocketHub();

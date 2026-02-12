@@ -135,8 +135,10 @@ export type ServerEvent =
  * Used both for TypeScript type inference and runtime validation.
  *
  * @remarks
- * When adding new commands, add them here first. The ClientCommand type
- * and runtime validation will automatically include them.
+ * When adding new single-spec commands, add them here first. The ClientCommand
+ * type and runtime validation will automatically include them.
+ * Multi-spec commands (e.g., `get:specs`) are defined separately in
+ * `MultiSpecClientCommand` and handled by the orchestrator, not by the core hub.
  */
 export const CLIENT_COMMAND_TYPES = [
   'get:registry',
@@ -198,8 +200,11 @@ export type MultiSpecServerEvent =
       type: 'store:updated';
       data: { specId: string; schema: string; action: string; count?: number };
     }
+  | { type: 'handler:reloaded'; data: { specId: string; file: string } }
   | { type: 'handlers:updated'; data: { specId: string; count: number } }
+  | { type: 'seed:reloaded'; data: { specId: string; file: string } }
   | { type: 'seeds:updated'; data: { specId: string; count: number } }
+  | { type: 'simulation:active'; data: { specId: string; simulations: SimulationState[] } }
   | { type: 'simulation:added'; data: { specId: string; path: string } }
   | { type: 'simulation:removed'; data: { specId: string; path: string } }
   | { type: 'simulations:cleared'; data: { specId: string; count: number } }
@@ -219,6 +224,11 @@ export type MultiSpecServerEvent =
  *
  * Commands sent by DevTools clients in a multi-spec setup.
  * Some commands are global (no specId required), others are spec-scoped.
+ *
+ * Note: These commands are handled by the multi-spec orchestrator's WebSocket
+ * wrapper in the server package, NOT by the core hub's `CLIENT_COMMAND_TYPES`
+ * validation. The `get:specs` command in particular is orchestrator-only and
+ * is not included in `CLIENT_COMMAND_TYPES`.
  */
 export type MultiSpecClientCommand =
   // Global commands (no specId required)
