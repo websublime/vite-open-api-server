@@ -29,7 +29,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@scalar/openapi-types": "^0.5.3",
     "picocolors": "^1.1.1",
     "@websublime/vite-plugin-open-api-core": "workspace:*",
     "@vue/devtools-api": "^8.0.6",
@@ -37,6 +36,7 @@
     "chokidar": "^5.0.0"
   },
   "devDependencies": {
+    "@scalar/openapi-types": "^0.5.3",
     "typescript": "^5.9.0",
     "tsup": "^8.5.0",
     "@websublime/vite-plugin-open-api-devtools": "workspace:*",
