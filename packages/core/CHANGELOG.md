@@ -1,3 +1,81 @@
+## [0.14.0-next.2] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
+## [0.14.0-next.2] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
+## [0.14.0-next.2] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
 ## [0.14.0-next.1] - 2026-02-12
 
 ### Features
