@@ -15,7 +15,8 @@ import type {
 } from '@websublime/vite-plugin-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
+import { ValidationError, type ValidationErrorCode } from '../types.js';
 
 /**
  * Creates a mock ViteDevServer with ssrLoadModule support
@@ -172,4 +173,30 @@ export function createMockWebSocketHub(): MockWebSocketHub {
       clearMock.mockClear();
     },
   };
+}
+
+/**
+ * Assert that `fn` throws a ValidationError with the expected code.
+ * Calls `fn` exactly once.
+ *
+ * @param fn - Function expected to throw ValidationError
+ * @param expectedCode - Expected ValidationErrorCode
+ *
+ * @example
+ * ```typescript
+ * expectValidationError(
+ *   () => deriveSpecId('', makeDocument('')),
+ *   'SPEC_ID_MISSING',
+ * );
+ * ```
+ */
+export function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
+  let caught: unknown;
+  try {
+    fn();
+  } catch (error) {
+    caught = error;
+  }
+  expect(caught).toBeInstanceOf(ValidationError);
+  expect((caught as ValidationError).code).toBe(expectedCode);
 }

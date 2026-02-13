@@ -51,7 +51,15 @@ export function slugify(input: string): string {
  */
 export function deriveSpecId(explicitId: string, document: OpenAPIV3_1.Document): string {
   if (explicitId.trim()) {
-    return slugify(explicitId);
+    const id = slugify(explicitId);
+    if (!id) {
+      throw new ValidationError(
+        'SPEC_ID_MISSING',
+        `Cannot derive spec ID: explicit id "${explicitId}" produces an empty slug. ` +
+          'Please provide an id containing ASCII letters or numbers.',
+      );
+    }
+    return id;
   }
 
   const title = document.info?.title;

@@ -10,19 +10,7 @@ import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { describe, expect, it } from 'vitest';
 
 import { deriveSpecId, slugify, validateUniqueIds } from '../spec-id.js';
-import type { ValidationErrorCode } from '../types.js';
-
-/**
- * Assert that `fn` throws a ValidationError with the expected code.
- */
-function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
-  expect(fn).toThrow(
-    expect.objectContaining({
-      name: 'ValidationError',
-      code: expectedCode,
-    }),
-  );
-}
+import { expectValidationError } from './test-utils.js';
 
 /**
  * Create a minimal OpenAPI 3.1 document for testing
@@ -234,6 +222,26 @@ describe('deriveSpecId', () => {
     it('should trim whitespace from explicit id before checking', () => {
       const result = deriveSpecId('  petstore  ', makeDocument('Some Title'));
       expect(result).toBe('petstore');
+    });
+
+    it('should throw SPEC_ID_MISSING when explicit id slugifies to empty (special chars only)', () => {
+      expectValidationError(
+        () => deriveSpecId('---', makeDocument('Valid Title')),
+        'SPEC_ID_MISSING',
+      );
+    });
+
+    it('should throw SPEC_ID_MISSING when explicit id is non-ASCII-only', () => {
+      expectValidationError(
+        () => deriveSpecId('テスト', makeDocument('Valid Title')),
+        'SPEC_ID_MISSING',
+      );
+    });
+
+    it('should include guidance in the error when explicit id produces empty slug', () => {
+      expect(() => deriveSpecId('...', makeDocument('Valid Title'))).toThrow(
+        /ASCII letters or numbers/,
+      );
     });
   });
 
