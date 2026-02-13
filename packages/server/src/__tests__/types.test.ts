@@ -7,7 +7,6 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { ValidationErrorCode } from '../types.js';
 import {
   type OpenApiServerOptions,
   type ResolvedOptions,
@@ -15,21 +14,7 @@ import {
   type SpecConfig,
   ValidationError,
 } from '../types.js';
-
-/**
- * Assert that `fn` throws a ValidationError with the expected code.
- * Calls `fn` exactly once.
- */
-function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
-  let caught: unknown;
-  try {
-    fn();
-  } catch (error) {
-    caught = error;
-  }
-  expect(caught).toBeInstanceOf(ValidationError);
-  expect((caught as ValidationError).code).toBe(expectedCode);
-}
+import { expectValidationError } from './test-utils.js';
 
 // =============================================================================
 // ValidationError
