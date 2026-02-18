@@ -20,12 +20,26 @@ export { openApiServer } from './plugin.js';
 
 export type {
   OpenApiServerOptions,
+  ProxyPathSource,
   ResolvedOptions,
   ResolvedSpecConfig,
   SpecConfig,
   ValidationErrorCode,
 } from './types.js';
 export { ValidationError } from './types.js';
+
+// =============================================================================
+// Spec ID Derivation (for advanced use cases)
+// =============================================================================
+
+export { deriveSpecId, slugify, validateUniqueIds } from './spec-id.js';
+
+// =============================================================================
+// Proxy Path Derivation (for advanced use cases)
+// =============================================================================
+
+export type { DeriveProxyPathResult } from './proxy-path.js';
+export { deriveProxyPath, normalizeProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
 
 // =============================================================================
 // Handler Loading (for advanced use cases)

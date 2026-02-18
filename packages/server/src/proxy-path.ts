@@ -11,6 +11,7 @@
 
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 
+import type { ProxyPathSource } from './types.js';
 import { ValidationError } from './types.js';
 
 // =============================================================================
@@ -27,7 +28,7 @@ export interface DeriveProxyPathResult {
   /** Normalized proxy path (e.g., "/api/v3") */
   proxyPath: string;
   /** How the path was determined */
-  proxyPathSource: 'auto' | 'explicit';
+  proxyPathSource: ProxyPathSource;
 }
 
 // =============================================================================
@@ -88,7 +89,9 @@ export function deriveProxyPath(
 
   try {
     const url = new URL(serverUrl);
-    path = url.pathname;
+    // Decode percent-encoded characters (e.g., URL constructor encodes
+    // OpenAPI template variable braces: /{version} → /%7Bversion%7D)
+    path = decodeURIComponent(url.pathname);
   } catch {
     // Not a full URL — treat as relative path
     path = serverUrl;
@@ -108,7 +111,9 @@ export function deriveProxyPath(
  * Normalize and validate a proxy path
  *
  * Rules:
+ * - Strip query strings and fragments
  * - Ensure leading slash
+ * - Collapse consecutive slashes
  * - Remove trailing slash
  * - Reject "/" as too broad (would capture all requests)
  *
@@ -122,8 +127,22 @@ export function deriveProxyPath(
  * normalizeProxyPath('/api/v3/', 'petstore') → '/api/v3'
  */
 export function normalizeProxyPath(path: string, specId: string): string {
-  let normalized = path.startsWith('/') ? path : `/${path}`;
+  // Strip query string and fragment (e.g., "/api/v3?debug=true#section" → "/api/v3")
+  const queryIdx = path.indexOf('?');
+  const hashIdx = path.indexOf('#');
+  const cutIdx = Math.min(
+    queryIdx >= 0 ? queryIdx : path.length,
+    hashIdx >= 0 ? hashIdx : path.length,
+  );
+  let normalized = path.slice(0, cutIdx);
 
+  // Ensure leading slash
+  normalized = normalized.startsWith('/') ? normalized : `/${normalized}`;
+
+  // Collapse consecutive slashes (e.g., "//api//v3" → "/api/v3")
+  normalized = normalized.replace(/\/{2,}/g, '/');
+
+  // Remove trailing slash (but not if path is just "/")
   if (normalized.length > 1 && normalized.endsWith('/')) {
     normalized = normalized.slice(0, -1);
   }
