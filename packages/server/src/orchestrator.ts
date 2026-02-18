@@ -19,6 +19,7 @@ import {
   mountInternalApi,
   type OpenApiServer,
   type SpecInfo,
+  type TimelineEntry,
 } from '@websublime/vite-plugin-open-api-core';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -394,14 +395,22 @@ export async function createOrchestrator(
       );
     }
     const firstInstance = instances[0];
+    // Cast to mutable — getTimeline() returns `readonly TimelineEntry[]` at the type level,
+    // but the underlying array is mutable. The clearTimeline lambda needs to truncate it
+    // without broadcasting (internal-api.ts broadcasts after calling clearTimeline).
+    const timeline = firstInstance.server.getTimeline() as TimelineEntry[];
     mountInternalApi(mainApp, {
       store: firstInstance.server.store,
       registry: firstInstance.server.registry,
       simulationManager: firstInstance.server.simulationManager,
       wsHub: firstInstance.server.wsHub,
-      timeline: firstInstance.server.getTimeline(),
+      timeline,
       timelineLimit: options.timelineLimit,
-      clearTimeline: firstInstance.server.clearTimeline,
+      clearTimeline: () => {
+        const count = timeline.length;
+        timeline.length = 0;
+        return count;
+      },
       document: firstInstance.server.document,
     });
   }
