@@ -19,9 +19,8 @@ import {
   mountInternalApi,
   type OpenApiServer,
   type SpecInfo,
-  type TimelineEntry,
 } from '@websublime/vite-plugin-open-api-core';
-import { Hono } from 'hono';
+import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ViteDevServer } from 'vite';
 
@@ -98,6 +97,9 @@ export interface OrchestratorResult {
 
   /** Stop the HTTP server and clean up resources */
   stop(): Promise<void>;
+
+  /** Actual bound port after start() resolves (0 before start or after stop) */
+  readonly port: number;
 }
 
 // =============================================================================
@@ -271,7 +273,7 @@ function mountDevToolsSpa(mainApp: Hono, logger: Logger): void {
  * instanceMap keys produced by deriveSpecId().
  */
 function createDispatchMiddleware(instanceMap: Map<string, SpecInstance>) {
-  return async (c: Parameters<Parameters<Hono['use']>[1]>[0], next: () => Promise<void>) => {
+  return async (c: Context, next: () => Promise<void>) => {
     const rawSpecId = c.req.header('x-spec-id');
     if (!rawSpecId) {
       await next();
@@ -395,22 +397,14 @@ export async function createOrchestrator(
       );
     }
     const firstInstance = instances[0];
-    // Cast to mutable — getTimeline() returns `readonly TimelineEntry[]` at the type level,
-    // but the underlying array is mutable. The clearTimeline lambda needs to truncate it
-    // without broadcasting (internal-api.ts broadcasts after calling clearTimeline).
-    const timeline = firstInstance.server.getTimeline() as TimelineEntry[];
     mountInternalApi(mainApp, {
       store: firstInstance.server.store,
       registry: firstInstance.server.registry,
       simulationManager: firstInstance.server.simulationManager,
       wsHub: firstInstance.server.wsHub,
-      timeline,
+      timeline: firstInstance.server.getTimeline(),
       timelineLimit: options.timelineLimit,
-      clearTimeline: () => {
-        const count = timeline.length;
-        timeline.length = 0;
-        return count;
-      },
+      clearTimeline: () => firstInstance.server.truncateTimeline(),
       document: firstInstance.server.document,
     });
   }
@@ -433,11 +427,16 @@ export async function createOrchestrator(
   type NodeServer = import('node:http').Server;
 
   let serverInstance: NodeServer | null = null;
+  let boundPort = 0;
 
   return {
     app: mainApp,
     instances,
     specsInfo,
+
+    get port(): number {
+      return boundPort;
+    },
 
     async start(): Promise<void> {
       // Guard against double-start — prevents leaking the first server
@@ -472,6 +471,7 @@ export async function createOrchestrator(
           logger.info(
             `[vite-plugin-open-api-server] Server started on http://localhost:${actualPort}`,
           );
+          boundPort = actualPort;
           serverInstance = server;
           resolve();
         };
@@ -481,6 +481,7 @@ export async function createOrchestrator(
           // Close and null the server to prevent leaks on error
           server.close(() => {});
           serverInstance = null;
+          boundPort = 0;
           if (err.code === 'EADDRINUSE') {
             reject(
               new Error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`),
@@ -515,6 +516,7 @@ export async function createOrchestrator(
           throw err;
         } finally {
           serverInstance = null;
+          boundPort = 0;
         }
       }
     },
