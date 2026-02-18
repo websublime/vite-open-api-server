@@ -1,3 +1,188 @@
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
 ## [0.24.0-next.2] - 2026-02-18
 
 ### Features
