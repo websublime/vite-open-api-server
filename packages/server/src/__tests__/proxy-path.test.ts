@@ -249,8 +249,8 @@ describe('deriveProxyPath', () => {
       expect(result.proxyPathSource).toBe('auto');
     });
 
-    it('should reject server URL "." as too broad', () => {
-      // "." is a valid OpenAPI relative server URL but not a useful proxy path
+    it('should reject server URL "." (resolves to "/")', () => {
+      // "." is a valid OpenAPI relative server URL but resolves to "/" after dot-segment resolution
       expectValidationError(
         () => deriveProxyPath('', makeDocument('.'), 'petstore'),
         'PROXY_PATH_TOO_BROAD',
@@ -379,19 +379,31 @@ describe('normalizeProxyPath', () => {
       expect(normalizeProxyPath('/api/v3?debug=true#section', 'test')).toBe('/api/v3');
     });
 
-    it('should not resolve path traversal segments (passthrough)', () => {
-      expect(normalizeProxyPath('/api/../v3', 'test')).toBe('/api/../v3');
+    it('should resolve ".." segments in path (RFC 3986 §5.2.4)', () => {
+      expect(normalizeProxyPath('/api/../v3', 'test')).toBe('/v3');
+    });
+
+    it('should resolve "." segments in path', () => {
+      expect(normalizeProxyPath('/api/./v3', 'test')).toBe('/api/v3');
+    });
+
+    it('should resolve multiple ".." segments', () => {
+      expect(normalizeProxyPath('/a/b/c/../../v3', 'test')).toBe('/a/v3');
+    });
+
+    it('should not traverse beyond root with ".."', () => {
+      expect(normalizeProxyPath('/api/../../v3', 'test')).toBe('/v3');
     });
 
     it('should throw PROXY_PATH_TOO_BROAD for whitespace-only input', () => {
       expectValidationError(() => normalizeProxyPath('   ', 'test'), 'PROXY_PATH_TOO_BROAD');
     });
 
-    it('should throw PROXY_PATH_TOO_BROAD for "."', () => {
+    it('should throw PROXY_PATH_TOO_BROAD for "." (resolves to "/")', () => {
       expectValidationError(() => normalizeProxyPath('.', 'test'), 'PROXY_PATH_TOO_BROAD');
     });
 
-    it('should throw PROXY_PATH_TOO_BROAD for ".."', () => {
+    it('should throw PROXY_PATH_TOO_BROAD for ".." (resolves to "/")', () => {
       expectValidationError(() => normalizeProxyPath('..', 'test'), 'PROXY_PATH_TOO_BROAD');
     });
   });
