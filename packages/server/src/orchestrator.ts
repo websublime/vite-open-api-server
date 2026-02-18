@@ -245,17 +245,16 @@ export async function createOrchestrator(
       logger,
     );
 
-    // Write resolved values back to options.specs so downstream consumers
-    // (banner, file watcher, plugin.ts) see the final values.
+    // Write resolved values back to options.specs[i]. Since processSpec
+    // received this same object reference as specConfig, and the instance
+    // was created with `config: specConfig`, these mutations are visible
+    // through both options.specs[i] and instance.config (shared object).
     const specConfig = options.specs[i];
     specConfig.id = resolvedConfig.id;
     specConfig.proxyPath = resolvedConfig.proxyPath;
     specConfig.proxyPathSource = resolvedConfig.proxyPathSource;
     specConfig.handlersDir = resolvedConfig.handlersDir;
     specConfig.seedsDir = resolvedConfig.seedsDir;
-
-    // Update the instance config reference to reflect the resolved values
-    instance.config = specConfig;
 
     instances.push(instance);
   }
@@ -322,11 +321,16 @@ export async function createOrchestrator(
     });
   }
 
-  // --- Internal API — aggregated across specs ---
-  // TODO: Multi-spec internal API will be implemented in Epic 3 (Task 3.x).
-  // For now, mount the first spec's internal API as a baseline so
+  // --- Internal API — first spec only (multi-spec: Epic 3, Task 3.x) ---
+  // Multi-spec aggregated internal API is planned for Epic 3 (see beads).
+  // For now, mount only the first spec's internal API as a baseline so
   // /_api/health and /_api/registry are reachable.
   if (instances.length > 0) {
+    if (instances.length > 1) {
+      logger.warn?.(
+        "[vite-plugin-open-api-server] Only first spec's internal API mounted on /_api; multi-spec support planned in Epic 3 (Task 3.x).",
+      );
+    }
     const firstInstance = instances[0];
     mountInternalApi(mainApp, {
       store: firstInstance.server.store,
@@ -454,17 +458,23 @@ export async function createOrchestrator(
       const server = serverInstance as { close?: (cb: (err?: Error) => void) => void } | null;
       const closeFn = server?.close;
       if (server && typeof closeFn === 'function') {
-        await new Promise<void>((resolve, reject) => {
-          closeFn.call(server, (err?: Error) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve();
-            }
+        try {
+          await new Promise<void>((resolve, reject) => {
+            closeFn.call(server, (err?: Error) => {
+              if (err) {
+                reject(err);
+              } else {
+                resolve();
+              }
+            });
           });
-        });
-        serverInstance = null;
-        logger.info('[vite-plugin-open-api-server] Server stopped');
+          logger.info('[vite-plugin-open-api-server] Server stopped');
+        } catch (err) {
+          logger.error?.('[vite-plugin-open-api-server] Error closing server:', err);
+          throw err;
+        } finally {
+          serverInstance = null;
+        }
       }
     },
   };

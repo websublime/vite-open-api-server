@@ -668,6 +668,17 @@ describe('createOrchestrator', () => {
       expect(response.status).toBe(404);
     });
 
+    it('should fall through to shared services for empty-string X-Spec-Id', async () => {
+      const result = await createTestOrchestrator();
+
+      // Empty string is falsy — middleware treats it as "no header" and
+      // falls through to shared services (same as omitting the header).
+      const response = await result.app.request('/_api/health', {
+        headers: { 'x-spec-id': '' },
+      });
+      expect(response.status).toBe(200);
+    });
+
     it('should return sanitized spec ID in error response', async () => {
       const result = await createTestOrchestrator();
 
