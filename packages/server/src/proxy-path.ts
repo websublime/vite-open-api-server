@@ -1,0 +1,200 @@
+/**
+ * Proxy Path Auto-Detection
+ *
+ * What: Functions to derive and validate proxy paths for spec instances
+ * How: Extracts path from explicit config or auto-derives from servers[0].url
+ * Why: Each spec instance needs a unique, non-overlapping proxy path for
+ *      Vite proxy configuration and request routing
+ *
+ * @module proxy-path
+ */
+
+import type { OpenAPIV3_1 } from '@scalar/openapi-types';
+
+import { ValidationError } from './types.js';
+
+// =============================================================================
+// Result Types
+// =============================================================================
+
+/**
+ * Result of proxy path derivation
+ *
+ * Includes the normalized path and how it was determined,
+ * so the startup banner can display "(auto-derived)" vs "(explicit)".
+ */
+export interface DeriveProxyPathResult {
+  /** Normalized proxy path (e.g., "/api/v3") */
+  proxyPath: string;
+  /** How the path was determined */
+  proxyPathSource: 'auto' | 'explicit';
+}
+
+// =============================================================================
+// deriveProxyPath()
+// =============================================================================
+
+/**
+ * Derive the proxy path from config or OpenAPI document's servers field
+ *
+ * Priority:
+ * 1. Explicit proxyPath from config (if non-empty after trimming)
+ * 2. Path portion of servers[0].url
+ *
+ * Full URLs (e.g., "https://api.example.com/api/v3") have their path
+ * extracted via the URL constructor. Relative paths (e.g., "/api/v3")
+ * are used directly.
+ *
+ * @param explicitPath - proxyPath from SpecConfig (may be empty)
+ * @param document - Processed OpenAPI document
+ * @param specId - Spec ID for error messages
+ * @returns Normalized proxy path with source indication
+ * @throws {ValidationError} PROXY_PATH_MISSING if path cannot be derived
+ * @throws {ValidationError} PROXY_PATH_TOO_BROAD if path is "/"
+ *
+ * @example
+ * // Explicit path
+ * deriveProxyPath('/api/v3', document, 'petstore')
+ * // → { proxyPath: '/api/v3', proxyPathSource: 'explicit' }
+ *
+ * @example
+ * // Auto-derived from servers[0].url = "https://api.example.com/api/v3"
+ * deriveProxyPath('', document, 'petstore')
+ * // → { proxyPath: '/api/v3', proxyPathSource: 'auto' }
+ */
+export function deriveProxyPath(
+  explicitPath: string,
+  document: OpenAPIV3_1.Document,
+  specId: string,
+): DeriveProxyPathResult {
+  if (explicitPath.trim()) {
+    return {
+      proxyPath: normalizeProxyPath(explicitPath.trim(), specId),
+      proxyPathSource: 'explicit',
+    };
+  }
+
+  const servers = document.servers;
+  if (!servers || servers.length === 0 || !servers[0].url) {
+    throw new ValidationError(
+      'PROXY_PATH_MISSING',
+      `[${specId}] Cannot derive proxyPath: no servers defined in the OpenAPI document. ` +
+        'Set an explicit proxyPath in the spec configuration.',
+    );
+  }
+
+  const serverUrl = servers[0].url;
+  let path: string;
+
+  try {
+    const url = new URL(serverUrl);
+    path = url.pathname;
+  } catch {
+    // Not a full URL — treat as relative path
+    path = serverUrl;
+  }
+
+  return {
+    proxyPath: normalizeProxyPath(path, specId),
+    proxyPathSource: 'auto',
+  };
+}
+
+// =============================================================================
+// normalizeProxyPath()
+// =============================================================================
+
+/**
+ * Normalize and validate a proxy path
+ *
+ * Rules:
+ * - Ensure leading slash
+ * - Remove trailing slash
+ * - Reject "/" as too broad (would capture all requests)
+ *
+ * @param path - Raw path string to normalize
+ * @param specId - Spec ID for error messages
+ * @returns Normalized path (e.g., "/api/v3")
+ * @throws {ValidationError} PROXY_PATH_TOO_BROAD if normalized path is "/"
+ *
+ * @example
+ * normalizeProxyPath('api/v3', 'petstore')   → '/api/v3'
+ * normalizeProxyPath('/api/v3/', 'petstore') → '/api/v3'
+ */
+export function normalizeProxyPath(path: string, specId: string): string {
+  let normalized = path.startsWith('/') ? path : `/${path}`;
+
+  if (normalized.length > 1 && normalized.endsWith('/')) {
+    normalized = normalized.slice(0, -1);
+  }
+
+  if (normalized === '/') {
+    throw new ValidationError(
+      'PROXY_PATH_TOO_BROAD',
+      `[${specId}] proxyPath "/" is too broad — it would capture all requests. ` +
+        'Set a more specific proxyPath (e.g., "/api/v1").',
+    );
+  }
+
+  return normalized;
+}
+
+// =============================================================================
+// validateUniqueProxyPaths()
+// =============================================================================
+
+/**
+ * Validate proxy paths are unique and non-overlapping
+ *
+ * Checks for:
+ * 1. Duplicate paths — two specs with the same proxyPath
+ * 2. Overlapping paths — one path is a prefix of another (e.g., "/api" and "/api/v1")
+ *    which would cause routing ambiguity
+ *
+ * @param specs - Array of spec entries with id and proxyPath
+ * @throws {ValidationError} PROXY_PATH_DUPLICATE if duplicate paths found
+ * @throws {ValidationError} PROXY_PATH_OVERLAP if overlapping paths found
+ *
+ * @example
+ * // Throws PROXY_PATH_DUPLICATE
+ * validateUniqueProxyPaths([
+ *   { id: 'petstore', proxyPath: '/api/v3' },
+ *   { id: 'inventory', proxyPath: '/api/v3' },
+ * ]);
+ *
+ * @example
+ * // Throws PROXY_PATH_OVERLAP
+ * validateUniqueProxyPaths([
+ *   { id: 'petstore', proxyPath: '/api' },
+ *   { id: 'inventory', proxyPath: '/api/v1' },
+ * ]);
+ */
+export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: string }>): void {
+  const paths = new Map<string, string>();
+
+  for (const spec of specs) {
+    if (paths.has(spec.proxyPath)) {
+      throw new ValidationError(
+        'PROXY_PATH_DUPLICATE',
+        `Duplicate proxyPath "${spec.proxyPath}" used by specs "${paths.get(spec.proxyPath)}" ` +
+          `and "${spec.id}". Each spec must have a unique proxyPath.`,
+      );
+    }
+    paths.set(spec.proxyPath, spec.id);
+  }
+
+  const sortedPaths = Array.from(paths.entries()).sort(([a], [b]) => a.length - b.length);
+  for (let i = 0; i < sortedPaths.length; i++) {
+    for (let j = i + 1; j < sortedPaths.length; j++) {
+      const [shorter, shorterId] = sortedPaths[i];
+      const [longer, longerId] = sortedPaths[j];
+      if (longer.startsWith(`${shorter}/`)) {
+        throw new ValidationError(
+          'PROXY_PATH_OVERLAP',
+          `Overlapping proxyPaths: "${shorter}" (${shorterId}) is a prefix of ` +
+            `"${longer}" (${longerId}). This would cause routing ambiguity.`,
+        );
+      }
+    }
+  }
+}
