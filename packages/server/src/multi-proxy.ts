@@ -80,6 +80,10 @@ export function configureMultiProxy(
   }
 
   // ── Shared service proxies ─────────────────────────────────────────────
+  // Placed after per-spec entries so reserved paths always win if a spec's
+  // proxyPath were to collide with /_devtools, /_api, or /_ws.
+  // In practice validateUniqueProxyPaths() guards against such collisions
+  // before this function is reached.
 
   proxyConfig['/_devtools'] = {
     target: httpTarget,
