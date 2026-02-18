@@ -267,6 +267,17 @@ describe('configureMultiProxy', () => {
       expect(rewrite?.('/services/billing/api/v2/invoices')).toBe('/invoices');
     });
 
+    it('should rewrite query strings on exact-prefix paths', () => {
+      const vite = createMockVite();
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      const rewrite = proxyOf(vite)['/api/v3'].rewrite;
+      expect(rewrite?.('/api/v3?format=json')).toBe('/?format=json');
+      expect(rewrite?.('/api/v3?a=1&b=2')).toBe('/?a=1&b=2');
+    });
+
     it('should handle proxy paths with special characters', () => {
       const vite = createMockVite();
       // Proxy path with characters that would be special in regex
