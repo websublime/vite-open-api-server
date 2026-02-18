@@ -1,3 +1,225 @@
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
 ## [0.24.0-next.3] - 2026-02-18
 
 ### Features
