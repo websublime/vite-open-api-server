@@ -126,8 +126,7 @@ export function deriveProxyPath(
  * - Collapse consecutive slashes
  * - Resolve dot segments ("." and ".." per RFC 3986 §5.2.4)
  * - Remove trailing slash
- * - Reject "/" as too broad (would capture all requests)
- * - Reject bare dot-segments ("/." and "/..") as syntactically invalid
+ * - Reject "/" as too broad (would capture all requests, including dot-segments that resolve to "/")
  *
  * @param path - Raw path string to normalize
  * @param specId - Spec ID for error messages
@@ -241,14 +240,14 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
       continue;
     }
 
-    if (paths.has(spec.proxyPath)) {
+    if (paths.has(path)) {
       throw new ValidationError(
         'PROXY_PATH_DUPLICATE',
-        `Duplicate proxyPath "${spec.proxyPath}" used by specs "${paths.get(spec.proxyPath)}" ` +
+        `Duplicate proxyPath "${path}" used by specs "${paths.get(path)}" ` +
           `and "${spec.id}". Each spec must have a unique proxyPath.`,
       );
     }
-    paths.set(spec.proxyPath, spec.id);
+    paths.set(path, spec.id);
   }
 
   const sortedPaths = Array.from(paths.entries()).sort(([a], [b]) => a.length - b.length);
