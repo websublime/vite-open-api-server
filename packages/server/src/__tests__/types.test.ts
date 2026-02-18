@@ -8,11 +8,11 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-    type OpenApiServerOptions,
-    type ResolvedOptions,
-    resolveOptions,
-    type SpecConfig,
-    ValidationError,
+  type OpenApiServerOptions,
+  type ResolvedOptions,
+  resolveOptions,
+  type SpecConfig,
+  ValidationError,
 } from '../types.js';
 import { expectValidationError } from './test-utils.js';
 
