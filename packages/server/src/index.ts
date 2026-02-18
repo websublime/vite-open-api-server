@@ -26,7 +26,7 @@ export type {
   SpecConfig,
   ValidationErrorCode,
 } from './types.js';
-export { ValidationError } from './types.js';
+export { resolveOptions, ValidationError, validateSpecs } from './types.js';
 
 // =============================================================================
 // Spec ID Derivation (for advanced use cases)

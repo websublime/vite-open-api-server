@@ -229,16 +229,16 @@ export interface OpenApiServerOptions {
  */
 export interface ResolvedSpecConfig {
   spec: string;
-  /** Guaranteed to be set after orchestrator resolution */
+  /** Empty string until orchestrator resolution; guaranteed non-empty after `createOrchestrator()` */
   id: string;
-  /** Guaranteed to be set after orchestrator resolution */
+  /** Empty string until orchestrator resolution; guaranteed non-empty after `createOrchestrator()` */
   proxyPath: string;
   /**
    * How proxyPath was determined — used for banner display.
    *
-   * Set during static option resolution. The orchestrator (Task 1.7)
-   * will pass this to the multi-spec banner so it can show
-   * "(auto-derived)" vs "(explicit)" next to each proxy path.
+   * Written back by the orchestrator after document processing.
+   * Used by the startup banner to display `(auto-derived)` vs
+   * `(explicit)` next to each proxy path.
    */
   proxyPathSource: ProxyPathSource;
   handlersDir: string;
@@ -280,7 +280,7 @@ export interface ResolvedOptions {
  * @throws {ValidationError} SPECS_EMPTY if specs array is missing or empty
  * @throws {ValidationError} SPEC_NOT_FOUND if a spec entry has empty spec field
  */
-function validateSpecs(specs: SpecConfig[]): void {
+export function validateSpecs(specs: SpecConfig[]): void {
   if (!specs || !Array.isArray(specs) || specs.length === 0) {
     throw new ValidationError(
       'SPECS_EMPTY',
@@ -306,11 +306,11 @@ export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
   return {
     specs: options.specs.map((s) => ({
       spec: s.spec,
-      // Placeholder — populated by orchestrator after document processing (Task 1.7)
+      // Placeholder — populated by orchestrator after document processing
       id: s.id ?? '',
-      // Placeholder — populated by orchestrator after document processing (Task 1.7)
+      // Placeholder — populated by orchestrator after document processing
       proxyPath: s.proxyPath ?? '',
-      // Preliminary — overwritten by deriveProxyPath() during orchestration (Task 1.7)
+      // Preliminary — overwritten by deriveProxyPath() during orchestration
       proxyPathSource: s.proxyPath?.trim() ? 'explicit' : 'auto',
       handlersDir: s.handlersDir ?? '',
       seedsDir: s.seedsDir ?? '',

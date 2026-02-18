@@ -47,11 +47,18 @@ export interface InternalApiDeps {
   /** WebSocket hub for broadcasting updates */
   wsHub: WebSocketHub;
 
-  /** Request/response timeline */
-  timeline: TimelineEntry[];
+  /** Request/response timeline (read-only view; clearing via clearTimeline) */
+  timeline: readonly TimelineEntry[];
 
   /** Maximum timeline entries */
   timelineLimit: number;
+
+  /**
+   * Clear the timeline and return the number of entries cleared.
+   * Provided by the caller so the internal API does not need to
+   * mutate the timeline array directly.
+   */
+  clearTimeline: () => number;
 
   /** Processed OpenAPI document */
   document: unknown;
@@ -79,7 +86,16 @@ export interface InternalApiDeps {
  * @param deps - Dependencies for route handlers
  */
 export function mountInternalApi(app: Hono, deps: InternalApiDeps): void {
-  const { store, registry, simulationManager, wsHub, timeline, timelineLimit, document } = deps;
+  const {
+    store,
+    registry,
+    simulationManager,
+    wsHub,
+    timeline,
+    timelineLimit,
+    clearTimeline,
+    document,
+  } = deps;
 
   // ==========================================================================
   // Registry Routes
@@ -222,8 +238,7 @@ export function mountInternalApi(app: Hono, deps: InternalApiDeps): void {
    * Clear timeline
    */
   app.delete('/_api/timeline', (c) => {
-    const count = timeline.length;
-    timeline.length = 0;
+    const count = clearTimeline();
 
     wsHub.broadcast({
       type: 'timeline:cleared',

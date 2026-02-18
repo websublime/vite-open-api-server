@@ -11,8 +11,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { createOrchestrator, type OrchestratorResult, SPEC_COLORS } from '../orchestrator.js';
-import { resolveOptions } from '../types.js';
-import { createMockLogger, createMockViteServer } from './test-utils.js';
+import { type ResolvedOptions, resolveOptions } from '../types.js';
+import { createMockLogger, createMockViteServer, type MockLogger } from './test-utils.js';
 
 // =============================================================================
 // Test Fixtures
@@ -99,16 +99,26 @@ const inventorySpec = JSON.stringify({
 // Helpers
 // =============================================================================
 
+/** Return type for createTestOrchestrator — exposes internals for assertions */
+interface TestOrchestratorResult {
+  result: OrchestratorResult;
+  options: ResolvedOptions;
+  logger: MockLogger;
+}
+
 /**
  * Create an orchestrator with 2 specs for testing.
  *
  * Uses inline spec objects (no file I/O), mock Vite server, and
  * disabled CORS/DevTools to keep tests focused.
+ *
+ * Returns the orchestrator result alongside the resolved options and
+ * mock logger so tests can inspect write-back mutations and log output.
  */
 async function createTestOrchestrator(
   overrides?: Partial<Parameters<typeof resolveOptions>[0]>,
-): Promise<OrchestratorResult> {
-  const mockLogger = createMockLogger();
+): Promise<TestOrchestratorResult> {
+  const logger = overrides?.logger ? (overrides.logger as MockLogger) : createMockLogger();
   const mockVite = createMockViteServer();
 
   const options = resolveOptions({
@@ -119,11 +129,12 @@ async function createTestOrchestrator(
     port: 4999,
     cors: false,
     devtools: false,
-    logger: mockLogger,
+    logger,
     ...overrides,
   });
 
-  return createOrchestrator(options, mockVite, process.cwd());
+  const result = await createOrchestrator(options, mockVite, process.cwd());
+  return { result, options, logger };
 }
 
 // =============================================================================
@@ -137,7 +148,7 @@ describe('createOrchestrator', () => {
 
   describe('Phase 1 — spec instances', () => {
     it('should create N spec instances', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       expect(result.instances).toHaveLength(2);
       expect(result.instances[0].id).toBe('petstore');
@@ -145,7 +156,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should populate specsInfo with metadata', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       expect(result.specsInfo).toHaveLength(2);
 
@@ -166,14 +177,14 @@ describe('createOrchestrator', () => {
     });
 
     it('should assign SPEC_COLORS deterministically by index', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       expect(result.specsInfo[0].color).toBe(SPEC_COLORS[0]);
       expect(result.specsInfo[1].color).toBe(SPEC_COLORS[1]);
     });
 
     it('should create isolated stores per spec', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       const petstoreStore = result.instances[0].server.store;
       const inventoryStore = result.instances[1].server.store;
@@ -219,7 +230,7 @@ describe('createOrchestrator', () => {
 
   describe('Phase 3 — X-Spec-Id dispatch', () => {
     it('should route requests with X-Spec-Id to the correct spec', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       // Request to petstore spec
       const petstoreResponse = await result.app.request('/pets', {
@@ -239,7 +250,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should return 404 for unknown spec ID', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       const response = await result.app.request('/pets', {
         headers: { 'x-spec-id': 'nonexistent' },
@@ -250,7 +261,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should fall through to shared services when no X-Spec-Id header', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       // Without X-Spec-Id, the middleware calls next() and shared services handle it.
       // Since devtools is disabled, /_devtools should 404 (no route registered).
@@ -268,7 +279,7 @@ describe('createOrchestrator', () => {
 
   describe('X-Spec-Id normalization', () => {
     it('should match spec ID case-insensitively', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       const response = await result.app.request('/pets', {
         headers: { 'x-spec-id': 'PETSTORE' },
@@ -277,7 +288,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should trim whitespace from X-Spec-Id header', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       const response = await result.app.request('/pets', {
         headers: { 'x-spec-id': '  petstore  ' },
@@ -286,7 +297,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should handle mixed case and whitespace', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       const response = await result.app.request('/items', {
         headers: { 'x-spec-id': ' Inventory ' },
@@ -370,9 +381,42 @@ describe('createOrchestrator', () => {
       expect(SPEC_COLORS).toHaveLength(8);
     });
 
-    it('should wrap around for more than 8 specs', () => {
+    it('should wrap around for more than 8 specs (arithmetic)', () => {
       // Color at index 8 should wrap to index 0
       expect(SPEC_COLORS[8 % SPEC_COLORS.length]).toBe(SPEC_COLORS[0]);
+    });
+
+    it('should assign wrapped color to 9th spec in actual orchestrator', async () => {
+      // Build 9 minimal specs with unique IDs and proxy paths
+      const makeSpec = (n: number) =>
+        JSON.stringify({
+          openapi: '3.1.0',
+          info: { title: `API ${n}`, version: '1.0.0' },
+          paths: {
+            [`/resource${n}`]: {
+              get: {
+                operationId: `list${n}`,
+                responses: { '200': { description: 'ok' } },
+              },
+            },
+          },
+        });
+
+      const specs = Array.from({ length: 9 }, (_, i) => ({
+        spec: makeSpec(i),
+        id: `spec-${i}`,
+        proxyPath: `/api/v${i}`,
+      }));
+
+      const { result } = await createTestOrchestrator({ specs });
+
+      expect(result.specsInfo).toHaveLength(9);
+      // 9th spec (index 8) should wrap to SPEC_COLORS[0]
+      expect(result.specsInfo[8].color).toBe(SPEC_COLORS[0]);
+      // Verify first 8 are assigned in order
+      for (let i = 0; i < 8; i++) {
+        expect(result.specsInfo[i].color).toBe(SPEC_COLORS[i]);
+      }
     });
 
     it('should contain valid hex color strings', () => {
@@ -388,7 +432,7 @@ describe('createOrchestrator', () => {
 
   describe('OrchestratorResult', () => {
     it('should return app, instances, specsInfo, start, stop', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       expect(result.app).toBeDefined();
       expect(result.instances).toBeDefined();
@@ -398,7 +442,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should have matching instance count and specsInfo count', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       expect(result.instances.length).toBe(result.specsInfo.length);
     });
@@ -410,7 +454,7 @@ describe('createOrchestrator', () => {
 
   describe('CORS middleware', () => {
     it('should add CORS headers to dispatched spec responses', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         cors: true,
         corsOrigin: 'http://localhost:3000',
       });
@@ -426,7 +470,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should add CORS headers to shared service responses', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         cors: true,
         corsOrigin: 'http://localhost:3000',
       });
@@ -439,7 +483,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should set credentials:true for non-wildcard origin', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         cors: true,
         corsOrigin: 'http://localhost:3000',
       });
@@ -456,7 +500,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should not set credentials when corsOrigin is wildcard string', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         cors: true,
         corsOrigin: '*',
       });
@@ -475,7 +519,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should not set credentials when corsOrigin is array containing wildcard', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         cors: true,
         corsOrigin: ['*'],
       });
@@ -492,8 +536,25 @@ describe('createOrchestrator', () => {
       expect(credentials).not.toBe('true');
     });
 
+    it('should produce wildcard CORS header when corsOrigin is array ["*"]', async () => {
+      const { result } = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: ['*'],
+      });
+
+      const response = await result.app.request('/pets', {
+        headers: {
+          'x-spec-id': 'petstore',
+          Origin: 'http://localhost:3000',
+        },
+      });
+      expect(response.status).toBe(200);
+      // ['*'] should be collapsed to '*' so Hono emits the wildcard header
+      expect(response.headers.get('access-control-allow-origin')).toBe('*');
+    });
+
     it('should not add CORS headers when cors:false', async () => {
-      const result = await createTestOrchestrator({ cors: false });
+      const { result } = await createTestOrchestrator({ cors: false });
 
       const response = await result.app.request('/pets', {
         headers: { 'x-spec-id': 'petstore' },
@@ -512,7 +573,7 @@ describe('createOrchestrator', () => {
       // DevTools SPA dir won't exist in test, but the route should still mount
       // with a placeholder or 404 for static assets
       const mockLogger = createMockLogger();
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         devtools: true,
         logger: mockLogger,
       });
@@ -539,7 +600,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should not mount /_devtools route when devtools:false', async () => {
-      const result = await createTestOrchestrator({ devtools: false });
+      const { result } = await createTestOrchestrator({ devtools: false });
 
       // Without devtools, /_devtools falls through to 404
       const response = await result.app.request('/_devtools/');
@@ -553,7 +614,7 @@ describe('createOrchestrator', () => {
 
   describe('single-spec orchestrator', () => {
     it('should work with a single spec in the array', async () => {
-      const result = await createTestOrchestrator({
+      const { result } = await createTestOrchestrator({
         specs: [{ spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' }],
       });
 
@@ -642,7 +703,7 @@ describe('createOrchestrator', () => {
 
   describe('Internal API (first-spec only)', () => {
     it('should mount first spec registry and store on /_api', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       // /_api/health should return ok
       const healthResponse = await result.app.request('/_api/health');
@@ -661,17 +722,19 @@ describe('createOrchestrator', () => {
   // --------------------------------------------------------------------------
 
   describe('X-Spec-Id edge cases', () => {
-    it('should return 404 for whitespace-only X-Spec-Id', async () => {
-      const result = await createTestOrchestrator();
+    it('should fall through for whitespace-only X-Spec-Id (same as no header)', async () => {
+      const { result } = await createTestOrchestrator();
 
-      const response = await result.app.request('/pets', {
+      // Whitespace-only slugifies to empty string → treated as "no header"
+      // and falls through to shared services
+      const response = await result.app.request('/_api/health', {
         headers: { 'x-spec-id': '   ' },
       });
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
     });
 
     it('should fall through to shared services for empty-string X-Spec-Id', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       // Empty string is falsy — middleware treats it as "no header" and
       // falls through to shared services (same as omitting the header).
@@ -681,16 +744,16 @@ describe('createOrchestrator', () => {
       expect(response.status).toBe(200);
     });
 
-    it('should return sanitized spec ID in error response', async () => {
-      const result = await createTestOrchestrator();
+    it('should return slugified spec ID in error response', async () => {
+      const { result } = await createTestOrchestrator();
 
-      // Mixed-case input should be lowercased in the error message
+      // Mixed-case input should be slugified in the error message
       const response = await result.app.request('/pets', {
-        headers: { 'x-spec-id': 'NonExistent' },
+        headers: { 'x-spec-id': 'Non Existent' },
       });
       expect(response.status).toBe(404);
       const body = await response.json();
-      expect(body.error).toBe('Unknown spec: nonexistent');
+      expect(body.error).toBe('Unknown spec: non-existent');
     });
   });
 
@@ -700,7 +763,7 @@ describe('createOrchestrator', () => {
 
   describe('endpoint count precision', () => {
     it('should report exact endpoint count per spec', async () => {
-      const result = await createTestOrchestrator();
+      const { result } = await createTestOrchestrator();
 
       // Petstore has 1 path (/pets) with 1 method (GET) = 1 endpoint
       expect(result.specsInfo[0].endpointCount).toBe(1);
@@ -727,7 +790,7 @@ describe('createOrchestrator', () => {
 
     it('should start HTTP server, serve requests, and stop cleanly', async () => {
       // Use port 0 so the OS assigns an ephemeral port (no conflicts)
-      serverResult = await createTestOrchestrator({ port: 0 });
+      serverResult = (await createTestOrchestrator({ port: 0 })).result;
 
       await serverResult.start();
 
@@ -755,7 +818,7 @@ describe('createOrchestrator', () => {
       });
 
       try {
-        serverResult = await createTestOrchestrator({ port: blockerPort });
+        serverResult = (await createTestOrchestrator({ port: blockerPort })).result;
 
         await expect(serverResult.start()).rejects.toThrow(/already in use/);
       } finally {
@@ -767,7 +830,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should throw when start() is called twice', async () => {
-      serverResult = await createTestOrchestrator({ port: 0 });
+      serverResult = (await createTestOrchestrator({ port: 0 })).result;
 
       await serverResult.start();
 
@@ -776,7 +839,7 @@ describe('createOrchestrator', () => {
     });
 
     it('should allow restart after stop()', async () => {
-      serverResult = await createTestOrchestrator({ port: 0 });
+      serverResult = (await createTestOrchestrator({ port: 0 })).result;
 
       await serverResult.start();
       await serverResult.stop();
@@ -785,6 +848,72 @@ describe('createOrchestrator', () => {
       await serverResult.start();
       await serverResult.stop();
       serverResult = null;
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Invalid spec rejection (Finding #7)
+  // --------------------------------------------------------------------------
+
+  describe('invalid spec handling', () => {
+    it('should reject when a spec document cannot be parsed', async () => {
+      await expect(
+        createTestOrchestrator({
+          specs: [
+            { spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' },
+            { spec: 'this is not valid yaml: : :', id: 'bad', proxyPath: '/bad/v1' },
+          ],
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('should reject for a single invalid spec', async () => {
+      await expect(
+        createTestOrchestrator({
+          specs: [{ spec: '{ invalid json', id: 'broken', proxyPath: '/broken/v1' }],
+        }),
+      ).rejects.toThrow();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Multi-spec internal API warning (Finding #8)
+  // --------------------------------------------------------------------------
+
+  describe('internal API warning', () => {
+    it('should warn about first-spec-only internal API when >1 spec', async () => {
+      const { logger } = await createTestOrchestrator();
+
+      const warnCalls = logger.warn.mock.calls.flat().join(' ');
+      expect(warnCalls).toContain("Only first spec's internal API");
+    });
+
+    it('should not warn about internal API for a single spec', async () => {
+      const { logger } = await createTestOrchestrator({
+        specs: [{ spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' }],
+      });
+
+      const warnCalls = logger.warn.mock.calls.flat().join(' ');
+      expect(warnCalls).not.toContain("Only first spec's internal API");
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // schemaCount in specsInfo (Finding #16)
+  // --------------------------------------------------------------------------
+
+  describe('specsInfo schemaCount', () => {
+    it('should include schemaCount in specsInfo metadata', async () => {
+      const { result } = await createTestOrchestrator();
+
+      // schemaCount reflects store.getSchemas() which returns schemas
+      // registered in the store. Our test fixtures use inline schemas
+      // (not top-level components/schemas), so the count depends on
+      // how the core parser registers them. Assert it's a number >= 0.
+      expect(typeof result.specsInfo[0].schemaCount).toBe('number');
+      expect(typeof result.specsInfo[1].schemaCount).toBe('number');
+      expect(result.specsInfo[0].schemaCount).toBeGreaterThanOrEqual(0);
+      expect(result.specsInfo[1].schemaCount).toBeGreaterThanOrEqual(0);
     });
   });
 });
