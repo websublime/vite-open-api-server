@@ -235,8 +235,9 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
   const paths = new Map<string, string>();
 
   for (const spec of specs) {
-    // Skip entries with empty proxyPath — they haven't been resolved yet
-    if (!spec.proxyPath) {
+    // Skip entries with empty/whitespace-only proxyPath — they haven't been resolved yet
+    const path = spec.proxyPath?.trim();
+    if (!path) {
       continue;
     }
 

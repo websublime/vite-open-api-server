@@ -457,6 +457,24 @@ describe('validateUniqueProxyPaths', () => {
       ).not.toThrow();
     });
 
+    it('should skip entries with whitespace-only proxyPath', () => {
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'x', proxyPath: '   ' },
+          { id: 'y', proxyPath: '/api/v1' },
+        ]),
+      ).not.toThrow();
+    });
+
+    it('should not false-positive duplicate on two whitespace-only proxyPaths', () => {
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'a', proxyPath: '   ' },
+          { id: 'b', proxyPath: '   ' },
+        ]),
+      ).not.toThrow();
+    });
+
     it('should not throw for sibling paths with shared prefix segment', () => {
       // "/api/v1" and "/api/v2" are NOT overlapping — "/api/v1" is not a prefix of "/api/v2"
       expect(() =>

@@ -1,6 +1,6 @@
 {
   "branch": "feature/vite-qq9.4-proxy-path-auto-detection",
-  "bump": "patch",
+  "bump": "minor",
   "environments": [
     "production"
   ],
