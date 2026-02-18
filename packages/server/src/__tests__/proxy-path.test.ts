@@ -577,12 +577,65 @@ describe('validateUniqueProxyPaths', () => {
       ).toThrow(/\/api.*\/api\/v1/);
     });
 
-    it('should not false-positive on similar but non-overlapping prefixes', () => {
-      // "/api-v1" does NOT start with "/api/" — the slash boundary matters
+    it('should detect string-prefix collision even without segment boundary', () => {
+      // "/api-v1" starts with "/api" — Vite's proxy uses plain startsWith
+      // matching, so "/api" would incorrectly capture "/api-v1/*" requests.
+      expectValidationError(
+        () =>
+          validateUniqueProxyPaths([
+            { id: 'a', proxyPath: '/api' },
+            { id: 'b', proxyPath: '/api-v1' },
+          ]),
+        'PROXY_PATH_PREFIX_COLLISION',
+      );
+    });
+
+    it('should detect string-prefix collision for numeric suffixes', () => {
+      // "/api" would capture "/api2/users" in Vite's proxy
+      expectValidationError(
+        () =>
+          validateUniqueProxyPaths([
+            { id: 'a', proxyPath: '/api' },
+            { id: 'b', proxyPath: '/api2' },
+          ]),
+        'PROXY_PATH_PREFIX_COLLISION',
+      );
+    });
+
+    it('should detect string-prefix collision for versioned suffixes', () => {
+      // "/v1" would capture "/v1beta/users" in Vite's proxy
+      expectValidationError(
+        () =>
+          validateUniqueProxyPaths([
+            { id: 'a', proxyPath: '/v1' },
+            { id: 'b', proxyPath: '/v1beta' },
+          ]),
+        'PROXY_PATH_PREFIX_COLLISION',
+      );
+    });
+
+    it('should include both spec IDs and paths in prefix collision error', () => {
       expect(() =>
         validateUniqueProxyPaths([
-          { id: 'a', proxyPath: '/api' },
-          { id: 'b', proxyPath: '/api-v1' },
+          { id: 'petstore', proxyPath: '/api' },
+          { id: 'billing', proxyPath: '/api2' },
+        ]),
+      ).toThrow(/petstore.*billing|billing.*petstore/);
+
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'petstore', proxyPath: '/api' },
+          { id: 'billing', proxyPath: '/api2' },
+        ]),
+      ).toThrow(/\/api.*\/api2/);
+    });
+
+    it('should not false-positive when paths share no string prefix', () => {
+      // "/users" and "/products" share no string prefix
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'a', proxyPath: '/users' },
+          { id: 'b', proxyPath: '/products' },
         ]),
       ).not.toThrow();
     });
