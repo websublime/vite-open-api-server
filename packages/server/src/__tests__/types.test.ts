@@ -8,11 +8,11 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  type OpenApiServerOptions,
-  type ResolvedOptions,
-  resolveOptions,
-  type SpecConfig,
-  ValidationError,
+    type OpenApiServerOptions,
+    type ResolvedOptions,
+    resolveOptions,
+    type SpecConfig,
+    ValidationError,
 } from '../types.js';
 import { expectValidationError } from './test-utils.js';
 
@@ -57,7 +57,6 @@ describe('ValidationError', () => {
       'SPEC_ID_DUPLICATE',
       'PROXY_PATH_MISSING',
       'PROXY_PATH_TOO_BROAD',
-      'PROXY_PATH_INVALID',
       'PROXY_PATH_DUPLICATE',
       'PROXY_PATH_OVERLAP',
       'SPEC_NOT_FOUND',
