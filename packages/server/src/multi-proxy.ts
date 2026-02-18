@@ -33,8 +33,11 @@ export function configureMultiProxy(
   instances: SpecInstance[],
   port: number,
 ): void {
-  const serverConfig = vite.config.server ?? {};
-  const proxyConfig = serverConfig.proxy ?? {};
+  if (!vite.config.server) {
+    return;
+  }
+
+  const proxyConfig = vite.config.server.proxy ?? {};
 
   for (const instance of instances) {
     const escapedPath = instance.config.proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -48,9 +51,7 @@ export function configureMultiProxy(
     };
   }
 
-  if (vite.config.server) {
-    vite.config.server.proxy = proxyConfig;
-  }
+  vite.config.server.proxy = proxyConfig;
 }
 
 /**
@@ -66,8 +67,11 @@ export function configureMultiProxy(
  * @param port - Shared server port
  */
 export function configureSharedServiceProxies(vite: ViteDevServer, port: number): void {
-  const serverConfig = vite.config.server ?? {};
-  const proxyConfig = serverConfig.proxy ?? {};
+  if (!vite.config.server) {
+    return;
+  }
+
+  const proxyConfig = vite.config.server.proxy ?? {};
 
   proxyConfig['/_devtools'] = {
     target: `http://localhost:${port}`,
@@ -80,12 +84,10 @@ export function configureSharedServiceProxies(vite: ViteDevServer, port: number)
   };
 
   proxyConfig['/_ws'] = {
-    target: `http://localhost:${port}`,
+    target: `ws://localhost:${port}`,
     changeOrigin: true,
     ws: true,
   };
 
-  if (vite.config.server) {
-    vite.config.server.proxy = proxyConfig;
-  }
+  vite.config.server.proxy = proxyConfig;
 }
