@@ -59,6 +59,21 @@ export class ValidationError extends Error {
 }
 
 // =============================================================================
+// Shared Type Aliases
+// =============================================================================
+
+/**
+ * How a proxy path was determined.
+ *
+ * - `'explicit'` — set directly in SpecConfig.proxyPath
+ * - `'auto'` — auto-derived from the OpenAPI document's servers[0].url
+ *
+ * Used by both DeriveProxyPathResult and ResolvedSpecConfig to ensure
+ * the two sources of this value stay in sync.
+ */
+export type ProxyPathSource = 'auto' | 'explicit';
+
+// =============================================================================
 // User-Facing Configuration Types
 // =============================================================================
 
@@ -225,7 +240,7 @@ export interface ResolvedSpecConfig {
    * will pass this to the multi-spec banner so it can show
    * "(auto-derived)" vs "(explicit)" next to each proxy path.
    */
-  proxyPathSource: 'auto' | 'explicit';
+  proxyPathSource: ProxyPathSource;
   handlersDir: string;
   seedsDir: string;
   idFields: Record<string, string>;
@@ -291,9 +306,12 @@ export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
   return {
     specs: options.specs.map((s) => ({
       spec: s.spec,
+      // Placeholder — populated by orchestrator after document processing (Task 1.7)
       id: s.id ?? '',
+      // Placeholder — populated by orchestrator after document processing (Task 1.7)
       proxyPath: s.proxyPath ?? '',
-      proxyPathSource: s.proxyPath ? 'explicit' : 'auto',
+      // Preliminary — overwritten by deriveProxyPath() during orchestration (Task 1.7)
+      proxyPathSource: s.proxyPath?.trim() ? 'explicit' : 'auto',
       handlersDir: s.handlersDir ?? '',
       seedsDir: s.seedsDir ?? '',
       idFields: s.idFields ?? {},

@@ -10,6 +10,7 @@ import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import { describe, expect, it } from 'vitest';
 
 import { deriveProxyPath, normalizeProxyPath, validateUniqueProxyPaths } from '../proxy-path.js';
+import { resolveOptions } from '../types.js';
 import { expectValidationError } from './test-utils.js';
 
 /**
@@ -210,6 +211,64 @@ describe('deriveProxyPath', () => {
       );
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // URL edge cases
+  // ---------------------------------------------------------------------------
+
+  describe('URL edge cases', () => {
+    it('should strip query parameters from full server URL', () => {
+      const result = deriveProxyPath(
+        '',
+        makeDocument('https://example.com/api/v3?version=latest'),
+        'petstore',
+      );
+      expect(result.proxyPath).toBe('/api/v3');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+
+    it('should strip fragment from full server URL', () => {
+      const result = deriveProxyPath(
+        '',
+        makeDocument('https://example.com/api/v3#section'),
+        'petstore',
+      );
+      expect(result.proxyPath).toBe('/api/v3');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+
+    it('should decode percent-encoded braces from template variables in URL', () => {
+      // OpenAPI specs may use template variables: https://example.com/{basePath}/v1
+      // new URL() percent-encodes braces; decodeURIComponent restores them
+      const result = deriveProxyPath(
+        '',
+        makeDocument('https://example.com/{basePath}/v1'),
+        'petstore',
+      );
+      expect(result.proxyPath).toBe('/{basePath}/v1');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+
+    it('should handle server URL "." as relative path', () => {
+      // "." is a valid OpenAPI relative server URL
+      const result = deriveProxyPath('', makeDocument('.'), 'petstore');
+      expect(result.proxyPath).toBe('/.');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+
+    it('should treat bare hostname as relative path', () => {
+      // "api.example.com" is not a valid URL, falls to catch block
+      const result = deriveProxyPath('', makeDocument('api.example.com'), 'petstore');
+      expect(result.proxyPath).toBe('/api.example.com');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+
+    it('should strip query string from relative server URL', () => {
+      const result = deriveProxyPath('', makeDocument('/api/v3?debug=true'), 'petstore');
+      expect(result.proxyPath).toBe('/api/v3');
+      expect(result.proxyPathSource).toBe('auto');
+    });
+  });
 });
 
 // =============================================================================
@@ -259,11 +318,11 @@ describe('normalizeProxyPath', () => {
       expectValidationError(() => normalizeProxyPath('/', 'test'), 'PROXY_PATH_TOO_BROAD');
     });
 
-    it('should throw PROXY_PATH_TOO_BROAD for bare slash with no other content', () => {
-      expectValidationError(() => normalizeProxyPath('/', 'my-spec'), 'PROXY_PATH_TOO_BROAD');
+    it('should throw PROXY_PATH_TOO_BROAD for empty string', () => {
+      expectValidationError(() => normalizeProxyPath('', 'test'), 'PROXY_PATH_TOO_BROAD');
     });
 
-    it('should include spec ID in error message', () => {
+    it('should include spec ID in PROXY_PATH_TOO_BROAD error message', () => {
       expect(() => normalizeProxyPath('/', 'my-spec')).toThrow(/\[my-spec\]/);
     });
 
@@ -293,6 +352,34 @@ describe('normalizeProxyPath', () => {
       expect(normalizeProxyPath('services/billing/api/v2', 'test')).toBe(
         '/services/billing/api/v2',
       );
+    });
+
+    it('should collapse double slashes', () => {
+      expect(normalizeProxyPath('//api//v3', 'test')).toBe('/api/v3');
+    });
+
+    it('should collapse multiple consecutive slashes', () => {
+      expect(normalizeProxyPath('///api///v3///', 'test')).toBe('/api/v3');
+    });
+
+    it('should throw PROXY_PATH_TOO_BROAD when only slashes', () => {
+      expectValidationError(() => normalizeProxyPath('///', 'test'), 'PROXY_PATH_TOO_BROAD');
+    });
+
+    it('should strip query string from path', () => {
+      expect(normalizeProxyPath('/api/v3?debug=true', 'test')).toBe('/api/v3');
+    });
+
+    it('should strip fragment from path', () => {
+      expect(normalizeProxyPath('/api/v3#section', 'test')).toBe('/api/v3');
+    });
+
+    it('should strip both query string and fragment', () => {
+      expect(normalizeProxyPath('/api/v3?debug=true#section', 'test')).toBe('/api/v3');
+    });
+
+    it('should not resolve path traversal segments (passthrough)', () => {
+      expect(normalizeProxyPath('/api/../v3', 'test')).toBe('/api/../v3');
     });
   });
 });
@@ -438,5 +525,102 @@ describe('validateUniqueProxyPaths', () => {
         ]),
       ).not.toThrow();
     });
+
+    it('should report the shortest overlap first when multiple exist', () => {
+      // "/api" is shorter than both "/api/v1" and "/api/v2", so it's detected first
+      expectValidationError(
+        () =>
+          validateUniqueProxyPaths([
+            { id: 'broad', proxyPath: '/api' },
+            { id: 'v1', proxyPath: '/api/v1' },
+            { id: 'v2', proxyPath: '/api/v2' },
+          ]),
+        'PROXY_PATH_OVERLAP',
+      );
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Case sensitivity
+  // ---------------------------------------------------------------------------
+
+  describe('case sensitivity', () => {
+    it('should treat paths as case-sensitive (no duplicate for different casing)', () => {
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'upper', proxyPath: '/API/v3' },
+          { id: 'lower', proxyPath: '/api/v3' },
+        ]),
+      ).not.toThrow();
+    });
+  });
+});
+
+// =============================================================================
+// Integration: config → resolveOptions → deriveProxyPath → validateUniqueProxyPaths
+// =============================================================================
+
+describe('integration: config to validated proxy paths', () => {
+  it('should resolve options then derive and validate proxy paths end-to-end', () => {
+    const options = resolveOptions({
+      specs: [{ spec: './petstore.yaml', proxyPath: '/api/v3' }, { spec: './inventory.yaml' }],
+    });
+
+    expect(options.specs[0].proxyPathSource).toBe('explicit');
+    expect(options.specs[1].proxyPathSource).toBe('auto');
+
+    // Simulate what the orchestrator would do: derive paths from resolved config + documents
+    const results = options.specs.map((s, i) => {
+      const doc = i === 0 ? makeDocument() : makeDocument('/inventory/v1');
+      return deriveProxyPath(s.proxyPath, doc, s.id || `spec-${i}`);
+    });
+
+    expect(results[0].proxyPath).toBe('/api/v3');
+    expect(results[0].proxyPathSource).toBe('explicit');
+    expect(results[1].proxyPath).toBe('/inventory/v1');
+    expect(results[1].proxyPathSource).toBe('auto');
+
+    // Validate uniqueness
+    expect(() =>
+      validateUniqueProxyPaths(
+        results.map((r, i) => ({
+          id: options.specs[i].id || `spec-${i}`,
+          proxyPath: r.proxyPath,
+        })),
+      ),
+    ).not.toThrow();
+  });
+
+  it('should detect conflict in end-to-end flow', () => {
+    const options = resolveOptions({
+      specs: [
+        { spec: './petstore.yaml', proxyPath: '/api' },
+        { spec: './inventory.yaml', proxyPath: '/api/v1' },
+      ],
+    });
+
+    const results = options.specs.map((s) =>
+      deriveProxyPath(s.proxyPath, makeDocument(), s.id || 'default'),
+    );
+
+    expectValidationError(
+      () =>
+        validateUniqueProxyPaths(
+          results.map((r, i) => ({
+            id: options.specs[i].id || `spec-${i}`,
+            proxyPath: r.proxyPath,
+          })),
+        ),
+      'PROXY_PATH_OVERLAP',
+    );
+  });
+
+  it('should correctly classify whitespace-only proxyPath as auto', () => {
+    const options = resolveOptions({
+      specs: [{ spec: './petstore.yaml', proxyPath: '   ' }],
+    });
+
+    // Fix #1: resolveOptions now uses trim() — whitespace-only is 'auto'
+    expect(options.specs[0].proxyPathSource).toBe('auto');
   });
 });
