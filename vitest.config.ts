@@ -7,9 +7,22 @@
  *      during early development when no tests exist yet
  */
 
+import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    /**
+     * Map workspace packages to their TypeScript source entry points.
+     * Without this, Vitest resolves the `exports` field in package.json
+     * which points to `./dist/index.js` — requiring a build step before tests.
+     * With these aliases, tests run directly against source files.
+     */
+    alias: {
+      '@websublime/vite-plugin-open-api-core': resolve(__dirname, 'packages/core/src/index.ts'),
+      '@websublime/vite-plugin-open-api-server': resolve(__dirname, 'packages/server/src/index.ts'),
+    },
+  },
   test: {
     /**
      * Allow the test suite to pass when no test files are found.
