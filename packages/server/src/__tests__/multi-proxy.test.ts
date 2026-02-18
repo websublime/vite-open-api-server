@@ -35,6 +35,18 @@ function createMockVite(options?: { proxy?: Record<string, ProxyOptions>; omitPr
 }
 
 /**
+ * Return `vite.config.server.proxy` with a narrowed type.
+ *
+ * Every test that calls `configureMultiProxy` first ensures proxy is defined,
+ * so the non-null assertion is safe here and silences the TS2532 diagnostic
+ * that otherwise fires on every `vite.config.server.proxy[…]` access.
+ */
+function proxyOf(vite: Parameters<typeof configureMultiProxy>[0]): Record<string, ProxyOptions> {
+  // biome-ignore lint/style/noNonNullAssertion: test helper — proxy is always set after configureMultiProxy()
+  return vite.config.server.proxy! as Record<string, ProxyOptions>;
+}
+
+/**
  * Create a minimal SpecInstance for proxy testing.
  *
  * Only `id` and `config.proxyPath` are used by configureMultiProxy().
@@ -79,7 +91,7 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       expect(vite.config.server.proxy).toBeDefined();
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect(proxy['/api/v3']).toBeDefined();
     });
 
@@ -89,7 +101,7 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, [], 4000);
 
       expect(vite.config.server.proxy).toBeDefined();
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect(proxy['/_devtools']).toBeDefined();
       expect(proxy['/_api']).toBeDefined();
       expect(proxy['/_ws']).toBeDefined();
@@ -110,7 +122,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect(proxy['/api/v3']).toBeDefined();
       expect(proxy['/inventory/v1']).toBeDefined();
     });
@@ -121,7 +133,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 5000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       expect(entry.target).toBe('http://localhost:5000');
     });
 
@@ -131,7 +143,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       expect(entry.changeOrigin).toBe(true);
     });
 
@@ -140,7 +152,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       // Only the 3 shared service entries, no per-spec entries
       const perSpecKeys = Object.keys(proxy).filter((k) => !k.startsWith('/_'));
       expect(perSpecKeys).toHaveLength(0);
@@ -158,7 +170,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       expect(entry.headers).toEqual({ 'x-spec-id': 'petstore' });
     });
 
@@ -171,7 +183,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect((proxy['/api/v3'] as ProxyOptions).headers).toEqual({ 'x-spec-id': 'petstore' });
       expect((proxy['/billing/v2'] as ProxyOptions).headers).toEqual({ 'x-spec-id': 'billing' });
     });
@@ -188,7 +200,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       const rewrite = entry.rewrite;
       expect(rewrite?.('/api/v3/pets')).toBe('/pets');
       expect(rewrite?.('/api/v3/pets/123')).toBe('/pets/123');
@@ -200,7 +212,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       const rewrite = entry.rewrite;
       // Exact prefix rewrites to '/' (not '') to avoid http-proxy edge cases
       expect(rewrite?.('/api/v3')).toBe('/');
@@ -212,7 +224,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api/v3'];
       const rewrite = entry.rewrite;
       expect(rewrite?.('/api/v3/')).toBe('/');
     });
@@ -223,7 +235,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api'];
       const rewrite = entry.rewrite;
       // Only first occurrence (prefix) is stripped
       expect(rewrite?.('/api/v1/api/status')).toBe('/v1/api/status');
@@ -236,7 +248,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api'];
       const rewrite = entry.rewrite;
       expect(rewrite?.('/api2/users')).toBe('/api2/users');
       expect(rewrite?.('/api')).toBe('/');
@@ -250,7 +262,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/services/billing/api/v2'] as ProxyOptions;
+      const entry = proxyOf(vite)['/services/billing/api/v2'];
       const rewrite = entry.rewrite;
       expect(rewrite?.('/services/billing/api/v2/invoices')).toBe('/invoices');
     });
@@ -262,7 +274,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const entry = vite.config.server.proxy['/api.v3'] as ProxyOptions;
+      const entry = proxyOf(vite)['/api.v3'];
       const rewrite = entry.rewrite;
       // Should match literal "/api.v3", not "/apiXv3"
       expect(rewrite?.('/api.v3/pets')).toBe('/pets');
@@ -284,7 +296,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect(proxy['/existing']).toBeDefined();
       expect(proxy['/api/v3']).toBeDefined();
     });
@@ -307,7 +319,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       // Only one entry for the path (object key is overwritten)
       const keys = Object.keys(proxy).filter((k) => k === '/api/v3');
       expect(keys).toHaveLength(1);
@@ -336,7 +348,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
 
       // Each per-spec entry has the correct target
       for (const path of ['/api/v3', '/inventory/v1', '/billing/v2']) {
@@ -365,7 +377,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const entry = vite.config.server.proxy['/_devtools'] as ProxyOptions;
+      const entry = proxyOf(vite)['/_devtools'];
       expect(entry).toBeDefined();
       expect(entry.target).toBe('http://localhost:4000');
       expect(entry.changeOrigin).toBe(true);
@@ -376,7 +388,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const entry = vite.config.server.proxy['/_api'] as ProxyOptions;
+      const entry = proxyOf(vite)['/_api'];
       expect(entry).toBeDefined();
       expect(entry.target).toBe('http://localhost:4000');
       expect(entry.changeOrigin).toBe(true);
@@ -387,7 +399,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const entry = vite.config.server.proxy['/_ws'] as ProxyOptions;
+      const entry = proxyOf(vite)['/_ws'];
       expect(entry).toBeDefined();
       expect(entry.target).toBe('ws://localhost:4000');
       expect(entry.changeOrigin).toBe(true);
@@ -399,7 +411,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect((proxy['/_devtools'] as ProxyOptions).ws).toBeUndefined();
       expect((proxy['/_api'] as ProxyOptions).ws).toBeUndefined();
     });
@@ -409,7 +421,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 9999);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect((proxy['/_devtools'] as ProxyOptions).target).toBe('http://localhost:9999');
       expect((proxy['/_api'] as ProxyOptions).target).toBe('http://localhost:9999');
       expect((proxy['/_ws'] as ProxyOptions).target).toBe('ws://localhost:9999');
@@ -420,7 +432,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect((proxy['/_devtools'] as ProxyOptions).rewrite).toBeUndefined();
       expect((proxy['/_api'] as ProxyOptions).rewrite).toBeUndefined();
       expect((proxy['/_ws'] as ProxyOptions).rewrite).toBeUndefined();
@@ -431,7 +443,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect((proxy['/_devtools'] as ProxyOptions).headers).toBeUndefined();
       expect((proxy['/_api'] as ProxyOptions).headers).toBeUndefined();
       expect((proxy['/_ws'] as ProxyOptions).headers).toBeUndefined();
@@ -445,7 +457,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       expect(proxy['/api/v3']).toBeDefined();
       expect(proxy['/_devtools']).toBeDefined();
       expect(proxy['/_api']).toBeDefined();
@@ -467,7 +479,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 4000);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
 
       // Per-spec entries
       expect(proxy['/api/v3']).toBeDefined();
@@ -488,7 +500,7 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, instances, 7777);
 
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      const proxy = proxyOf(vite);
       for (const [path, entry] of Object.entries(proxy)) {
         const expectedProtocol = path === '/_ws' ? 'ws' : 'http';
         expect((entry as ProxyOptions).target).toBe(`${expectedProtocol}://localhost:7777`);
