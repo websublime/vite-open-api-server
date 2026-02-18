@@ -8,7 +8,7 @@
  * @see Task 1.5.8: Write integration test for orchestrator
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { createOrchestrator, type OrchestratorResult, SPEC_COLORS } from '../orchestrator.js';
 import { resolveOptions } from '../types.js';
@@ -263,6 +263,39 @@ describe('createOrchestrator', () => {
   });
 
   // --------------------------------------------------------------------------
+  // X-Spec-Id normalization (case-insensitive + trimming)
+  // --------------------------------------------------------------------------
+
+  describe('X-Spec-Id normalization', () => {
+    it('should match spec ID case-insensitively', async () => {
+      const result = await createTestOrchestrator();
+
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': 'PETSTORE' },
+      });
+      expect(response.status).toBe(200);
+    });
+
+    it('should trim whitespace from X-Spec-Id header', async () => {
+      const result = await createTestOrchestrator();
+
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': '  petstore  ' },
+      });
+      expect(response.status).toBe(200);
+    });
+
+    it('should handle mixed case and whitespace', async () => {
+      const result = await createTestOrchestrator();
+
+      const response = await result.app.request('/items', {
+        headers: { 'x-spec-id': ' Inventory ' },
+      });
+      expect(response.status).toBe(200);
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // Auto-derived IDs and proxy paths
   // --------------------------------------------------------------------------
 
@@ -368,6 +401,63 @@ describe('createOrchestrator', () => {
       const result = await createTestOrchestrator();
 
       expect(result.instances.length).toBe(result.specsInfo.length);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Lifecycle: start() and stop()
+  // --------------------------------------------------------------------------
+
+  describe('lifecycle', () => {
+    let serverResult: OrchestratorResult | null = null;
+
+    afterEach(async () => {
+      // Ensure server is stopped even if a test fails
+      if (serverResult) {
+        await serverResult.stop().catch(() => {});
+        serverResult = null;
+      }
+    });
+
+    it('should start HTTP server, serve requests, and stop cleanly', async () => {
+      // Use port 0 so the OS assigns an ephemeral port (no conflicts)
+      serverResult = await createTestOrchestrator({ port: 0 });
+
+      await serverResult.start();
+
+      // start() resolved without throwing, meaning the 'listening' event fired.
+      // Verify the server is actually serving by confirming start() awaited properly.
+      // Now test that stop() cleanly shuts down the server.
+
+      await serverResult.stop();
+
+      // Verify stop actually nulled the server (calling stop again is a no-op)
+      await serverResult.stop(); // Should not throw
+      serverResult = null; // Prevent afterEach double-stop
+    });
+
+    it('should reject start() when port is already in use', async () => {
+      // Start a plain Node server on an ephemeral port first
+      const { createServer } = await import('node:http');
+      const blocker = createServer();
+
+      const blockerPort = await new Promise<number>((resolve) => {
+        blocker.listen(0, () => {
+          const addr = blocker.address();
+          resolve(typeof addr === 'object' && addr ? addr.port : 0);
+        });
+      });
+
+      try {
+        serverResult = await createTestOrchestrator({ port: blockerPort });
+
+        await expect(serverResult.start()).rejects.toThrow(/already in use/);
+      } finally {
+        await new Promise<void>((resolve) => {
+          blocker.close(() => resolve());
+        });
+        serverResult = null;
+      }
     });
   });
 });

@@ -105,10 +105,30 @@ export interface OrchestratorResult {
 // =============================================================================
 
 /**
+ * Resolved values produced by `processSpec` for a single spec.
+ *
+ * Returned instead of mutating the input `ResolvedSpecConfig` so that
+ * the caller (`createOrchestrator`) decides how to propagate the values.
+ */
+interface ProcessedSpec {
+  instance: SpecInstance;
+  resolvedConfig: {
+    id: string;
+    proxyPath: string;
+    proxyPathSource: 'auto' | 'explicit';
+    handlersDir: string;
+    seedsDir: string;
+  };
+}
+
+/**
  * Process a single spec configuration into a resolved SpecInstance.
  *
  * Loads handlers and seeds, creates the core OpenApiServer, derives the
  * spec ID and proxy path, and builds the SpecInfo metadata.
+ *
+ * Does **not** mutate `specConfig`. Returns resolved values separately
+ * so the caller can assign them back.
  */
 async function processSpec(
   specConfig: ResolvedSpecConfig,
@@ -117,7 +137,7 @@ async function processSpec(
   vite: ViteDevServer,
   cwd: string,
   logger: Logger,
-): Promise<SpecInstance> {
+): Promise<ProcessedSpec> {
   // Resolve handlers directory (fallback uses spec ID or index as namespace)
   const handlersDir =
     specConfig.handlersDir || `./mocks/${specConfig.id || `spec-${index}`}/handlers`;
@@ -159,14 +179,6 @@ async function processSpec(
   // Derive proxy path (from explicit config or servers[0].url)
   const { proxyPath, proxyPathSource } = deriveProxyPath(specConfig.proxyPath, server.document, id);
 
-  // Update config with resolved values so downstream consumers
-  // (banner, file watcher, plugin.ts) see the final values
-  specConfig.id = id;
-  specConfig.proxyPath = proxyPath;
-  specConfig.proxyPathSource = proxyPathSource;
-  specConfig.handlersDir = handlersDir;
-  specConfig.seedsDir = seedsDir;
-
   // Build SpecInfo metadata for DevTools and WebSocket protocol
   const info: SpecInfo = {
     id,
@@ -178,7 +190,10 @@ async function processSpec(
     schemaCount: server.store.getSchemas().length,
   };
 
-  return { id, info, server, config: specConfig };
+  return {
+    instance: { id, info, server, config: specConfig },
+    resolvedConfig: { id, proxyPath, proxyPathSource, handlersDir, seedsDir },
+  };
 }
 
 // =============================================================================
@@ -195,6 +210,10 @@ async function processSpec(
  *    are unique and non-overlapping.
  * 3. **Phase 3 — Build main app**: Create a single Hono app with CORS,
  *    DevTools, Internal API, and X-Spec-Id dispatch middleware.
+ *
+ * **Note**: This function mutates `options.specs[i]` to write back resolved
+ * values (id, proxyPath, proxyPathSource, handlersDir, seedsDir) so that
+ * downstream consumers (banner, file watcher, plugin.ts) see the final values.
  *
  * @param options - Resolved plugin options (from `resolveOptions()`)
  * @param vite - Vite dev server instance (for ssrLoadModule)
@@ -214,7 +233,27 @@ export async function createOrchestrator(
 
   const instances: SpecInstance[] = [];
   for (let i = 0; i < options.specs.length; i++) {
-    const instance = await processSpec(options.specs[i], i, options, vite, cwd, logger);
+    const { instance, resolvedConfig } = await processSpec(
+      options.specs[i],
+      i,
+      options,
+      vite,
+      cwd,
+      logger,
+    );
+
+    // Write resolved values back to options.specs so downstream consumers
+    // (banner, file watcher, plugin.ts) see the final values.
+    const specConfig = options.specs[i];
+    specConfig.id = resolvedConfig.id;
+    specConfig.proxyPath = resolvedConfig.proxyPath;
+    specConfig.proxyPathSource = resolvedConfig.proxyPathSource;
+    specConfig.handlersDir = resolvedConfig.handlersDir;
+    specConfig.seedsDir = resolvedConfig.seedsDir;
+
+    // Update the instance config reference to reflect the resolved values
+    instance.config = specConfig;
+
     instances.push(instance);
   }
 
@@ -292,19 +331,22 @@ export async function createOrchestrator(
   // Routes requests with X-Spec-Id header to the correct spec's Hono app.
   // Requests without the header fall through to shared services
   // (/_devtools, /_api, /_ws) registered above.
+  // The instanceMap keys are lowercase (from slugify()), so we normalize
+  // the incoming header to match.
   const instanceMap = new Map(instances.map((inst) => [inst.id, inst]));
 
   mainApp.use('*', async (c, next) => {
-    const specId = c.req.header('x-spec-id');
-    if (!specId) {
+    const rawSpecId = c.req.header('x-spec-id');
+    if (!rawSpecId) {
       // No spec header — shared service request, continue to next middleware
       await next();
       return;
     }
 
+    const specId = rawSpecId.trim().toLowerCase();
     const instance = instanceMap.get(specId);
     if (!instance) {
-      return c.json({ error: `Unknown spec: ${specId}` }, 404);
+      return c.json({ error: `Unknown spec: ${rawSpecId}` }, 404);
     }
 
     // Dispatch to the spec's Hono app via app.fetch()
@@ -346,23 +388,44 @@ export async function createOrchestrator(
         port: options.port,
       });
 
-      // Handle runtime server errors (e.g., EADDRINUSE)
-      serverInstance.on?.('error', (err: NodeJS.ErrnoException) => {
-        if (err.code === 'EADDRINUSE') {
-          logger.error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`);
-        } else {
-          logger.error(`[vite-plugin-open-api-server] Server error: ${err.message}`);
-        }
-      });
+      // Wait for the server to be listening before resolving.
+      // Rejects on 'error' (e.g., EADDRINUSE) so callers know immediately.
+      await new Promise<void>((resolve, reject) => {
+        const onListening = () => {
+          serverInstance.removeListener('error', onError);
+          logger.info(
+            `[vite-plugin-open-api-server] Server started on http://localhost:${options.port}`,
+          );
+          resolve();
+        };
 
-      logger.info(
-        `[vite-plugin-open-api-server] Server started on http://localhost:${options.port}`,
-      );
+        const onError = (err: NodeJS.ErrnoException) => {
+          serverInstance.removeListener('listening', onListening);
+          if (err.code === 'EADDRINUSE') {
+            reject(
+              new Error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`),
+            );
+          } else {
+            reject(new Error(`[vite-plugin-open-api-server] Server error: ${err.message}`));
+          }
+        };
+
+        serverInstance.once('listening', onListening);
+        serverInstance.once('error', onError);
+      });
     },
 
     async stop(): Promise<void> {
       if (serverInstance && typeof serverInstance.close === 'function') {
-        serverInstance.close();
+        await new Promise<void>((resolve, reject) => {
+          serverInstance.close((err?: Error) => {
+            if (err) {
+              reject(err);
+            } else {
+              resolve();
+            }
+          });
+        });
         serverInstance = null;
         logger.info('[vite-plugin-open-api-server] Server stopped');
       }
