@@ -269,14 +269,9 @@ export interface ResolvedOptions {
 // =============================================================================
 
 /**
- * Resolve options with defaults
+ * Validate that specs array is non-empty and each entry has a valid spec field.
  *
- * Note: spec ID and proxyPath resolution requires processing the OpenAPI document
- * first, so they are resolved later in the orchestrator.
- * This function only resolves static defaults.
- *
- * @param options - User-provided options
- * @returns Resolved options with all defaults applied
+ * @param specs - Array of spec configurations to validate
  * @throws {ValidationError} SPECS_EMPTY if specs array is missing or empty
  * @throws {ValidationError} SPEC_NOT_FOUND if a spec entry has empty spec field
  */
@@ -300,6 +295,16 @@ export function validateSpecs(specs: SpecConfig[]): void {
   }
 }
 
+/**
+ * Resolve options with defaults.
+ *
+ * Note: spec ID and proxyPath resolution requires processing the OpenAPI document
+ * first, so they are resolved later in the orchestrator.
+ * This function only resolves static defaults.
+ *
+ * @param options - User-provided options
+ * @returns Resolved options with all defaults applied
+ */
 export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
   validateSpecs(options.specs);
 
