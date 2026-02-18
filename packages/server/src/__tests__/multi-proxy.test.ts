@@ -229,6 +229,21 @@ describe('configureMultiProxy', () => {
       expect(rewrite?.('/api/v1/api/status')).toBe('/v1/api/status');
     });
 
+    it('should not rewrite paths that share a string prefix but differ at segment boundary', () => {
+      const vite = createMockVite();
+      // '/api' must NOT match '/api2/users' — only '/api' or '/api/...'
+      const instances = [createSpecInstance('test', '/api')];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      const entry = vite.config.server.proxy['/api'] as ProxyOptions;
+      const rewrite = entry.rewrite;
+      expect(rewrite?.('/api2/users')).toBe('/api2/users');
+      expect(rewrite?.('/api')).toBe('/');
+      expect(rewrite?.('/api/')).toBe('/');
+      expect(rewrite?.('/api/users')).toBe('/users');
+    });
+
     it('should handle deeply nested proxy paths', () => {
       const vite = createMockVite();
       const instances = [createSpecInstance('billing', '/services/billing/api/v2')];
