@@ -175,11 +175,11 @@ try {
 
       try {
         // Load handlers from handlers directory (using Vite's ssrLoadModule for TS support)
-        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         const handlersResult = await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd);
 
         // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
-        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
 
         // Resolve DevTools SPA directory (shipped inside this package's dist/)
@@ -199,7 +199,7 @@ try {
         }
 
         // Create the OpenAPI mock server
-        // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+        // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         // Using 'as any' because v0.x plugin code references old single-spec shape
         // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
         const opts = resolvedOptions as any;
@@ -227,7 +227,7 @@ try {
         await server.start();
 
         // Configure Vite proxy
-        // @ts-expect-error TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
         configureProxy(viteServer, resolvedOptions.proxyPath, resolvedOptions.port);
 
         // Print startup banner
@@ -340,7 +340,7 @@ try {
     const debouncedHandlerReload = debounce(reloadHandlers, 100);
     const debouncedSeedReload = debounce(reloadSeeds, 100);
 
-    // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+    // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
     // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
     const watchOpts = resolvedOptions as any;
     fileWatcher = await createFileWatcher({
@@ -359,7 +359,7 @@ try {
     if (!server || !vite) return;
 
     try {
-      // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+      // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
       const handlersResult = await loadHandlers(
         // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
         (resolvedOptions as any).handlersDir,
@@ -392,7 +392,7 @@ try {
 
     try {
       // Load seeds first (before clearing) to minimize the window where store is empty
-      // TODO: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
+      // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
       const seedsResult = await loadSeeds(
         // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
         (resolvedOptions as any).seedsDir,

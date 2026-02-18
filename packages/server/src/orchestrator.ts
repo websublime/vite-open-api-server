@@ -28,7 +28,7 @@ import type { ViteDevServer } from 'vite';
 import { loadHandlers } from './handlers.js';
 import { deriveProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
 import { loadSeeds } from './seeds.js';
-import { deriveSpecId, validateUniqueIds } from './spec-id.js';
+import { deriveSpecId, slugify, validateUniqueIds } from './spec-id.js';
 import type { ResolvedOptions, ResolvedSpecConfig } from './types.js';
 
 // =============================================================================
@@ -41,7 +41,7 @@ import type { ResolvedOptions, ResolvedSpecConfig } from './types.js';
  * Colors are assigned by index: spec 0 gets green, spec 1 gets blue, etc.
  * Wraps around for >8 specs.
  */
-export const SPEC_COLORS = [
+export const SPEC_COLORS: readonly string[] = [
   '#4ade80', // green
   '#60a5fa', // blue
   '#f472b6', // pink
@@ -138,12 +138,15 @@ async function processSpec(
   cwd: string,
   logger: Logger,
 ): Promise<ProcessedSpec> {
-  // Resolve handlers directory (fallback uses spec ID or index as namespace)
-  const handlersDir =
-    specConfig.handlersDir || `./mocks/${specConfig.id || `spec-${index}`}/handlers`;
+  // Derive a filesystem-safe namespace for fallback directories.
+  // Uses slugified ID to match the final resolved spec ID (e.g., "My API" → "my-api").
+  const specNamespace = specConfig.id ? slugify(specConfig.id) : `spec-${index}`;
+
+  // Resolve handlers directory (fallback uses spec namespace)
+  const handlersDir = specConfig.handlersDir || `./mocks/${specNamespace}/handlers`;
 
   // Resolve seeds directory (same namespace pattern)
-  const seedsDir = specConfig.seedsDir || `./mocks/${specConfig.id || `spec-${index}`}/seeds`;
+  const seedsDir = specConfig.seedsDir || `./mocks/${specNamespace}/seeds`;
 
   // Load handlers via Vite's ssrLoadModule
   const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
@@ -275,19 +278,28 @@ export async function createOrchestrator(
 
   const mainApp = new Hono();
 
-  // --- CORS middleware (top-level, applies to all routes) ---
+  // --- CORS configuration ---
+  // Determines whether Access-Control-Allow-Credentials should be sent.
+  // Credentials must be false when origin is '*' (wildcard), regardless
+  // of whether corsOrigin is a string or array containing '*'.
+  const isWildcardOrigin =
+    options.corsOrigin === '*' ||
+    (Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*'));
+
+  const corsConfig = {
+    origin: options.corsOrigin,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Spec-Id'],
+    exposeHeaders: ['Content-Length', 'X-Request-Id'],
+    maxAge: 86400,
+    credentials: !isWildcardOrigin,
+  };
+
+  // CORS middleware on mainApp (applies to shared services: /_devtools, /_api).
+  // Sub-instances also get CORS middleware (see below) because app.fetch()
+  // creates a separate Hono context that bypasses mainApp's middleware chain.
   if (options.cors) {
-    mainApp.use(
-      '*',
-      cors({
-        origin: options.corsOrigin,
-        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-        allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Spec-Id'],
-        exposeHeaders: ['Content-Length', 'X-Request-Id'],
-        maxAge: 86400,
-        credentials: options.corsOrigin !== '*',
-      }),
-    );
+    mainApp.use('*', cors(corsConfig));
   }
 
   // --- DevTools SPA (single SPA for all specs, spec-aware via WebSocket) ---
@@ -330,9 +342,20 @@ export async function createOrchestrator(
   // --- X-Spec-Id dispatch middleware ---
   // Routes requests with X-Spec-Id header to the correct spec's Hono app.
   // Requests without the header fall through to shared services
-  // (/_devtools, /_api, /_ws) registered above.
+  // (/_devtools, /_api) registered above.
+  // NOTE: /_ws is not yet mounted at the orchestrator level (see Epic 3).
   // The instanceMap keys are lowercase (from slugify()), so we normalize
   // the incoming header to match.
+  // Mount CORS on each sub-instance's Hono app so that dispatched
+  // requests (via app.fetch()) include proper CORS headers.
+  // mainApp CORS only covers shared services; sub-instance responses
+  // bypass mainApp's middleware chain entirely.
+  if (options.cors) {
+    for (const inst of instances) {
+      inst.server.app.use('*', cors(corsConfig));
+    }
+  }
+
   const instanceMap = new Map(instances.map((inst) => [inst.id, inst]));
 
   mainApp.use('*', async (c, next) => {
@@ -346,7 +369,8 @@ export async function createOrchestrator(
     const specId = rawSpecId.trim().toLowerCase();
     const instance = instanceMap.get(specId);
     if (!instance) {
-      return c.json({ error: `Unknown spec: ${rawSpecId}` }, 404);
+      // Use sanitized specId in the error response (not raw user input)
+      return c.json({ error: `Unknown spec: ${specId}` }, 404);
     }
 
     // Dispatch to the spec's Hono app via app.fetch()
@@ -363,8 +387,9 @@ export async function createOrchestrator(
   // Lifecycle
   // ========================================================================
 
-  // biome-ignore lint/suspicious/noExplicitAny: @hono/node-server types expect node http.Server but we store generically
-  let serverInstance: any = null;
+  // Server instance reference. Typed as unknown to match core's convention;
+  // we only access .close() / .removeListener() / .once() via type narrowing.
+  let serverInstance: unknown = null;
 
   return {
     app: mainApp,
@@ -372,6 +397,11 @@ export async function createOrchestrator(
     specsInfo,
 
     async start(): Promise<void> {
+      // Guard against double-start — prevents leaking the first server
+      if (serverInstance) {
+        throw new Error('[vite-plugin-open-api-server] Server already running. Call stop() first.');
+      }
+
       // Dynamic import — only one HTTP server for all specs
       let serve: typeof import('@hono/node-server').serve;
       try {
@@ -383,16 +413,18 @@ export async function createOrchestrator(
         );
       }
 
-      serverInstance = serve({
+      const server = serve({
         fetch: mainApp.fetch,
         port: options.port,
       });
+
+      serverInstance = server;
 
       // Wait for the server to be listening before resolving.
       // Rejects on 'error' (e.g., EADDRINUSE) so callers know immediately.
       await new Promise<void>((resolve, reject) => {
         const onListening = () => {
-          serverInstance.removeListener('error', onError);
+          server.removeListener('error', onError);
           logger.info(
             `[vite-plugin-open-api-server] Server started on http://localhost:${options.port}`,
           );
@@ -400,7 +432,10 @@ export async function createOrchestrator(
         };
 
         const onError = (err: NodeJS.ErrnoException) => {
-          serverInstance.removeListener('listening', onListening);
+          server.removeListener('listening', onListening);
+          // Close and null the server to prevent leaks on error
+          server.close(() => {});
+          serverInstance = null;
           if (err.code === 'EADDRINUSE') {
             reject(
               new Error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`),
@@ -410,15 +445,17 @@ export async function createOrchestrator(
           }
         };
 
-        serverInstance.once('listening', onListening);
-        serverInstance.once('error', onError);
+        server.once('listening', onListening);
+        server.once('error', onError);
       });
     },
 
     async stop(): Promise<void> {
-      if (serverInstance && typeof serverInstance.close === 'function') {
+      const server = serverInstance as { close?: (cb: (err?: Error) => void) => void } | null;
+      const closeFn = server?.close;
+      if (server && typeof closeFn === 'function') {
         await new Promise<void>((resolve, reject) => {
-          serverInstance.close((err?: Error) => {
+          closeFn.call(server, (err?: Error) => {
             if (err) {
               reject(err);
             } else {

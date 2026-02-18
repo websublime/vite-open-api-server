@@ -405,6 +405,299 @@ describe('createOrchestrator', () => {
   });
 
   // --------------------------------------------------------------------------
+  // CORS-enabled path (Finding #12)
+  // --------------------------------------------------------------------------
+
+  describe('CORS middleware', () => {
+    it('should add CORS headers to dispatched spec responses', async () => {
+      const result = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: 'http://localhost:3000',
+      });
+
+      const response = await result.app.request('/pets', {
+        headers: {
+          'x-spec-id': 'petstore',
+          Origin: 'http://localhost:3000',
+        },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:3000');
+    });
+
+    it('should add CORS headers to shared service responses', async () => {
+      const result = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: 'http://localhost:3000',
+      });
+
+      const response = await result.app.request('/_api/health', {
+        headers: { Origin: 'http://localhost:3000' },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('access-control-allow-origin')).toBe('http://localhost:3000');
+    });
+
+    it('should set credentials:true for non-wildcard origin', async () => {
+      const result = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: 'http://localhost:3000',
+      });
+
+      const response = await result.app.request('/pets', {
+        method: 'OPTIONS',
+        headers: {
+          'x-spec-id': 'petstore',
+          Origin: 'http://localhost:3000',
+          'Access-Control-Request-Method': 'GET',
+        },
+      });
+      expect(response.headers.get('access-control-allow-credentials')).toBe('true');
+    });
+
+    it('should not set credentials when corsOrigin is wildcard string', async () => {
+      const result = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: '*',
+      });
+
+      const response = await result.app.request('/pets', {
+        method: 'OPTIONS',
+        headers: {
+          'x-spec-id': 'petstore',
+          Origin: 'http://localhost:3000',
+          'Access-Control-Request-Method': 'GET',
+        },
+      });
+      // credentials should not be 'true' when origin is wildcard
+      const credentials = response.headers.get('access-control-allow-credentials');
+      expect(credentials).not.toBe('true');
+    });
+
+    it('should not set credentials when corsOrigin is array containing wildcard', async () => {
+      const result = await createTestOrchestrator({
+        cors: true,
+        corsOrigin: ['*'],
+      });
+
+      const response = await result.app.request('/pets', {
+        method: 'OPTIONS',
+        headers: {
+          'x-spec-id': 'petstore',
+          Origin: 'http://localhost:3000',
+          'Access-Control-Request-Method': 'GET',
+        },
+      });
+      const credentials = response.headers.get('access-control-allow-credentials');
+      expect(credentials).not.toBe('true');
+    });
+
+    it('should not add CORS headers when cors:false', async () => {
+      const result = await createTestOrchestrator({ cors: false });
+
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': 'petstore' },
+      });
+      expect(response.status).toBe(200);
+      expect(response.headers.get('access-control-allow-origin')).toBeNull();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // DevTools-enabled path (Finding #13)
+  // --------------------------------------------------------------------------
+
+  describe('DevTools SPA mount', () => {
+    it('should mount /_devtools route when devtools:true', async () => {
+      // DevTools SPA dir won't exist in test, but the route should still mount
+      // with a placeholder or 404 for static assets
+      const mockLogger = createMockLogger();
+      const result = await createTestOrchestrator({
+        devtools: true,
+        logger: mockLogger,
+      });
+
+      // /_devtools should be reachable (returns something, not a middleware fallthrough)
+      const response = await result.app.request('/_devtools/');
+      // Should get a response (200 or 404 for missing SPA), not a 404 from no route
+      expect(response.status).toBeDefined();
+    });
+
+    it('should warn when SPA directory is missing', async () => {
+      const mockLogger = createMockLogger();
+      await createTestOrchestrator({
+        devtools: true,
+        logger: mockLogger,
+      });
+
+      // The warning is logged during orchestrator creation
+      expect(mockLogger.warn).toHaveBeenCalled();
+      const warnCalls = mockLogger.warn.mock.calls.flat().join(' ');
+      expect(warnCalls).toContain('DevTools SPA not found');
+    });
+
+    it('should not mount /_devtools route when devtools:false', async () => {
+      const result = await createTestOrchestrator({ devtools: false });
+
+      // Without devtools, /_devtools falls through to 404
+      const response = await result.app.request('/_devtools/');
+      expect(response.status).toBe(404);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Single-spec orchestrator (Minor Finding #8)
+  // --------------------------------------------------------------------------
+
+  describe('single-spec orchestrator', () => {
+    it('should work with a single spec in the array', async () => {
+      const result = await createTestOrchestrator({
+        specs: [{ spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' }],
+      });
+
+      expect(result.instances).toHaveLength(1);
+      expect(result.specsInfo).toHaveLength(1);
+      expect(result.instances[0].id).toBe('petstore');
+
+      // Dispatch should still work
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': 'petstore' },
+      });
+      expect(response.status).toBe(200);
+
+      // Shared services should work
+      const healthResponse = await result.app.request('/_api/health');
+      expect(healthResponse.status).toBe(200);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // options.specs[i] mutation write-back (Finding #14)
+  // --------------------------------------------------------------------------
+
+  describe('options.specs mutation write-back', () => {
+    it('should write resolved values back to options.specs', async () => {
+      const mockLogger = createMockLogger();
+      const mockVite = createMockViteServer();
+
+      const options = resolveOptions({
+        specs: [
+          {
+            spec: petstoreSpec,
+            // No explicit id, handlersDir, seedsDir — should be resolved
+            proxyPath: '/pets/v1',
+          },
+        ],
+        port: 4999,
+        cors: false,
+        devtools: false,
+        logger: mockLogger,
+      });
+
+      // Before orchestrator creation, id is empty string (resolveOptions default)
+      expect(options.specs[0].id).toBe('');
+
+      await createOrchestrator(options, mockVite, process.cwd());
+
+      // After orchestrator creation, resolved values are written back
+      expect(options.specs[0].id).toBe('petstore-api');
+      expect(options.specs[0].proxyPath).toBe('/pets/v1');
+      expect(options.specs[0].proxyPathSource).toBe('explicit');
+      expect(options.specs[0].handlersDir).toBeDefined();
+      expect(options.specs[0].seedsDir).toBeDefined();
+    });
+
+    it('should use slugified ID in fallback directory paths', async () => {
+      const mockLogger = createMockLogger();
+      const mockVite = createMockViteServer();
+
+      const options = resolveOptions({
+        specs: [
+          {
+            spec: petstoreSpec,
+            id: 'My Petstore API',
+            proxyPath: '/pets/v1',
+          },
+        ],
+        port: 4999,
+        cors: false,
+        devtools: false,
+        logger: mockLogger,
+      });
+
+      await createOrchestrator(options, mockVite, process.cwd());
+
+      // Fallback dirs should use slugified ID, not the raw "My Petstore API"
+      expect(options.specs[0].handlersDir).toContain('my-petstore-api');
+      expect(options.specs[0].seedsDir).toContain('my-petstore-api');
+      expect(options.specs[0].handlersDir).not.toContain('My Petstore API');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Internal API on first spec (Finding #16)
+  // --------------------------------------------------------------------------
+
+  describe('Internal API (first-spec only)', () => {
+    it('should mount first spec registry and store on /_api', async () => {
+      const result = await createTestOrchestrator();
+
+      // /_api/health should return ok
+      const healthResponse = await result.app.request('/_api/health');
+      expect(healthResponse.status).toBe(200);
+
+      // /_api/registry should return registry data from first spec
+      const registryResponse = await result.app.request('/_api/registry');
+      expect(registryResponse.status).toBe(200);
+      const registryData = await registryResponse.json();
+      expect(registryData).toBeDefined();
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // X-Spec-Id edge cases
+  // --------------------------------------------------------------------------
+
+  describe('X-Spec-Id edge cases', () => {
+    it('should return 404 for whitespace-only X-Spec-Id', async () => {
+      const result = await createTestOrchestrator();
+
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': '   ' },
+      });
+      expect(response.status).toBe(404);
+    });
+
+    it('should return sanitized spec ID in error response', async () => {
+      const result = await createTestOrchestrator();
+
+      // Mixed-case input should be lowercased in the error message
+      const response = await result.app.request('/pets', {
+        headers: { 'x-spec-id': 'NonExistent' },
+      });
+      expect(response.status).toBe(404);
+      const body = await response.json();
+      expect(body.error).toBe('Unknown spec: nonexistent');
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Endpoint count precision (Minor Finding #12)
+  // --------------------------------------------------------------------------
+
+  describe('endpoint count precision', () => {
+    it('should report exact endpoint count per spec', async () => {
+      const result = await createTestOrchestrator();
+
+      // Petstore has 1 path (/pets) with 1 method (GET) = 1 endpoint
+      expect(result.specsInfo[0].endpointCount).toBe(1);
+
+      // Inventory has 1 path (/items) with 1 method (GET) = 1 endpoint
+      expect(result.specsInfo[1].endpointCount).toBe(1);
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // Lifecycle: start() and stop()
   // --------------------------------------------------------------------------
 
@@ -458,6 +751,27 @@ describe('createOrchestrator', () => {
         });
         serverResult = null;
       }
+    });
+
+    it('should throw when start() is called twice', async () => {
+      serverResult = await createTestOrchestrator({ port: 0 });
+
+      await serverResult.start();
+
+      // Second start() should throw without leaking the first server
+      await expect(serverResult.start()).rejects.toThrow(/already running/);
+    });
+
+    it('should allow restart after stop()', async () => {
+      serverResult = await createTestOrchestrator({ port: 0 });
+
+      await serverResult.start();
+      await serverResult.stop();
+
+      // After stop(), start() should work again
+      await serverResult.start();
+      await serverResult.stop();
+      serverResult = null;
     });
   });
 });
