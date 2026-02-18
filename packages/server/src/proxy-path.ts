@@ -51,7 +51,7 @@ export interface DeriveProxyPathResult {
  * @param specId - Spec ID for error messages
  * @returns Normalized proxy path with source indication
  * @throws {ValidationError} PROXY_PATH_MISSING if path cannot be derived
- * @throws {ValidationError} PROXY_PATH_TOO_BROAD if path is "/"
+ * @throws {ValidationError} PROXY_PATH_TOO_BROAD if path resolves to "/" (e.g., "/", ".", "..")
  *
  * @example
  * // Explicit path
@@ -86,14 +86,24 @@ export function deriveProxyPath(
   }
 
   let path: string;
+  let parsedUrl: URL | undefined;
 
   try {
-    const url = new URL(serverUrl);
-    // Decode percent-encoded characters (e.g., URL constructor encodes
-    // OpenAPI template variable braces: /{version} → /%7Bversion%7D)
-    path = decodeURIComponent(url.pathname);
+    parsedUrl = new URL(serverUrl);
   } catch {
     // Not a full URL — treat as relative path
+  }
+
+  if (parsedUrl) {
+    try {
+      // Decode percent-encoded characters (e.g., URL constructor encodes
+      // OpenAPI template variable braces: /{version} → /%7Bversion%7D)
+      path = decodeURIComponent(parsedUrl.pathname);
+    } catch {
+      // Malformed percent-encoding — fall back to the raw pathname
+      path = parsedUrl.pathname;
+    }
+  } else {
     path = serverUrl;
   }
 
@@ -114,13 +124,15 @@ export function deriveProxyPath(
  * - Strip query strings and fragments
  * - Ensure leading slash
  * - Collapse consecutive slashes
+ * - Resolve dot segments ("." and ".." per RFC 3986 §5.2.4)
  * - Remove trailing slash
  * - Reject "/" as too broad (would capture all requests)
+ * - Reject bare dot-segments ("/." and "/..") as syntactically invalid
  *
  * @param path - Raw path string to normalize
  * @param specId - Spec ID for error messages
  * @returns Normalized path (e.g., "/api/v3")
- * @throws {ValidationError} PROXY_PATH_TOO_BROAD if normalized path is "/"
+ * @throws {ValidationError} PROXY_PATH_TOO_BROAD if path resolves to "/" (e.g., "/", ".", "..")
  *
  * @example
  * normalizeProxyPath('api/v3', 'petstore')   → '/api/v3'
@@ -145,6 +157,25 @@ export function normalizeProxyPath(path: string, specId: string): string {
   // Collapse consecutive slashes (e.g., "//api//v3" → "/api/v3")
   normalized = normalized.replace(/\/{2,}/g, '/');
 
+  // Resolve dot segments per RFC 3986 §5.2.4 (e.g., "/api/../v3" → "/v3")
+  // HTTP clients canonicalize these, so proxy paths must match the resolved form
+  const segments = normalized.split('/');
+  const resolved: string[] = [];
+  for (const segment of segments) {
+    if (segment === '.') {
+      continue;
+    }
+    if (segment === '..') {
+      // Don't pop beyond root
+      if (resolved.length > 1) {
+        resolved.pop();
+      }
+      continue;
+    }
+    resolved.push(segment);
+  }
+  normalized = resolved.join('/') || '/';
+
   // Remove trailing slash (but not if path is just "/")
   if (normalized.length > 1 && normalized.endsWith('/')) {
     normalized = normalized.slice(0, -1);
@@ -154,15 +185,6 @@ export function normalizeProxyPath(path: string, specId: string): string {
     throw new ValidationError(
       'PROXY_PATH_TOO_BROAD',
       `[${specId}] proxyPath "/" is too broad — it would capture all requests. ` +
-        'Set a more specific proxyPath (e.g., "/api/v1").',
-    );
-  }
-
-  // Reject bare dot segments — "." and ".." are not useful proxy paths
-  if (normalized === '/.' || normalized === '/..') {
-    throw new ValidationError(
-      'PROXY_PATH_TOO_BROAD',
-      `[${specId}] proxyPath "${normalized}" is not a valid proxy path. ` +
         'Set a more specific proxyPath (e.g., "/api/v1").',
     );
   }
@@ -182,7 +204,16 @@ export function normalizeProxyPath(path: string, specId: string): string {
  * 2. Overlapping paths — one path is a prefix of another (e.g., "/api" and "/api/v1")
  *    which would cause routing ambiguity
  *
- * @param specs - Array of spec entries with id and proxyPath
+ * @remarks
+ * Entries with an empty or falsy `proxyPath` are silently skipped. These
+ * represent specs whose proxy path has not yet been resolved (e.g., during
+ * early option resolution before the OpenAPI document is processed). Callers
+ * should expect unresolved entries to be excluded from uniqueness checks
+ * rather than triggering false-positive PROXY_PATH_DUPLICATE or
+ * PROXY_PATH_OVERLAP errors.
+ *
+ * @param specs - Array of spec entries with id and proxyPath.
+ *   Entries with empty/falsy proxyPath are skipped (unresolved).
  * @throws {ValidationError} PROXY_PATH_DUPLICATE if duplicate paths found
  * @throws {ValidationError} PROXY_PATH_OVERLAP if overlapping paths found
  *
