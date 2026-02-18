@@ -161,6 +161,16 @@ export interface OpenApiServer {
   clearTimeline(): number;
 
   /**
+   * Truncate the timeline without broadcasting a WebSocket event.
+   *
+   * Used by the orchestrator when passing clearTimeline to mountInternalApi,
+   * which broadcasts its own `timeline:cleared` event after calling this.
+   *
+   * @returns Number of entries removed
+   */
+  truncateTimeline(): number;
+
+  /**
    * Get the configured port
    */
   readonly port: number;
@@ -521,6 +531,12 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         data: { count },
       });
 
+      return count;
+    },
+
+    truncateTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
       return count;
     },
 

@@ -794,13 +794,24 @@ describe('createOrchestrator', () => {
 
       await serverResult.start();
 
-      // start() resolved without throwing, meaning the 'listening' event fired.
-      // Verify the server is actually serving by confirming start() awaited properly.
-      // Now test that stop() cleanly shuts down the server.
+      // Verify the server exposes the actual bound port
+      const port = serverResult.port;
+      expect(port).toBeGreaterThan(0);
 
+      // Verify the server is actually serving requests
+      const response = await fetch(`http://localhost:${port}/_api/health`);
+      expect(response.ok).toBe(true);
+
+      // Stop the server
       await serverResult.stop();
 
-      // Verify stop actually nulled the server (calling stop again is a no-op)
+      // Port should be reset after stop
+      expect(serverResult.port).toBe(0);
+
+      // Verify the server is no longer reachable
+      await expect(fetch(`http://localhost:${port}/_api/health`)).rejects.toThrow();
+
+      // Verify stop is idempotent (calling again is a no-op)
       await serverResult.stop(); // Should not throw
       serverResult = null; // Prevent afterEach double-stop
     });
@@ -842,10 +853,13 @@ describe('createOrchestrator', () => {
       serverResult = (await createTestOrchestrator({ port: 0 })).result;
 
       await serverResult.start();
+      const firstPort = serverResult.port;
+      expect(firstPort).toBeGreaterThan(0);
       await serverResult.stop();
 
-      // After stop(), start() should work again
+      // After stop(), start() should work again (may bind a different port)
       await serverResult.start();
+      expect(serverResult.port).toBeGreaterThan(0);
       await serverResult.stop();
       serverResult = null;
     });
