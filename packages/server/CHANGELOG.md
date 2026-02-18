@@ -1,3 +1,115 @@
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
 ## [0.24.0-next.1] - 2026-02-13
 
 ### Features
