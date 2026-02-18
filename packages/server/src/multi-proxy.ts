@@ -73,10 +73,14 @@ export function configureMultiProxy(
       changeOrigin: true,
       rewrite: (path: string) => {
         // Guard against prefix collisions: only rewrite when the path equals
-        // the prefix exactly or continues with a '/' segment boundary.
+        // the prefix exactly or continues with a '/' or '?' segment boundary.
         // e.g. prefix '/api' must NOT rewrite '/api2/users'.
-        if (path !== prefix && !path.startsWith(`${prefix}/`)) return path;
-        return path.slice(prefix.length) || '/';
+        if (path !== prefix && !path.startsWith(`${prefix}/`) && !path.startsWith(`${prefix}?`))
+          return path;
+        const rest = path.slice(prefix.length);
+        if (rest === '' || rest === '/') return '/';
+        if (rest.startsWith('?')) return `/${rest}`;
+        return rest;
       },
       headers: { 'x-spec-id': instance.id },
     };
