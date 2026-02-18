@@ -23,7 +23,9 @@ export default defineConfig({
     'vite',
     // Dependencies - consumers install
     '@websublime/vite-plugin-open-api-core',
+    '@hono/node-server',
     'chokidar',
+    'hono',
     'picocolors',
     'fast-glob',
   ],
