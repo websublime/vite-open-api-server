@@ -40,13 +40,12 @@ export function configureMultiProxy(
   const proxyConfig = vite.config.server.proxy ?? {};
 
   for (const instance of instances) {
-    const escapedPath = instance.config.proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pathPrefixRegex = new RegExp(`^${escapedPath}`);
+    const prefix = instance.config.proxyPath;
 
-    proxyConfig[instance.config.proxyPath] = {
+    proxyConfig[prefix] = {
       target: `http://localhost:${port}`,
       changeOrigin: true,
-      rewrite: (path: string) => path.replace(pathPrefixRegex, ''),
+      rewrite: (path: string) => (path.startsWith(prefix) ? path.slice(prefix.length) : path),
       headers: { 'x-spec-id': instance.id },
     };
   }

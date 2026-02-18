@@ -52,6 +52,20 @@ function createSpecInstance(id: string, proxyPath: string): SpecInstance {
 
 describe('configureMultiProxy', () => {
   // ---------------------------------------------------------------------------
+  // Early-return guard
+  // ---------------------------------------------------------------------------
+
+  describe('early-return when vite.config.server is falsy', () => {
+    it('should not throw when vite.config.server is undefined', () => {
+      const vite = { config: {} } as Parameters<typeof configureMultiProxy>[0];
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      expect(() => configureMultiProxy(vite, instances, 4000)).not.toThrow();
+      expect(vite.config.server).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
   // Basic proxy entry generation
   // ---------------------------------------------------------------------------
 
@@ -170,9 +184,9 @@ describe('configureMultiProxy', () => {
       expect(rewrite?.('/services/billing/api/v2/invoices')).toBe('/invoices');
     });
 
-    it('should escape special regex characters in proxy path', () => {
+    it('should handle proxy paths with special characters', () => {
       const vite = createMockVite();
-      // Proxy path with characters that are special in regex
+      // Proxy path with characters that would be special in regex
       const instances = [createSpecInstance('special', '/api.v3')];
 
       configureMultiProxy(vite, instances, 4000);
@@ -274,6 +288,19 @@ describe('configureMultiProxy', () => {
 // =============================================================================
 
 describe('configureSharedServiceProxies', () => {
+  // ---------------------------------------------------------------------------
+  // Early-return guard
+  // ---------------------------------------------------------------------------
+
+  describe('early-return when vite.config.server is falsy', () => {
+    it('should not throw when vite.config.server is undefined', () => {
+      const vite = { config: {} } as Parameters<typeof configureSharedServiceProxies>[0];
+
+      expect(() => configureSharedServiceProxies(vite, 4000)).not.toThrow();
+      expect(vite.config.server).toBeUndefined();
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // Shared proxy entries
   // ---------------------------------------------------------------------------
