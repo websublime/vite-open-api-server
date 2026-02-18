@@ -8,20 +8,21 @@
  * @module orchestrator
  */
 
-import {
-    createOpenApiServer,
-    executeSeeds,
-    mountDevToolsRoutes,
-    mountInternalApi,
-    type OpenApiServer,
-    type SpecInfo,
-    type TimelineEntry
-} from '@websublime/vite-plugin-open-api-core';
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  createOpenApiServer,
+  executeSeeds,
+  type Logger,
+  mountDevToolsRoutes,
+  mountInternalApi,
+  type OpenApiServer,
+  type SpecInfo,
+  type TimelineEntry,
+} from '@websublime/vite-plugin-open-api-core';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import type { ViteDevServer } from 'vite';
 
 import { loadHandlers } from './handlers.js';
@@ -100,6 +101,87 @@ export interface OrchestratorResult {
 }
 
 // =============================================================================
+// Helpers
+// =============================================================================
+
+/**
+ * Process a single spec configuration into a resolved SpecInstance.
+ *
+ * Loads handlers and seeds, creates the core OpenApiServer, derives the
+ * spec ID and proxy path, and builds the SpecInfo metadata.
+ */
+async function processSpec(
+  specConfig: ResolvedSpecConfig,
+  index: number,
+  options: ResolvedOptions,
+  vite: ViteDevServer,
+  cwd: string,
+  logger: Logger,
+): Promise<SpecInstance> {
+  // Resolve handlers directory (fallback uses spec ID or index as namespace)
+  const handlersDir =
+    specConfig.handlersDir || `./mocks/${specConfig.id || `spec-${index}`}/handlers`;
+
+  // Resolve seeds directory (same namespace pattern)
+  const seedsDir = specConfig.seedsDir || `./mocks/${specConfig.id || `spec-${index}`}/seeds`;
+
+  // Load handlers via Vite's ssrLoadModule
+  const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
+
+  // Load seeds via Vite's ssrLoadModule
+  const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
+
+  // Create core server instance (processes the OpenAPI document internally)
+  // NOTE: Pass empty Map for seeds — createOpenApiServer.seeds expects
+  // Map<string, unknown[]> (static data), while loadSeeds() returns
+  // Map<string, AnySeedFn> (functions). Seeds are executed separately
+  // via executeSeeds() after server creation.
+  const server = await createOpenApiServer({
+    spec: specConfig.spec,
+    port: options.port,
+    idFields: specConfig.idFields,
+    handlers: handlersResult.handlers,
+    seeds: new Map(),
+    timelineLimit: options.timelineLimit,
+    cors: false, // CORS handled at main app level
+    devtools: false, // DevTools mounted at main app level
+    logger,
+  });
+
+  // Execute seed functions to populate the store
+  if (seedsResult.seeds.size > 0) {
+    await executeSeeds(seedsResult.seeds, server.store, server.document);
+  }
+
+  // Derive spec ID (now that document is processed and info.title is available)
+  const id = deriveSpecId(specConfig.id, server.document);
+
+  // Derive proxy path (from explicit config or servers[0].url)
+  const { proxyPath, proxyPathSource } = deriveProxyPath(specConfig.proxyPath, server.document, id);
+
+  // Update config with resolved values so downstream consumers
+  // (banner, file watcher, plugin.ts) see the final values
+  specConfig.id = id;
+  specConfig.proxyPath = proxyPath;
+  specConfig.proxyPathSource = proxyPathSource;
+  specConfig.handlersDir = handlersDir;
+  specConfig.seedsDir = seedsDir;
+
+  // Build SpecInfo metadata for DevTools and WebSocket protocol
+  const info: SpecInfo = {
+    id,
+    title: server.document.info?.title ?? id,
+    version: server.document.info?.version ?? 'unknown',
+    proxyPath,
+    color: SPEC_COLORS[index % SPEC_COLORS.length],
+    endpointCount: server.registry.endpoints.size,
+    schemaCount: server.store.getSchemas().length,
+  };
+
+  return { id, info, server, config: specConfig };
+}
+
+// =============================================================================
 // Orchestrator Factory
 // =============================================================================
 
@@ -124,80 +206,16 @@ export async function createOrchestrator(
   vite: ViteDevServer,
   cwd: string,
 ): Promise<OrchestratorResult> {
-  const instances: SpecInstance[] = [];
   const logger = options.logger ?? console;
 
   // ========================================================================
   // Phase 1: Process each spec — load handlers/seeds, create core instances
   // ========================================================================
 
+  const instances: SpecInstance[] = [];
   for (let i = 0; i < options.specs.length; i++) {
-    const specConfig = options.specs[i];
-
-    // Resolve handlers directory (fallback uses spec ID or index as namespace)
-    const handlersDir = specConfig.handlersDir || `./mocks/${specConfig.id || `spec-${i}`}/handlers`;
-
-    // Resolve seeds directory (same namespace pattern)
-    const seedsDir = specConfig.seedsDir || `./mocks/${specConfig.id || `spec-${i}`}/seeds`;
-
-    // Load handlers via Vite's ssrLoadModule
-    const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
-
-    // Load seeds via Vite's ssrLoadModule
-    const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
-
-    // Create core server instance (processes the OpenAPI document internally)
-    // NOTE: Pass empty Map for seeds — createOpenApiServer.seeds expects
-    // Map<string, unknown[]> (static data), while loadSeeds() returns
-    // Map<string, AnySeedFn> (functions). Seeds are executed separately
-    // via executeSeeds() after server creation.
-    const server = await createOpenApiServer({
-      spec: specConfig.spec,
-      port: options.port,
-      idFields: specConfig.idFields,
-      handlers: handlersResult.handlers,
-      seeds: new Map(),
-      timelineLimit: options.timelineLimit,
-      cors: false, // CORS handled at main app level
-      devtools: false, // DevTools mounted at main app level
-      logger,
-    });
-
-    // Execute seed functions to populate the store
-    if (seedsResult.seeds.size > 0) {
-      await executeSeeds(seedsResult.seeds, server.store, server.document);
-    }
-
-    // Derive spec ID (now that document is processed and info.title is available)
-    const id = deriveSpecId(specConfig.id, server.document);
-
-    // Derive proxy path (from explicit config or servers[0].url)
-    const { proxyPath, proxyPathSource } = deriveProxyPath(
-      specConfig.proxyPath,
-      server.document,
-      id,
-    );
-
-    // Update config with resolved values so downstream consumers
-    // (banner, file watcher, plugin.ts) see the final values
-    specConfig.id = id;
-    specConfig.proxyPath = proxyPath;
-    specConfig.proxyPathSource = proxyPathSource;
-    specConfig.handlersDir = handlersDir;
-    specConfig.seedsDir = seedsDir;
-
-    // Build SpecInfo metadata for DevTools and WebSocket protocol
-    const info: SpecInfo = {
-      id,
-      title: server.document.info?.title ?? id,
-      version: server.document.info?.version ?? 'unknown',
-      proxyPath,
-      color: SPEC_COLORS[i % SPEC_COLORS.length],
-      endpointCount: server.registry.endpoints.size,
-      schemaCount: server.store.getSchemas().length,
-    };
-
-    instances.push({ id, info, server, config: specConfig });
+    const instance = await processSpec(options.specs[i], i, options, vite, cwd, logger);
+    instances.push(instance);
   }
 
   // ========================================================================
@@ -331,9 +349,7 @@ export async function createOrchestrator(
       // Handle runtime server errors (e.g., EADDRINUSE)
       serverInstance.on?.('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
-          logger.error(
-            `[vite-plugin-open-api-server] Port ${options.port} is already in use.`,
-          );
+          logger.error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`);
         } else {
           logger.error(`[vite-plugin-open-api-server] Server error: ${err.message}`);
         }
