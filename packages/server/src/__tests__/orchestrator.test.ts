@@ -517,10 +517,12 @@ describe('createOrchestrator', () => {
         logger: mockLogger,
       });
 
-      // /_devtools should be reachable (returns something, not a middleware fallthrough)
+      // /_devtools should be reachable (route matched), returning a valid HTTP status.
+      // Without the SPA dir, the route still matches but may return 200 (placeholder)
+      // or 404 (missing static asset). Either is acceptable — the key assertion is
+      // that the route was mounted and responded with a real HTTP status code.
       const response = await result.app.request('/_devtools/');
-      // Should get a response (200 or 404 for missing SPA), not a 404 from no route
-      expect(response.status).toBeDefined();
+      expect([200, 302, 404]).toContain(response.status);
     });
 
     it('should warn when SPA directory is missing', async () => {

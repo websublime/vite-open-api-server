@@ -337,6 +337,9 @@ export async function createOrchestrator(
       registry: firstInstance.server.registry,
       simulationManager: firstInstance.server.simulationManager,
       wsHub: firstInstance.server.wsHub,
+      // Cast: getTimeline() returns readonly TimelineEntry[] but mountInternalApi
+      // needs the mutable reference for in-place operations (e.g., clear-timeline).
+      // The underlying array is mutable; the readonly constraint is at the API surface.
       timeline: firstInstance.server.getTimeline() as TimelineEntry[],
       timelineLimit: options.timelineLimit,
       document: firstInstance.server.document,
@@ -429,8 +432,11 @@ export async function createOrchestrator(
       await new Promise<void>((resolve, reject) => {
         const onListening = () => {
           server.removeListener('error', onError);
+          // Read the actual bound port from the server (handles port 0 / ephemeral)
+          const addr = server.address();
+          const actualPort = typeof addr === 'object' && addr ? addr.port : options.port;
           logger.info(
-            `[vite-plugin-open-api-server] Server started on http://localhost:${options.port}`,
+            `[vite-plugin-open-api-server] Server started on http://localhost:${actualPort}`,
           );
           resolve();
         };
