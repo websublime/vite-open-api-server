@@ -49,6 +49,12 @@ export type { OrchestratorResult, SpecInstance } from './orchestrator.js';
 export { createOrchestrator, SPEC_COLORS } from './orchestrator.js';
 
 // =============================================================================
+// Multi-Proxy Configuration
+// =============================================================================
+
+export { configureMultiProxy, configureSharedServiceProxies } from './multi-proxy.js';
+
+// =============================================================================
 // Handler Loading (for advanced use cases)
 // =============================================================================
 
