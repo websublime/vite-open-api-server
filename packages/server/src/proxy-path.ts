@@ -200,21 +200,26 @@ export function normalizeProxyPath(path: string, specId: string): string {
  *
  * Checks for:
  * 1. Duplicate paths — two specs with the same proxyPath
- * 2. Overlapping paths — one path is a prefix of another (e.g., "/api" and "/api/v1")
- *    which would cause routing ambiguity
+ * 2. Overlapping paths — one path is a prefix of another at a segment boundary
+ *    (e.g., "/api" and "/api/v1") which would cause routing ambiguity
+ * 3. String-prefix collisions — one path is a raw string prefix of another
+ *    without a segment boundary (e.g., "/api" and "/api2"). Vite's internal
+ *    proxy matching uses plain `url.startsWith(context)` with no segment
+ *    awareness, so "/api" would incorrectly capture "/api2/users" requests.
  *
  * @remarks
  * Entries with an empty or falsy `proxyPath` are silently skipped. These
  * represent specs whose proxy path has not yet been resolved (e.g., during
  * early option resolution before the OpenAPI document is processed). Callers
  * should expect unresolved entries to be excluded from uniqueness checks
- * rather than triggering false-positive PROXY_PATH_DUPLICATE or
- * PROXY_PATH_OVERLAP errors.
+ * rather than triggering false-positive errors.
  *
  * @param specs - Array of spec entries with id and proxyPath.
  *   Entries with empty/falsy proxyPath are skipped (unresolved).
  * @throws {ValidationError} PROXY_PATH_DUPLICATE if duplicate paths found
- * @throws {ValidationError} PROXY_PATH_OVERLAP if overlapping paths found
+ * @throws {ValidationError} PROXY_PATH_OVERLAP if overlapping paths found (segment boundary)
+ * @throws {ValidationError} PROXY_PATH_PREFIX_COLLISION if one path is a raw string prefix
+ *   of another without a segment boundary (e.g., "/api" and "/api2")
  *
  * @example
  * // Throws PROXY_PATH_DUPLICATE
@@ -228,6 +233,13 @@ export function normalizeProxyPath(path: string, specId: string): string {
  * validateUniqueProxyPaths([
  *   { id: 'petstore', proxyPath: '/api' },
  *   { id: 'inventory', proxyPath: '/api/v1' },
+ * ]);
+ *
+ * @example
+ * // Throws PROXY_PATH_PREFIX_COLLISION
+ * validateUniqueProxyPaths([
+ *   { id: 'petstore', proxyPath: '/api' },
+ *   { id: 'inventory', proxyPath: '/api2' },
  * ]);
  */
 export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: string }>): void {
@@ -255,11 +267,26 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
     for (let j = i + 1; j < sortedPaths.length; j++) {
       const [shorter, shorterId] = sortedPaths[i];
       const [longer, longerId] = sortedPaths[j];
+
+      // Segment-boundary overlap: "/api" is a parent of "/api/v1"
       if (longer.startsWith(`${shorter}/`)) {
         throw new ValidationError(
           'PROXY_PATH_OVERLAP',
           `Overlapping proxyPaths: "${shorter}" (${shorterId}) is a prefix of ` +
             `"${longer}" (${longerId}). This would cause routing ambiguity.`,
+        );
+      }
+
+      // Raw string-prefix collision: "/api" is a string prefix of "/api2".
+      // Vite's proxy matching uses plain url.startsWith(context) with no
+      // segment awareness, so "/api" would incorrectly capture "/api2/*"
+      // requests and route them with the wrong X-Spec-Id header.
+      if (longer.startsWith(shorter)) {
+        throw new ValidationError(
+          'PROXY_PATH_PREFIX_COLLISION',
+          `Proxy path prefix collision: "${shorter}" (${shorterId}) is a string prefix of ` +
+            `"${longer}" (${longerId}). Vite's proxy uses startsWith matching, so ` +
+            `"${shorter}" would incorrectly capture requests meant for "${longer}".`,
         );
       }
     }

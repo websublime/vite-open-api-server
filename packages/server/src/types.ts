@@ -27,6 +27,7 @@ export type ValidationErrorCode =
   | 'PROXY_PATH_TOO_BROAD'
   | 'PROXY_PATH_DUPLICATE'
   | 'PROXY_PATH_OVERLAP'
+  | 'PROXY_PATH_PREFIX_COLLISION'
   | 'SPEC_NOT_FOUND'
   | 'SPECS_EMPTY';
 
