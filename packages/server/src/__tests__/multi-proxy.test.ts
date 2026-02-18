@@ -41,8 +41,8 @@ function createSpecInstance(id: string, proxyPath: string): SpecInstance {
   return {
     id,
     config: { proxyPath } as ResolvedSpecConfig,
-    info: {} as SpecInstance['info'],
-    server: {} as SpecInstance['server'],
+    info: {} as unknown as SpecInstance['info'],
+    server: {} as unknown as SpecInstance['server'],
   };
 }
 
@@ -141,10 +141,10 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
-      const rewrite = entry.rewrite!;
-      expect(rewrite('/api/v3/pets')).toBe('/pets');
-      expect(rewrite('/api/v3/pets/123')).toBe('/pets/123');
-      expect(rewrite('/api/v3')).toBe('');
+      const rewrite = entry.rewrite;
+      expect(rewrite?.('/api/v3/pets')).toBe('/pets');
+      expect(rewrite?.('/api/v3/pets/123')).toBe('/pets/123');
+      expect(rewrite?.('/api/v3')).toBe('');
     });
 
     it('should only strip the prefix, not occurrences elsewhere in the path', () => {
@@ -154,9 +154,9 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       const entry = vite.config.server.proxy['/api'] as ProxyOptions;
-      const rewrite = entry.rewrite!;
+      const rewrite = entry.rewrite;
       // Only first occurrence (prefix) is stripped
-      expect(rewrite('/api/v1/api/status')).toBe('/v1/api/status');
+      expect(rewrite?.('/api/v1/api/status')).toBe('/v1/api/status');
     });
 
     it('should handle deeply nested proxy paths', () => {
@@ -166,8 +166,8 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       const entry = vite.config.server.proxy['/services/billing/api/v2'] as ProxyOptions;
-      const rewrite = entry.rewrite!;
-      expect(rewrite('/services/billing/api/v2/invoices')).toBe('/invoices');
+      const rewrite = entry.rewrite;
+      expect(rewrite?.('/services/billing/api/v2/invoices')).toBe('/invoices');
     });
 
     it('should escape special regex characters in proxy path', () => {
@@ -178,10 +178,10 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       const entry = vite.config.server.proxy['/api.v3'] as ProxyOptions;
-      const rewrite = entry.rewrite!;
+      const rewrite = entry.rewrite;
       // Should match literal "/api.v3", not "/apiXv3"
-      expect(rewrite('/api.v3/pets')).toBe('/pets');
-      expect(rewrite('/apiXv3/pets')).toBe('/apiXv3/pets');
+      expect(rewrite?.('/api.v3/pets')).toBe('/pets');
+      expect(rewrite?.('/apiXv3/pets')).toBe('/apiXv3/pets');
     });
   });
 
@@ -202,6 +202,34 @@ describe('configureMultiProxy', () => {
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect(proxy['/existing']).toBeDefined();
       expect(proxy['/api/v3']).toBeDefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Duplicate proxyPath (last-writer-wins)
+  // ---------------------------------------------------------------------------
+
+  describe('duplicate proxyPath', () => {
+    it('should use last-writer-wins when two specs share the same proxyPath', () => {
+      const vite = createMockVite();
+      const instances = [
+        createSpecInstance('first', '/api/v3'),
+        createSpecInstance('second', '/api/v3'),
+      ];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      // Only one entry for the path (object key is overwritten)
+      const keys = Object.keys(proxy).filter((k) => k === '/api/v3');
+      expect(keys).toHaveLength(1);
+
+      // Last instance wins
+      const entry = proxy['/api/v3'] as ProxyOptions;
+      expect(entry.headers).toEqual({ 'x-spec-id': 'second' });
+      expect(entry.target).toBe('http://localhost:4000');
+      expect(entry.changeOrigin).toBe(true);
+      expect(entry.rewrite?.('/api/v3/pets')).toBe('/pets');
     });
   });
 
@@ -230,11 +258,11 @@ describe('configureMultiProxy', () => {
       }
 
       // Each entry rewrites correctly
-      expect((proxy['/api/v3'] as ProxyOptions).rewrite!('/api/v3/pets')).toBe('/pets');
-      expect((proxy['/inventory/v1'] as ProxyOptions).rewrite!('/inventory/v1/items')).toBe(
+      expect((proxy['/api/v3'] as ProxyOptions).rewrite?.('/api/v3/pets')).toBe('/pets');
+      expect((proxy['/inventory/v1'] as ProxyOptions).rewrite?.('/inventory/v1/items')).toBe(
         '/items',
       );
-      expect((proxy['/billing/v2'] as ProxyOptions).rewrite!('/billing/v2/invoices')).toBe(
+      expect((proxy['/billing/v2'] as ProxyOptions).rewrite?.('/billing/v2/invoices')).toBe(
         '/invoices',
       );
     });
@@ -273,14 +301,14 @@ describe('configureSharedServiceProxies', () => {
       expect(entry.changeOrigin).toBe(true);
     });
 
-    it('should create /_ws proxy entry with WebSocket support', () => {
+    it('should create /_ws proxy entry with WebSocket support and ws:// protocol', () => {
       const vite = createMockVite();
 
       configureSharedServiceProxies(vite, 4000);
 
       const entry = vite.config.server.proxy['/_ws'] as ProxyOptions;
       expect(entry).toBeDefined();
-      expect(entry.target).toBe('http://localhost:4000');
+      expect(entry.target).toBe('ws://localhost:4000');
       expect(entry.changeOrigin).toBe(true);
       expect(entry.ws).toBe(true);
     });
@@ -303,7 +331,7 @@ describe('configureSharedServiceProxies', () => {
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect((proxy['/_devtools'] as ProxyOptions).target).toBe('http://localhost:9999');
       expect((proxy['/_api'] as ProxyOptions).target).toBe('http://localhost:9999');
-      expect((proxy['/_ws'] as ProxyOptions).target).toBe('http://localhost:9999');
+      expect((proxy['/_ws'] as ProxyOptions).target).toBe('ws://localhost:9999');
     });
   });
 
@@ -395,8 +423,9 @@ describe('integration: multi-proxy + shared service proxies', () => {
     configureSharedServiceProxies(vite, 7777);
 
     const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
-    for (const entry of Object.values(proxy)) {
-      expect((entry as ProxyOptions).target).toBe('http://localhost:7777');
+    for (const [path, entry] of Object.entries(proxy)) {
+      const expectedProtocol = path === '/_ws' ? 'ws' : 'http';
+      expect((entry as ProxyOptions).target).toBe(`${expectedProtocol}://localhost:7777`);
     }
   });
 });
