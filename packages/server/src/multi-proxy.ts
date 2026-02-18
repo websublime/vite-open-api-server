@@ -2,27 +2,50 @@
  * Multi-Path Proxy Configuration
  *
  * What: Configures Vite proxy for multiple OpenAPI spec instances
- * How: Generates one proxy entry per spec with path rewriting and X-Spec-Id header
+ * How: Generates one proxy entry per spec with path rewriting and X-Spec-Id header,
+ *      plus shared service proxies for DevTools, Internal API, and WebSocket
  * Why: Enables each spec's API requests to be routed through Vite to the shared server
  *
  * @module multi-proxy
  */
 
-import type { ViteDevServer } from 'vite';
+import type { ProxyOptions, ViteDevServer } from 'vite';
 
 import type { SpecInstance } from './orchestrator.js';
 
 /**
- * Configure Vite proxy for multiple spec instances.
+ * Ensure `vite.config.server.proxy` exists and return a mutable reference.
  *
- * Each spec gets its own proxy entry that:
- * 1. Matches requests by proxy path prefix
- * 2. Rewrites the path to strip the prefix
- * 3. Adds X-Spec-Id header for routing
- * 4. Forwards to the shared server port
+ * Returns `null` when `vite.config.server` is falsy, which can happen if
+ * the function is called outside the normal Vite plugin lifecycle (e.g.,
+ * a custom integration). Callers should early-return on `null`.
  *
- * Shared service proxies (/_devtools, /_api, /_ws) are added separately
- * via {@link configureSharedServiceProxies}.
+ * @internal
+ */
+function getProxyConfig(vite: ViteDevServer): Record<string, ProxyOptions> | null {
+  if (!vite.config.server) {
+    return null;
+  }
+
+  vite.config.server.proxy ??= {};
+  return vite.config.server.proxy as Record<string, ProxyOptions>;
+}
+
+/**
+ * Configure Vite proxy for multiple spec instances and shared services.
+ *
+ * Generates:
+ * 1. **Per-spec proxy entries** — one per spec, with path rewriting (prefix
+ *    stripping) and an `X-Spec-Id` header so the shared Hono server can
+ *    route to the correct spec instance.
+ * 2. **Shared service proxies** — spec-agnostic entries for `/_devtools`,
+ *    `/_api`, and `/_ws` that forward to the same server without path
+ *    rewriting or spec headers.
+ *
+ * Uses `startsWith`/`slice` for path rewriting instead of the regex approach
+ * described in the tech spec (Section 5.7). Literal prefix matching is safer
+ * because it correctly handles regex metacharacters in proxy paths (e.g.,
+ * `/api.v3` matches literally, not as `/api<any>v3`).
  *
  * @param vite - Vite dev server instance
  * @param instances - Resolved spec instances from the orchestrator
@@ -33,52 +56,38 @@ export function configureMultiProxy(
   instances: SpecInstance[],
   port: number,
 ): void {
-  if (!vite.config.server) {
+  const proxyConfig = getProxyConfig(vite);
+  if (!proxyConfig) {
     return;
   }
 
-  const proxyConfig = vite.config.server.proxy ?? {};
+  const httpTarget = `http://localhost:${port}`;
+
+  // ── Per-spec proxy entries ──────────────────────────────────────────────
 
   for (const instance of instances) {
     const prefix = instance.config.proxyPath;
 
     proxyConfig[prefix] = {
-      target: `http://localhost:${port}`,
+      target: httpTarget,
       changeOrigin: true,
-      rewrite: (path: string) => (path.startsWith(prefix) ? path.slice(prefix.length) : path),
+      rewrite: (path: string) => {
+        if (!path.startsWith(prefix)) return path;
+        return path.slice(prefix.length) || '/';
+      },
       headers: { 'x-spec-id': instance.id },
     };
   }
 
-  vite.config.server.proxy = proxyConfig;
-}
-
-/**
- * Configure shared service proxy entries.
- *
- * These proxies are spec-agnostic and forward requests to the shared
- * server without any path rewriting or X-Spec-Id header:
- * - `/_devtools` — DevTools SPA iframe
- * - `/_api` — Internal API endpoints
- * - `/_ws` — WebSocket connection (with ws upgrade support)
- *
- * @param vite - Vite dev server instance
- * @param port - Shared server port
- */
-export function configureSharedServiceProxies(vite: ViteDevServer, port: number): void {
-  if (!vite.config.server) {
-    return;
-  }
-
-  const proxyConfig = vite.config.server.proxy ?? {};
+  // ── Shared service proxies ─────────────────────────────────────────────
 
   proxyConfig['/_devtools'] = {
-    target: `http://localhost:${port}`,
+    target: httpTarget,
     changeOrigin: true,
   };
 
   proxyConfig['/_api'] = {
-    target: `http://localhost:${port}`,
+    target: httpTarget,
     changeOrigin: true,
   };
 
@@ -87,6 +96,4 @@ export function configureSharedServiceProxies(vite: ViteDevServer, port: number)
     changeOrigin: true,
     ws: true,
   };
-
-  vite.config.server.proxy = proxyConfig;
 }

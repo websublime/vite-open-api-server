@@ -1,15 +1,16 @@
 /**
  * Multi-Proxy Configuration Tests
  *
- * What: Unit tests for configureMultiProxy() and configureSharedServiceProxies()
- * How: Tests proxy entry generation with correct targets, rewrite regexes, and headers
+ * What: Unit tests for configureMultiProxy()
+ * How: Tests proxy entry generation with correct targets, path rewriting, headers,
+ *      and shared service proxies
  * Why: Ensures Vite proxy configuration is correctly generated for multi-spec routing
  */
 
 import type { ProxyOptions } from 'vite';
 import { describe, expect, it } from 'vitest';
 
-import { configureMultiProxy, configureSharedServiceProxies } from '../multi-proxy.js';
+import { configureMultiProxy } from '../multi-proxy.js';
 import type { SpecInstance } from '../orchestrator.js';
 import type { ResolvedSpecConfig } from '../types.js';
 
@@ -20,15 +21,16 @@ import type { ResolvedSpecConfig } from '../types.js';
 /**
  * Create a minimal mock ViteDevServer with a mutable proxy config.
  *
- * Only the `config.server.proxy` path is needed by the proxy functions.
+ * Only the `config.server.proxy` path is needed by the proxy function.
+ *
+ * @param options.proxy - Pre-existing proxy entries (defaults to empty object)
+ * @param options.omitProxy - If true, omit the `proxy` key entirely to test
+ *   the `??=` fallback branch that initialises proxy from scratch
  */
-function createMockVite(existingProxy?: Record<string, ProxyOptions>) {
+function createMockVite(options?: { proxy?: Record<string, ProxyOptions>; omitProxy?: boolean }) {
+  const server = options?.omitProxy ? {} : { proxy: options?.proxy ?? {} };
   return {
-    config: {
-      server: {
-        proxy: existingProxy ?? {},
-      },
-    },
+    config: { server },
   } as Parameters<typeof configureMultiProxy>[0];
 }
 
@@ -47,7 +49,7 @@ function createSpecInstance(id: string, proxyPath: string): SpecInstance {
 }
 
 // =============================================================================
-// configureMultiProxy()
+// configureMultiProxy() — per-spec proxy entries
 // =============================================================================
 
 describe('configureMultiProxy', () => {
@@ -62,6 +64,35 @@ describe('configureMultiProxy', () => {
 
       expect(() => configureMultiProxy(vite, instances, 4000)).not.toThrow();
       expect(vite.config.server).toBeUndefined();
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Proxy initialisation from scratch
+  // ---------------------------------------------------------------------------
+
+  describe('proxy initialisation when vite.config.server.proxy is undefined', () => {
+    it('should initialise proxy config from scratch for per-spec entries', () => {
+      const vite = createMockVite({ omitProxy: true });
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      expect(vite.config.server.proxy).toBeDefined();
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      expect(proxy['/api/v3']).toBeDefined();
+    });
+
+    it('should initialise proxy config from scratch for shared service entries', () => {
+      const vite = createMockVite({ omitProxy: true });
+
+      configureMultiProxy(vite, [], 4000);
+
+      expect(vite.config.server.proxy).toBeDefined();
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      expect(proxy['/_devtools']).toBeDefined();
+      expect(proxy['/_api']).toBeDefined();
+      expect(proxy['/_ws']).toBeDefined();
     });
   });
 
@@ -109,7 +140,10 @@ describe('configureMultiProxy', () => {
 
       configureMultiProxy(vite, [], 4000);
 
-      expect(Object.keys(vite.config.server.proxy)).toHaveLength(0);
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      // Only the 3 shared service entries, no per-spec entries
+      const perSpecKeys = Object.keys(proxy).filter((k) => !k.startsWith('/_'));
+      expect(perSpecKeys).toHaveLength(0);
     });
   });
 
@@ -158,7 +192,29 @@ describe('configureMultiProxy', () => {
       const rewrite = entry.rewrite;
       expect(rewrite?.('/api/v3/pets')).toBe('/pets');
       expect(rewrite?.('/api/v3/pets/123')).toBe('/pets/123');
-      expect(rewrite?.('/api/v3')).toBe('');
+    });
+
+    it('should rewrite exact-prefix path to root instead of empty string', () => {
+      const vite = createMockVite();
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const rewrite = entry.rewrite;
+      // Exact prefix rewrites to '/' (not '') to avoid http-proxy edge cases
+      expect(rewrite?.('/api/v3')).toBe('/');
+    });
+
+    it('should rewrite prefix with trailing slash to root', () => {
+      const vite = createMockVite();
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      configureMultiProxy(vite, instances, 4000);
+
+      const entry = vite.config.server.proxy['/api/v3'] as ProxyOptions;
+      const rewrite = entry.rewrite;
+      expect(rewrite?.('/api/v3/')).toBe('/');
     });
 
     it('should only strip the prefix, not occurrences elsewhere in the path', () => {
@@ -208,7 +264,7 @@ describe('configureMultiProxy', () => {
       const existingProxy: Record<string, ProxyOptions> = {
         '/existing': { target: 'http://localhost:3000', changeOrigin: true },
       };
-      const vite = createMockVite(existingProxy);
+      const vite = createMockVite({ proxy: existingProxy });
       const instances = [createSpecInstance('petstore', '/api/v3')];
 
       configureMultiProxy(vite, instances, 4000);
@@ -220,12 +276,15 @@ describe('configureMultiProxy', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Duplicate proxyPath (last-writer-wins)
+  // Duplicate proxyPath (prevented upstream by validateUniqueProxyPaths)
   // ---------------------------------------------------------------------------
 
-  describe('duplicate proxyPath', () => {
-    it('should use last-writer-wins when two specs share the same proxyPath', () => {
+  describe('duplicate proxyPath (prevented upstream by validateUniqueProxyPaths)', () => {
+    it('documents raw function behavior: last-writer-wins when called directly', () => {
       const vite = createMockVite();
+      // NOTE: The orchestrator's validateUniqueProxyPaths() prevents this
+      // state from occurring in normal plugin flow. This test documents
+      // the raw function behavior when called directly (e.g., custom integrations).
       const instances = [
         createSpecInstance('first', '/api/v3'),
         createSpecInstance('second', '/api/v3'),
@@ -263,9 +322,8 @@ describe('configureMultiProxy', () => {
       configureMultiProxy(vite, instances, 4000);
 
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
-      expect(Object.keys(proxy)).toHaveLength(3);
 
-      // Each entry has the correct target
+      // Each per-spec entry has the correct target
       for (const path of ['/api/v3', '/inventory/v1', '/billing/v2']) {
         expect((proxy[path] as ProxyOptions).target).toBe('http://localhost:4000');
         expect((proxy[path] as ProxyOptions).changeOrigin).toBe(true);
@@ -281,35 +339,16 @@ describe('configureMultiProxy', () => {
       );
     });
   });
-});
 
-// =============================================================================
-// configureSharedServiceProxies()
-// =============================================================================
+  // ===========================================================================
+  // Shared service proxies (/_devtools, /_api, /_ws)
+  // ===========================================================================
 
-describe('configureSharedServiceProxies', () => {
-  // ---------------------------------------------------------------------------
-  // Early-return guard
-  // ---------------------------------------------------------------------------
-
-  describe('early-return when vite.config.server is falsy', () => {
-    it('should not throw when vite.config.server is undefined', () => {
-      const vite = { config: {} } as Parameters<typeof configureSharedServiceProxies>[0];
-
-      expect(() => configureSharedServiceProxies(vite, 4000)).not.toThrow();
-      expect(vite.config.server).toBeUndefined();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // Shared proxy entries
-  // ---------------------------------------------------------------------------
-
-  describe('shared proxy entries', () => {
+  describe('shared service proxies', () => {
     it('should create /_devtools proxy entry', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const entry = vite.config.server.proxy['/_devtools'] as ProxyOptions;
       expect(entry).toBeDefined();
@@ -320,7 +359,7 @@ describe('configureSharedServiceProxies', () => {
     it('should create /_api proxy entry', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const entry = vite.config.server.proxy['/_api'] as ProxyOptions;
       expect(entry).toBeDefined();
@@ -331,7 +370,7 @@ describe('configureSharedServiceProxies', () => {
     it('should create /_ws proxy entry with WebSocket support and ws:// protocol', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const entry = vite.config.server.proxy['/_ws'] as ProxyOptions;
       expect(entry).toBeDefined();
@@ -343,7 +382,7 @@ describe('configureSharedServiceProxies', () => {
     it('should not set ws on /_devtools or /_api entries', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect((proxy['/_devtools'] as ProxyOptions).ws).toBeUndefined();
@@ -353,45 +392,18 @@ describe('configureSharedServiceProxies', () => {
     it('should use the provided port', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 9999);
+      configureMultiProxy(vite, [], 9999);
 
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect((proxy['/_devtools'] as ProxyOptions).target).toBe('http://localhost:9999');
       expect((proxy['/_api'] as ProxyOptions).target).toBe('http://localhost:9999');
       expect((proxy['/_ws'] as ProxyOptions).target).toBe('ws://localhost:9999');
     });
-  });
 
-  // ---------------------------------------------------------------------------
-  // Preserving existing proxy entries
-  // ---------------------------------------------------------------------------
-
-  describe('existing proxy entries', () => {
-    it('should preserve existing proxy entries', () => {
-      const existingProxy: Record<string, ProxyOptions> = {
-        '/api/v3': { target: 'http://localhost:4000', changeOrigin: true },
-      };
-      const vite = createMockVite(existingProxy);
-
-      configureSharedServiceProxies(vite, 4000);
-
-      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
-      expect(proxy['/api/v3']).toBeDefined();
-      expect(proxy['/_devtools']).toBeDefined();
-      expect(proxy['/_api']).toBeDefined();
-      expect(proxy['/_ws']).toBeDefined();
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // No path rewriting or headers
-  // ---------------------------------------------------------------------------
-
-  describe('no path rewriting or headers', () => {
     it('should not set rewrite on shared service proxies', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect((proxy['/_devtools'] as ProxyOptions).rewrite).toBeUndefined();
@@ -402,57 +414,70 @@ describe('configureSharedServiceProxies', () => {
     it('should not set headers on shared service proxies', () => {
       const vite = createMockVite();
 
-      configureSharedServiceProxies(vite, 4000);
+      configureMultiProxy(vite, [], 4000);
 
       const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
       expect((proxy['/_devtools'] as ProxyOptions).headers).toBeUndefined();
       expect((proxy['/_api'] as ProxyOptions).headers).toBeUndefined();
       expect((proxy['/_ws'] as ProxyOptions).headers).toBeUndefined();
     });
-  });
-});
 
-// =============================================================================
-// Integration: configureMultiProxy + configureSharedServiceProxies
-// =============================================================================
+    it('should preserve existing proxy entries alongside shared services', () => {
+      const existingProxy: Record<string, ProxyOptions> = {
+        '/api/v3': { target: 'http://localhost:4000', changeOrigin: true },
+      };
+      const vite = createMockVite({ proxy: existingProxy });
 
-describe('integration: multi-proxy + shared service proxies', () => {
-  it('should work together to configure full proxy setup', () => {
-    const vite = createMockVite();
-    const instances = [
-      createSpecInstance('petstore', '/api/v3'),
-      createSpecInstance('inventory', '/inventory/v1'),
-    ];
+      configureMultiProxy(vite, [], 4000);
 
-    configureMultiProxy(vite, instances, 4000);
-    configureSharedServiceProxies(vite, 4000);
-
-    const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
-
-    // Per-spec entries
-    expect(proxy['/api/v3']).toBeDefined();
-    expect(proxy['/inventory/v1']).toBeDefined();
-
-    // Shared service entries
-    expect(proxy['/_devtools']).toBeDefined();
-    expect(proxy['/_api']).toBeDefined();
-    expect(proxy['/_ws']).toBeDefined();
-
-    // Total entries: 2 spec + 3 shared
-    expect(Object.keys(proxy)).toHaveLength(5);
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      expect(proxy['/api/v3']).toBeDefined();
+      expect(proxy['/_devtools']).toBeDefined();
+      expect(proxy['/_api']).toBeDefined();
+      expect(proxy['/_ws']).toBeDefined();
+    });
   });
 
-  it('should use the same target port for all entries', () => {
-    const vite = createMockVite();
-    const instances = [createSpecInstance('petstore', '/api/v3')];
+  // ===========================================================================
+  // Integration: per-spec + shared service proxies
+  // ===========================================================================
 
-    configureMultiProxy(vite, instances, 7777);
-    configureSharedServiceProxies(vite, 7777);
+  describe('integration: per-spec + shared service proxies', () => {
+    it('should configure both per-spec and shared entries in a single call', () => {
+      const vite = createMockVite();
+      const instances = [
+        createSpecInstance('petstore', '/api/v3'),
+        createSpecInstance('inventory', '/inventory/v1'),
+      ];
 
-    const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
-    for (const [path, entry] of Object.entries(proxy)) {
-      const expectedProtocol = path === '/_ws' ? 'ws' : 'http';
-      expect((entry as ProxyOptions).target).toBe(`${expectedProtocol}://localhost:7777`);
-    }
+      configureMultiProxy(vite, instances, 4000);
+
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+
+      // Per-spec entries
+      expect(proxy['/api/v3']).toBeDefined();
+      expect(proxy['/inventory/v1']).toBeDefined();
+
+      // Shared service entries
+      expect(proxy['/_devtools']).toBeDefined();
+      expect(proxy['/_api']).toBeDefined();
+      expect(proxy['/_ws']).toBeDefined();
+
+      // Total entries: 2 spec + 3 shared
+      expect(Object.keys(proxy)).toHaveLength(5);
+    });
+
+    it('should use the same target port for all entries', () => {
+      const vite = createMockVite();
+      const instances = [createSpecInstance('petstore', '/api/v3')];
+
+      configureMultiProxy(vite, instances, 7777);
+
+      const proxy = vite.config.server.proxy as Record<string, ProxyOptions>;
+      for (const [path, entry] of Object.entries(proxy)) {
+        const expectedProtocol = path === '/_ws' ? 'ws' : 'http';
+        expect((entry as ProxyOptions).target).toBe(`${expectedProtocol}://localhost:7777`);
+      }
+    });
   });
 });
