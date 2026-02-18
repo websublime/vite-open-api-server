@@ -76,7 +76,8 @@ export function deriveProxyPath(
   }
 
   const servers = document.servers;
-  if (!servers || servers.length === 0 || !servers[0].url) {
+  const serverUrl = servers?.[0]?.url?.trim();
+  if (!serverUrl) {
     throw new ValidationError(
       'PROXY_PATH_MISSING',
       `[${specId}] Cannot derive proxyPath: no servers defined in the OpenAPI document. ` +
@@ -84,7 +85,6 @@ export function deriveProxyPath(
     );
   }
 
-  const serverUrl = servers[0].url;
   let path: string;
 
   try {
@@ -127,6 +127,9 @@ export function deriveProxyPath(
  * normalizeProxyPath('/api/v3/', 'petstore') → '/api/v3'
  */
 export function normalizeProxyPath(path: string, specId: string): string {
+  // Trim leading/trailing whitespace (e.g., "  /api/v3  " → "/api/v3")
+  path = path.trim();
+
   // Strip query string and fragment (e.g., "/api/v3?debug=true#section" → "/api/v3")
   const queryIdx = path.indexOf('?');
   const hashIdx = path.indexOf('#');
@@ -151,6 +154,15 @@ export function normalizeProxyPath(path: string, specId: string): string {
     throw new ValidationError(
       'PROXY_PATH_TOO_BROAD',
       `[${specId}] proxyPath "/" is too broad — it would capture all requests. ` +
+        'Set a more specific proxyPath (e.g., "/api/v1").',
+    );
+  }
+
+  // Reject bare dot segments — "." and ".." are not useful proxy paths
+  if (normalized === '/.' || normalized === '/..') {
+    throw new ValidationError(
+      'PROXY_PATH_TOO_BROAD',
+      `[${specId}] proxyPath "${normalized}" is not a valid proxy path. ` +
         'Set a more specific proxyPath (e.g., "/api/v1").',
     );
   }
@@ -192,6 +204,11 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
   const paths = new Map<string, string>();
 
   for (const spec of specs) {
+    // Skip entries with empty proxyPath — they haven't been resolved yet
+    if (!spec.proxyPath) {
+      continue;
+    }
+
     if (paths.has(spec.proxyPath)) {
       throw new ValidationError(
         'PROXY_PATH_DUPLICATE',

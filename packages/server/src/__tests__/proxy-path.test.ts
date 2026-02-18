@@ -249,11 +249,12 @@ describe('deriveProxyPath', () => {
       expect(result.proxyPathSource).toBe('auto');
     });
 
-    it('should handle server URL "." as relative path', () => {
-      // "." is a valid OpenAPI relative server URL
-      const result = deriveProxyPath('', makeDocument('.'), 'petstore');
-      expect(result.proxyPath).toBe('/.');
-      expect(result.proxyPathSource).toBe('auto');
+    it('should reject server URL "." as too broad', () => {
+      // "." is a valid OpenAPI relative server URL but not a useful proxy path
+      expectValidationError(
+        () => deriveProxyPath('', makeDocument('.'), 'petstore'),
+        'PROXY_PATH_TOO_BROAD',
+      );
     });
 
     it('should treat bare hostname as relative path', () => {
@@ -381,6 +382,18 @@ describe('normalizeProxyPath', () => {
     it('should not resolve path traversal segments (passthrough)', () => {
       expect(normalizeProxyPath('/api/../v3', 'test')).toBe('/api/../v3');
     });
+
+    it('should throw PROXY_PATH_TOO_BROAD for whitespace-only input', () => {
+      expectValidationError(() => normalizeProxyPath('   ', 'test'), 'PROXY_PATH_TOO_BROAD');
+    });
+
+    it('should throw PROXY_PATH_TOO_BROAD for "."', () => {
+      expectValidationError(() => normalizeProxyPath('.', 'test'), 'PROXY_PATH_TOO_BROAD');
+    });
+
+    it('should throw PROXY_PATH_TOO_BROAD for ".."', () => {
+      expectValidationError(() => normalizeProxyPath('..', 'test'), 'PROXY_PATH_TOO_BROAD');
+    });
   });
 });
 
@@ -412,6 +425,24 @@ describe('validateUniqueProxyPaths', () => {
 
     it('should not throw for empty array', () => {
       expect(() => validateUniqueProxyPaths([])).not.toThrow();
+    });
+
+    it('should skip entries with empty proxyPath', () => {
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'x', proxyPath: '' },
+          { id: 'y', proxyPath: '/api/v1' },
+        ]),
+      ).not.toThrow();
+    });
+
+    it('should not false-positive duplicate on two empty proxyPaths', () => {
+      expect(() =>
+        validateUniqueProxyPaths([
+          { id: 'a', proxyPath: '' },
+          { id: 'b', proxyPath: '' },
+        ]),
+      ).not.toThrow();
     });
 
     it('should not throw for sibling paths with shared prefix segment', () => {
@@ -599,8 +630,8 @@ describe('integration: config to validated proxy paths', () => {
       ],
     });
 
-    const results = options.specs.map((s) =>
-      deriveProxyPath(s.proxyPath, makeDocument(), s.id || 'default'),
+    const results = options.specs.map((s, i) =>
+      deriveProxyPath(s.proxyPath, makeDocument(), s.id || `spec-${i}`),
     );
 
     expectValidationError(

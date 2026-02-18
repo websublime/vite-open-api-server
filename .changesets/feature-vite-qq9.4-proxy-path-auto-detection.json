@@ -1,42 +1,13 @@
 {
   "branch": "feature/vite-qq9.4-proxy-path-auto-detection",
-  "bump": "minor",
+  "bump": "patch",
   "environments": [
     "production"
   ],
   "packages": [
     "@websublime/vite-plugin-open-api-server"
   ],
-  "changes": [
-    "7efce0a0da551b3947fda322feb9adf1f955ba02",
-    "a537b6ac869fa496fac77ce251400164a5041095",
-    "9288e85283c51732263f8dcca64f8acdb8f9d748",
-    "b5f0b1437718dd778876b9811268170912181b5d",
-    "f91ae5a1922d3f0252e289139b5342622246bd9b",
-    "f523c7caf298316f9635fb99a3a7aa23c6d7551f",
-    "e2880dba7e3acea4736a2d4136fc6baee81a5188",
-    "f6754a98833bbe36d3c86b28f7a942b79aab5d52",
-    "10a0c94368758ef7af9b1a53de154283b3d1e433",
-    "8ecc053864fac36e4feb59b4f71b4a66d038d9f1",
-    "eb6b05824e319eb78ccc491f8a4047dba1b313ef",
-    "f38dfa00bdc6f07e884a9dd5f2a27710535f77c8",
-    "467655ee544a9fc63eb716256427622b617af307",
-    "35e5eccdb05d578ed380432c03f4adfe3f27b8d7",
-    "4ddc0c638d19a806b78d6fde45edca5af1f356ea",
-    "f717863091bee302c5059e179ab2778f1431febb",
-    "f37cec1abcd62534f0a272258f2a0695565d4fcc",
-    "13343a22069816019df34b572562d53bdb5610ac",
-    "fbb4f222a05d641f556b42ba37e3f49f1e9613c9",
-    "bab5bf886c4058380058eb47ac3b6560773923b2",
-    "b6f231eef5e8d3ed6b77ef01f1c97b3cc6ccee60",
-    "e3a5927c964daa308cf67616c7bd317323b4344a",
-    "c7405dd8b54a772f610eeaec0b448f21d5e83c17",
-    "48cbda095a78af6d81035fc496d808493909a3c9",
-    "f2a89db2ea685da89c7d6b5602f6fb1840ada766",
-    "4b4bf3212f09bb69a3d249117df385712a96a353",
-    "e6b9993129cccb056c310dccd610cbf32f8b5f66",
-    "fb407897a645ceb716d0c62ada83e961c281a8af"
-  ],
-  "created_at": "2026-02-18T10:17:53.557714Z",
-  "updated_at": "2026-02-18T10:18:21.348580Z"
+  "changes": [],
+  "created_at": "2026-02-18T10:39:32.592010Z",
+  "updated_at": "2026-02-18T10:39:32.592830Z"
 }
