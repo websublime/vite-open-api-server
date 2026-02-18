@@ -19,7 +19,6 @@ import {
   mountInternalApi,
   type OpenApiServer,
   type SpecInfo,
-  type TimelineEntry,
 } from '@websublime/vite-plugin-open-api-core';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -200,6 +199,100 @@ async function processSpec(
 }
 
 // =============================================================================
+// Phase 3 Helpers (extracted for cognitive complexity)
+// =============================================================================
+
+/** CORS configuration used by both mainApp and sub-instance middleware */
+interface CorsConfig {
+  origin: string | string[];
+  allowMethods: string[];
+  allowHeaders: string[];
+  exposeHeaders: string[];
+  maxAge: number;
+  credentials: boolean;
+}
+
+/**
+ * Build the CORS configuration from resolved options.
+ *
+ * Normalizes `['*']` to `'*'` (Hono's array branch uses `.includes(origin)`
+ * which never matches browser-sent origins against the literal `'*'`).
+ */
+function buildCorsConfig(options: ResolvedOptions): CorsConfig {
+  const isWildcardOrigin =
+    options.corsOrigin === '*' ||
+    (Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*'));
+
+  const effectiveCorsOrigin =
+    Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*')
+      ? '*'
+      : options.corsOrigin;
+
+  return {
+    origin: effectiveCorsOrigin,
+    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Spec-Id'],
+    exposeHeaders: ['Content-Length', 'X-Request-Id'],
+    maxAge: 86400,
+    credentials: !isWildcardOrigin,
+  };
+}
+
+/**
+ * Mount the DevTools SPA on the main Hono app.
+ *
+ * Resolves the SPA directory relative to this file's location.
+ * Logs a warning if the built SPA is not found.
+ */
+function mountDevToolsSpa(mainApp: Hono, logger: Logger): void {
+  const pluginDir = dirname(fileURLToPath(import.meta.url));
+  const spaDir = join(pluginDir, 'devtools-spa');
+  const devtoolsSpaDir = existsSync(spaDir) ? spaDir : undefined;
+
+  if (!devtoolsSpaDir) {
+    logger.warn?.(
+      '[vite-plugin-open-api-server] DevTools SPA not found at',
+      spaDir,
+      '- serving placeholder. Run "pnpm build" to include the SPA.',
+    );
+  }
+
+  mountDevToolsRoutes(mainApp, {
+    spaDir: devtoolsSpaDir,
+    logger,
+  });
+}
+
+/**
+ * Create the X-Spec-Id dispatch middleware.
+ *
+ * Uses slugify() to normalize the incoming header so it matches the
+ * instanceMap keys produced by deriveSpecId().
+ */
+function createDispatchMiddleware(instanceMap: Map<string, SpecInstance>) {
+  return async (c: Parameters<Parameters<Hono['use']>[1]>[0], next: () => Promise<void>) => {
+    const rawSpecId = c.req.header('x-spec-id');
+    if (!rawSpecId) {
+      await next();
+      return;
+    }
+
+    const specId = slugify(rawSpecId.trim());
+    if (!specId) {
+      await next();
+      return;
+    }
+
+    const instance = instanceMap.get(specId);
+    if (!instance) {
+      return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    }
+
+    return instance.server.app.fetch(c.req.raw);
+  };
+}
+
+// =============================================================================
 // Orchestrator Factory
 // =============================================================================
 
@@ -277,54 +370,23 @@ export async function createOrchestrator(
 
   const mainApp = new Hono();
 
-  // --- CORS configuration ---
-  // Determines whether Access-Control-Allow-Credentials should be sent.
-  // Credentials must be false when origin is '*' (wildcard), regardless
-  // of whether corsOrigin is a string or array containing '*'.
-  const isWildcardOrigin =
-    options.corsOrigin === '*' ||
-    (Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*'));
-
-  const corsConfig = {
-    origin: options.corsOrigin,
-    allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Spec-Id'],
-    exposeHeaders: ['Content-Length', 'X-Request-Id'],
-    maxAge: 86400,
-    credentials: !isWildcardOrigin,
-  };
-
-  // CORS middleware on mainApp (applies to shared services: /_devtools, /_api).
-  // Sub-instances also get CORS middleware (see below) because app.fetch()
-  // creates a separate Hono context that bypasses mainApp's middleware chain.
+  // --- CORS ---
+  const corsConfig = buildCorsConfig(options);
   if (options.cors) {
+    // mainApp CORS covers shared services (/_devtools, /_api).
     mainApp.use('*', cors(corsConfig));
+    // Sub-instance CORS covers dispatched requests (app.fetch() bypasses mainApp middleware).
+    for (const inst of instances) {
+      inst.server.app.use('*', cors(corsConfig));
+    }
   }
 
   // --- DevTools SPA (single SPA for all specs, spec-aware via WebSocket) ---
   if (options.devtools) {
-    const pluginDir = dirname(fileURLToPath(import.meta.url));
-    const spaDir = join(pluginDir, 'devtools-spa');
-    const devtoolsSpaDir = existsSync(spaDir) ? spaDir : undefined;
-
-    if (!devtoolsSpaDir) {
-      logger.warn?.(
-        '[vite-plugin-open-api-server] DevTools SPA not found at',
-        spaDir,
-        '- serving placeholder. Run "pnpm build" to include the SPA.',
-      );
-    }
-
-    mountDevToolsRoutes(mainApp, {
-      spaDir: devtoolsSpaDir,
-      logger,
-    });
+    mountDevToolsSpa(mainApp, logger);
   }
 
   // --- Internal API — first spec only (multi-spec: Epic 3, Task 3.x) ---
-  // Multi-spec aggregated internal API is planned for Epic 3 (see beads).
-  // For now, mount only the first spec's internal API as a baseline so
-  // /_api/health and /_api/registry are reachable.
   if (instances.length > 0) {
     if (instances.length > 1) {
       logger.warn?.(
@@ -337,52 +399,16 @@ export async function createOrchestrator(
       registry: firstInstance.server.registry,
       simulationManager: firstInstance.server.simulationManager,
       wsHub: firstInstance.server.wsHub,
-      // Cast: getTimeline() returns readonly TimelineEntry[] but mountInternalApi
-      // needs the mutable reference for in-place operations (e.g., clear-timeline).
-      // The underlying array is mutable; the readonly constraint is at the API surface.
-      timeline: firstInstance.server.getTimeline() as TimelineEntry[],
+      timeline: firstInstance.server.getTimeline(),
       timelineLimit: options.timelineLimit,
+      clearTimeline: firstInstance.server.clearTimeline,
       document: firstInstance.server.document,
     });
   }
 
   // --- X-Spec-Id dispatch middleware ---
-  // Routes requests with X-Spec-Id header to the correct spec's Hono app.
-  // Requests without the header fall through to shared services
-  // (/_devtools, /_api) registered above.
-  // NOTE: /_ws is not yet mounted at the orchestrator level (see Epic 3).
-  // The instanceMap keys are lowercase (from slugify()), so we normalize
-  // the incoming header to match.
-  // Mount CORS on each sub-instance's Hono app so that dispatched
-  // requests (via app.fetch()) include proper CORS headers.
-  // mainApp CORS only covers shared services; sub-instance responses
-  // bypass mainApp's middleware chain entirely.
-  if (options.cors) {
-    for (const inst of instances) {
-      inst.server.app.use('*', cors(corsConfig));
-    }
-  }
-
   const instanceMap = new Map(instances.map((inst) => [inst.id, inst]));
-
-  mainApp.use('*', async (c, next) => {
-    const rawSpecId = c.req.header('x-spec-id');
-    if (!rawSpecId) {
-      // No spec header — shared service request, continue to next middleware
-      await next();
-      return;
-    }
-
-    const specId = rawSpecId.trim().toLowerCase();
-    const instance = instanceMap.get(specId);
-    if (!instance) {
-      // Use sanitized specId in the error response (not raw user input)
-      return c.json({ error: `Unknown spec: ${specId}` }, 404);
-    }
-
-    // Dispatch to the spec's Hono app via app.fetch()
-    return instance.server.app.fetch(c.req.raw);
-  });
+  mainApp.use('*', createDispatchMiddleware(instanceMap));
 
   // ========================================================================
   // Spec metadata
@@ -394,9 +420,10 @@ export async function createOrchestrator(
   // Lifecycle
   // ========================================================================
 
-  // Server instance reference. Typed as unknown to match core's convention;
-  // we only access .close() / .removeListener() / .once() via type narrowing.
-  let serverInstance: unknown = null;
+  /** Minimal interface for the Node.js HTTP server returned by @hono/node-server */
+  type NodeServer = import('node:http').Server;
+
+  let serverInstance: NodeServer | null = null;
 
   return {
     app: mainApp,
@@ -409,26 +436,24 @@ export async function createOrchestrator(
         throw new Error('[vite-plugin-open-api-server] Server already running. Call stop() first.');
       }
 
-      // Dynamic import — only one HTTP server for all specs
-      let serve: typeof import('@hono/node-server').serve;
+      // Dynamic import — only one HTTP server for all specs.
+      // Use createAdaptorServer() to separate server creation from listen(),
+      // ensuring event listeners are attached before listen() is called.
+      let createAdaptorServer: typeof import('@hono/node-server').createAdaptorServer;
       try {
         const nodeServer = await import('@hono/node-server');
-        serve = nodeServer.serve;
+        createAdaptorServer = nodeServer.createAdaptorServer;
       } catch {
         throw new Error(
           '@hono/node-server is required. Install with: npm install @hono/node-server',
         );
       }
 
-      const server = serve({
-        fetch: mainApp.fetch,
-        port: options.port,
-      });
-
-      serverInstance = server;
+      const server = createAdaptorServer({ fetch: mainApp.fetch }) as NodeServer;
 
       // Wait for the server to be listening before resolving.
-      // Rejects on 'error' (e.g., EADDRINUSE) so callers know immediately.
+      // Attach listeners BEFORE calling listen() to avoid a race condition
+      // where the 'listening' event fires before the handler is registered.
       await new Promise<void>((resolve, reject) => {
         const onListening = () => {
           server.removeListener('error', onError);
@@ -438,6 +463,7 @@ export async function createOrchestrator(
           logger.info(
             `[vite-plugin-open-api-server] Server started on http://localhost:${actualPort}`,
           );
+          serverInstance = server;
           resolve();
         };
 
@@ -457,16 +483,16 @@ export async function createOrchestrator(
 
         server.once('listening', onListening);
         server.once('error', onError);
+        server.listen(options.port);
       });
     },
 
     async stop(): Promise<void> {
-      const server = serverInstance as { close?: (cb: (err?: Error) => void) => void } | null;
-      const closeFn = server?.close;
-      if (server && typeof closeFn === 'function') {
+      const server = serverInstance;
+      if (server) {
         try {
           await new Promise<void>((resolve, reject) => {
-            closeFn.call(server, (err?: Error) => {
+            server.close((err?: Error) => {
               if (err) {
                 reject(err);
               } else {

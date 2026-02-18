@@ -303,6 +303,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       cors({
         origin: corsOrigin,
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+        // Note: X-Spec-Id is intentionally NOT included here. It is an
+        // orchestrator-level header added by the server package's CORS config.
+        // Consumers using createOpenApiServer() directly don't need it.
         allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
         exposeHeaders: ['Content-Length', 'X-Request-Id'],
         maxAge: 86400,
@@ -324,6 +327,11 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     wsHub,
     timeline,
     timelineLimit,
+    clearTimeline: () => {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
+    },
     document,
   });
 
