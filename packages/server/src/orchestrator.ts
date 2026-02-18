@@ -1,0 +1,355 @@
+/**
+ * Multi-Spec Orchestrator
+ *
+ * What: Central orchestrator that creates N spec instances and mounts them on a single Hono app
+ * How: Three phases — process specs, validate uniqueness, build main Hono app with dispatch middleware
+ * Why: Enables multiple OpenAPI specs to run on a single server with isolated stores and handlers
+ *
+ * @module orchestrator
+ */
+
+import {
+    createOpenApiServer,
+    executeSeeds,
+    mountDevToolsRoutes,
+    mountInternalApi,
+    type OpenApiServer,
+    type SpecInfo,
+    type TimelineEntry
+} from '@websublime/vite-plugin-open-api-core';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import type { ViteDevServer } from 'vite';
+
+import { loadHandlers } from './handlers.js';
+import { deriveProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
+import { loadSeeds } from './seeds.js';
+import { deriveSpecId, validateUniqueIds } from './spec-id.js';
+import type { ResolvedOptions, ResolvedSpecConfig } from './types.js';
+
+// =============================================================================
+// Constants
+// =============================================================================
+
+/**
+ * Deterministic color palette for spec identification in DevTools.
+ *
+ * Colors are assigned by index: spec 0 gets green, spec 1 gets blue, etc.
+ * Wraps around for >8 specs.
+ */
+export const SPEC_COLORS = [
+  '#4ade80', // green
+  '#60a5fa', // blue
+  '#f472b6', // pink
+  '#facc15', // yellow
+  '#a78bfa', // purple
+  '#fb923c', // orange
+  '#2dd4bf', // teal
+  '#f87171', // red
+];
+
+// =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Resolved spec instance with all runtime data.
+ *
+ * Created during Phase 1 of orchestration. Each instance owns
+ * an isolated core `OpenApiServer` with its own store, registry,
+ * handlers, seeds, and timeline.
+ */
+export interface SpecInstance {
+  /** Unique spec identifier (explicit or auto-derived from info.title) */
+  id: string;
+
+  /** Spec metadata for DevTools display and WebSocket protocol */
+  info: SpecInfo;
+
+  /** Core server instance (isolated Hono app, store, registry, etc.) */
+  server: OpenApiServer;
+
+  /** Resolved configuration for this spec */
+  config: ResolvedSpecConfig;
+}
+
+/**
+ * Orchestrator result — returned by `createOrchestrator()`.
+ *
+ * Provides access to the main Hono app (all specs mounted),
+ * individual spec instances, aggregated metadata, and lifecycle methods.
+ */
+export interface OrchestratorResult {
+  /** Main Hono app with all specs mounted via X-Spec-Id dispatch */
+  app: Hono;
+
+  /** All spec instances (in config order) */
+  instances: SpecInstance[];
+
+  /** Spec metadata array for WebSocket `connected` event */
+  specsInfo: SpecInfo[];
+
+  /** Start the shared HTTP server on the configured port */
+  start(): Promise<void>;
+
+  /** Stop the HTTP server and clean up resources */
+  stop(): Promise<void>;
+}
+
+// =============================================================================
+// Orchestrator Factory
+// =============================================================================
+
+/**
+ * Create the multi-spec orchestrator.
+ *
+ * Flow:
+ * 1. **Phase 1 — Process specs**: For each spec config, load handlers/seeds,
+ *    create a core `OpenApiServer` instance, derive ID and proxy path.
+ * 2. **Phase 2 — Validate uniqueness**: Ensure all spec IDs and proxy paths
+ *    are unique and non-overlapping.
+ * 3. **Phase 3 — Build main app**: Create a single Hono app with CORS,
+ *    DevTools, Internal API, and X-Spec-Id dispatch middleware.
+ *
+ * @param options - Resolved plugin options (from `resolveOptions()`)
+ * @param vite - Vite dev server instance (for ssrLoadModule)
+ * @param cwd - Project root directory
+ * @returns Orchestrator result with app, instances, and lifecycle methods
+ */
+export async function createOrchestrator(
+  options: ResolvedOptions,
+  vite: ViteDevServer,
+  cwd: string,
+): Promise<OrchestratorResult> {
+  const instances: SpecInstance[] = [];
+  const logger = options.logger ?? console;
+
+  // ========================================================================
+  // Phase 1: Process each spec — load handlers/seeds, create core instances
+  // ========================================================================
+
+  for (let i = 0; i < options.specs.length; i++) {
+    const specConfig = options.specs[i];
+
+    // Resolve handlers directory (fallback uses spec ID or index as namespace)
+    const handlersDir = specConfig.handlersDir || `./mocks/${specConfig.id || `spec-${i}`}/handlers`;
+
+    // Resolve seeds directory (same namespace pattern)
+    const seedsDir = specConfig.seedsDir || `./mocks/${specConfig.id || `spec-${i}`}/seeds`;
+
+    // Load handlers via Vite's ssrLoadModule
+    const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
+
+    // Load seeds via Vite's ssrLoadModule
+    const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
+
+    // Create core server instance (processes the OpenAPI document internally)
+    // NOTE: Pass empty Map for seeds — createOpenApiServer.seeds expects
+    // Map<string, unknown[]> (static data), while loadSeeds() returns
+    // Map<string, AnySeedFn> (functions). Seeds are executed separately
+    // via executeSeeds() after server creation.
+    const server = await createOpenApiServer({
+      spec: specConfig.spec,
+      port: options.port,
+      idFields: specConfig.idFields,
+      handlers: handlersResult.handlers,
+      seeds: new Map(),
+      timelineLimit: options.timelineLimit,
+      cors: false, // CORS handled at main app level
+      devtools: false, // DevTools mounted at main app level
+      logger,
+    });
+
+    // Execute seed functions to populate the store
+    if (seedsResult.seeds.size > 0) {
+      await executeSeeds(seedsResult.seeds, server.store, server.document);
+    }
+
+    // Derive spec ID (now that document is processed and info.title is available)
+    const id = deriveSpecId(specConfig.id, server.document);
+
+    // Derive proxy path (from explicit config or servers[0].url)
+    const { proxyPath, proxyPathSource } = deriveProxyPath(
+      specConfig.proxyPath,
+      server.document,
+      id,
+    );
+
+    // Update config with resolved values so downstream consumers
+    // (banner, file watcher, plugin.ts) see the final values
+    specConfig.id = id;
+    specConfig.proxyPath = proxyPath;
+    specConfig.proxyPathSource = proxyPathSource;
+    specConfig.handlersDir = handlersDir;
+    specConfig.seedsDir = seedsDir;
+
+    // Build SpecInfo metadata for DevTools and WebSocket protocol
+    const info: SpecInfo = {
+      id,
+      title: server.document.info?.title ?? id,
+      version: server.document.info?.version ?? 'unknown',
+      proxyPath,
+      color: SPEC_COLORS[i % SPEC_COLORS.length],
+      endpointCount: server.registry.endpoints.size,
+      schemaCount: server.store.getSchemas().length,
+    };
+
+    instances.push({ id, info, server, config: specConfig });
+  }
+
+  // ========================================================================
+  // Phase 2: Validate uniqueness of IDs and proxy paths
+  // ========================================================================
+
+  validateUniqueIds(instances.map((inst) => inst.id));
+  validateUniqueProxyPaths(
+    instances.map((inst) => ({
+      id: inst.id,
+      proxyPath: inst.config.proxyPath,
+    })),
+  );
+
+  // ========================================================================
+  // Phase 3: Build main Hono app
+  // ========================================================================
+
+  const mainApp = new Hono();
+
+  // --- CORS middleware (top-level, applies to all routes) ---
+  if (options.cors) {
+    mainApp.use(
+      '*',
+      cors({
+        origin: options.corsOrigin,
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Spec-Id'],
+        exposeHeaders: ['Content-Length', 'X-Request-Id'],
+        maxAge: 86400,
+        credentials: options.corsOrigin !== '*',
+      }),
+    );
+  }
+
+  // --- DevTools SPA (single SPA for all specs, spec-aware via WebSocket) ---
+  if (options.devtools) {
+    const pluginDir = dirname(fileURLToPath(import.meta.url));
+    const spaDir = join(pluginDir, 'devtools-spa');
+    const devtoolsSpaDir = existsSync(spaDir) ? spaDir : undefined;
+
+    if (!devtoolsSpaDir) {
+      logger.warn?.(
+        '[vite-plugin-open-api-server] DevTools SPA not found at',
+        spaDir,
+        '- serving placeholder. Run "pnpm build" to include the SPA.',
+      );
+    }
+
+    mountDevToolsRoutes(mainApp, {
+      spaDir: devtoolsSpaDir,
+      logger,
+    });
+  }
+
+  // --- Internal API — aggregated across specs ---
+  // TODO: Multi-spec internal API will be implemented in Epic 3 (Task 3.x).
+  // For now, mount the first spec's internal API as a baseline so
+  // /_api/health and /_api/registry are reachable.
+  if (instances.length > 0) {
+    const firstInstance = instances[0];
+    mountInternalApi(mainApp, {
+      store: firstInstance.server.store,
+      registry: firstInstance.server.registry,
+      simulationManager: firstInstance.server.simulationManager,
+      wsHub: firstInstance.server.wsHub,
+      timeline: firstInstance.server.getTimeline() as TimelineEntry[],
+      timelineLimit: options.timelineLimit,
+      document: firstInstance.server.document,
+    });
+  }
+
+  // --- X-Spec-Id dispatch middleware ---
+  // Routes requests with X-Spec-Id header to the correct spec's Hono app.
+  // Requests without the header fall through to shared services
+  // (/_devtools, /_api, /_ws) registered above.
+  const instanceMap = new Map(instances.map((inst) => [inst.id, inst]));
+
+  mainApp.use('*', async (c, next) => {
+    const specId = c.req.header('x-spec-id');
+    if (!specId) {
+      // No spec header — shared service request, continue to next middleware
+      await next();
+      return;
+    }
+
+    const instance = instanceMap.get(specId);
+    if (!instance) {
+      return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    }
+
+    // Dispatch to the spec's Hono app via app.fetch()
+    return instance.server.app.fetch(c.req.raw);
+  });
+
+  // ========================================================================
+  // Spec metadata
+  // ========================================================================
+
+  const specsInfo = instances.map((inst) => inst.info);
+
+  // ========================================================================
+  // Lifecycle
+  // ========================================================================
+
+  // biome-ignore lint/suspicious/noExplicitAny: @hono/node-server types expect node http.Server but we store generically
+  let serverInstance: any = null;
+
+  return {
+    app: mainApp,
+    instances,
+    specsInfo,
+
+    async start(): Promise<void> {
+      // Dynamic import — only one HTTP server for all specs
+      let serve: typeof import('@hono/node-server').serve;
+      try {
+        const nodeServer = await import('@hono/node-server');
+        serve = nodeServer.serve;
+      } catch {
+        throw new Error(
+          '@hono/node-server is required. Install with: npm install @hono/node-server',
+        );
+      }
+
+      serverInstance = serve({
+        fetch: mainApp.fetch,
+        port: options.port,
+      });
+
+      // Handle runtime server errors (e.g., EADDRINUSE)
+      serverInstance.on?.('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          logger.error(
+            `[vite-plugin-open-api-server] Port ${options.port} is already in use.`,
+          );
+        } else {
+          logger.error(`[vite-plugin-open-api-server] Server error: ${err.message}`);
+        }
+      });
+
+      logger.info(
+        `[vite-plugin-open-api-server] Server started on http://localhost:${options.port}`,
+      );
+    },
+
+    async stop(): Promise<void> {
+      if (serverInstance && typeof serverInstance.close === 'function') {
+        serverInstance.close();
+        serverInstance = null;
+        logger.info('[vite-plugin-open-api-server] Server stopped');
+      }
+    },
+  };
+}
