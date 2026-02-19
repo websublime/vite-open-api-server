@@ -12,7 +12,7 @@
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import type { HandlerFn, OpenApiServer, Store } from '@websublime/vite-plugin-open-api-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { reloadSpecHandlers, reloadSpecSeeds } from '../hot-reload.js';
+import { createPerSpecFileWatchers, reloadSpecHandlers, reloadSpecSeeds } from '../hot-reload.js';
 import type { SpecInstance } from '../orchestrator.js';
 import type { ResolvedOptions } from '../types.js';
 import { createMockLogger, createMockViteServer, createMockWebSocketHub } from './test-utils.js';
@@ -50,9 +50,13 @@ vi.mock('../banner.js', () => ({
 // Import the mocked modules to configure return values
 const { loadHandlers } = await import('../handlers.js');
 const { loadSeeds } = await import('../seeds.js');
+const { executeSeeds } = await import('@websublime/vite-plugin-open-api-core');
+const { printError } = await import('../banner.js');
 
 const mockedLoadHandlers = vi.mocked(loadHandlers);
 const mockedLoadSeeds = vi.mocked(loadSeeds);
+const mockedExecuteSeeds = vi.mocked(executeSeeds);
+const mockedPrintError = vi.mocked(printError);
 
 // =============================================================================
 // Test Fixtures
@@ -323,6 +327,14 @@ describe('Per-Spec Reload Isolation', () => {
       // Spec A store should be cleared
       expect(specA.server.store.clearAll).toHaveBeenCalledTimes(1);
 
+      // executeSeeds should be called with the new seeds, spec A's store and document
+      expect(mockedExecuteSeeds).toHaveBeenCalledTimes(1);
+      expect(mockedExecuteSeeds).toHaveBeenCalledWith(
+        newSeeds,
+        specA.server.store,
+        specA.server.document,
+      );
+
       // Spec B store should NOT be cleared
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
     });
@@ -477,5 +489,201 @@ describe('Per-Spec Reload Isolation', () => {
       // Seed reload should not update handlers
       expect(specA.server.updateHandlers).not.toHaveBeenCalled();
     });
+  });
+
+  // --------------------------------------------------------------------------
+  // executeSeeds failure handling
+  // --------------------------------------------------------------------------
+
+  describe('reloadSpecSeeds executeSeeds failure', () => {
+    it('should warn about empty store when executeSeeds throws', async () => {
+      const newSeeds = new Map<string, unknown[]>([['Pet', [{ id: 1, name: 'Rex' }]]]);
+
+      mockedLoadSeeds.mockResolvedValue({
+        seeds: newSeeds,
+        fileCount: 1,
+        files: ['pets.seeds.ts'],
+      });
+      mockedExecuteSeeds.mockRejectedValue(new Error('Seed execution failed'));
+
+      await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      // Store should have been cleared (before executeSeeds was attempted)
+      expect(specA.server.store.clearAll).toHaveBeenCalledTimes(1);
+
+      // printError should be called with a message about the store being empty
+      expect(mockedPrintError).toHaveBeenCalledWith(
+        expect.stringContaining('store is now empty'),
+        expect.any(Error),
+        options,
+      );
+
+      // Should still broadcast with count 0 to reflect the cleared state
+      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
+        type: 'seeds:updated',
+        data: { count: 0 },
+      });
+    });
+
+    it('should not affect spec B when executeSeeds fails for spec A', async () => {
+      mockedLoadSeeds.mockResolvedValue({
+        seeds: new Map<string, unknown[]>([['Pet', [{ id: 1 }]]]),
+        fileCount: 1,
+        files: ['pets.seeds.ts'],
+      });
+      mockedExecuteSeeds.mockRejectedValue(new Error('Seed execution failed'));
+
+      await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      // Spec B should be completely untouched
+      expect(specB.server.store.clearAll).not.toHaveBeenCalled();
+      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// =============================================================================
+// createPerSpecFileWatchers Tests
+//
+// These tests mock chokidar at the module level so the real createFileWatcher
+// runs but its underlying FSWatcher is controlled. This avoids the same-module
+// mock limitation (vi.mock cannot intercept internal function calls).
+// =============================================================================
+
+// Track mock FSWatcher instances created by chokidar.watch()
+let mockFSWatchers: Array<{
+  on: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+}> = [];
+let watchCallCount = 0;
+let watchShouldFailAtIndex = -1;
+
+vi.mock('chokidar', () => ({
+  watch: vi.fn((..._args: unknown[]) => {
+    const currentIndex = watchCallCount++;
+
+    if (currentIndex === watchShouldFailAtIndex) {
+      throw new Error('Chokidar init failed');
+    }
+
+    const listeners = new Map<string, Array<(...args: unknown[]) => void>>();
+    const mockWatcher = {
+      on: vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+        const existing = listeners.get(event) ?? [];
+        existing.push(cb);
+        listeners.set(event, existing);
+
+        // Immediately emit 'ready' so the watcher resolves
+        if (event === 'ready') {
+          queueMicrotask(() => cb());
+        }
+        return mockWatcher;
+      }),
+      close: vi.fn().mockResolvedValue(undefined),
+      _listeners: listeners,
+    };
+    mockFSWatchers.push(mockWatcher);
+    return mockWatcher;
+  }),
+}));
+
+describe('createPerSpecFileWatchers', () => {
+  let options: ResolvedOptions;
+  const mockVite = createMockViteServer();
+  const cwd = '/test/project';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFSWatchers = [];
+    watchCallCount = 0;
+    watchShouldFailAtIndex = -1;
+    options = {
+      specs: [],
+      port: 4999,
+      enabled: true,
+      timelineLimit: 100,
+      devtools: false,
+      cors: false,
+      corsOrigin: '*',
+      silent: false,
+      logger: createMockLogger(),
+    };
+  });
+
+  it('should return one FileWatcher per spec instance', async () => {
+    const instances = [createTestSpecInstance('spec-a'), createTestSpecInstance('spec-b')];
+
+    const watchers = await createPerSpecFileWatchers(instances, mockVite, cwd, options);
+
+    expect(watchers).toHaveLength(2);
+    // Each spec has handlers + seeds dirs → 2 chokidar watchers per FileWatcher
+    // So 2 specs × 2 dirs = 4 FSWatcher instances
+    expect(mockFSWatchers).toHaveLength(4);
+  });
+
+  it('should create watchers with correct spec directories', async () => {
+    const { watch } = await import('chokidar');
+    const mockedWatch = vi.mocked(watch);
+
+    const instances = [createTestSpecInstance('spec-a')];
+
+    await createPerSpecFileWatchers(instances, mockVite, cwd, options);
+
+    // createFileWatcher creates one watcher per dir (handlers + seeds)
+    // The handler watcher is called with the handler pattern and cwd set to the handlersDir
+    expect(mockedWatch).toHaveBeenCalledTimes(2);
+    expect(mockedWatch).toHaveBeenCalledWith(
+      '**/*.handlers.{ts,js,mjs}',
+      expect.objectContaining({
+        cwd: expect.stringContaining('mocks/spec-a/handlers'),
+      }),
+    );
+    expect(mockedWatch).toHaveBeenCalledWith(
+      '**/*.seeds.{ts,js,mjs}',
+      expect.objectContaining({
+        cwd: expect.stringContaining('mocks/spec-a/seeds'),
+      }),
+    );
+  });
+
+  it('should return empty array for zero instances', async () => {
+    const watchers = await createPerSpecFileWatchers([], mockVite, cwd, options);
+
+    expect(watchers).toEqual([]);
+    expect(mockFSWatchers).toHaveLength(0);
+  });
+
+  it('should clean up already-created watchers on partial failure', async () => {
+    const instances = [
+      createTestSpecInstance('spec-a'),
+      createTestSpecInstance('spec-b'),
+      createTestSpecInstance('spec-c'),
+    ];
+
+    // spec-a creates 2 FSWatchers (indices 0,1), spec-b creates 2 (indices 2,3)
+    // spec-c's first FSWatcher (index 4) fails
+    watchShouldFailAtIndex = 4;
+
+    await expect(createPerSpecFileWatchers(instances, mockVite, cwd, options)).rejects.toThrow(
+      'Chokidar init failed',
+    );
+
+    // The 4 FSWatchers from spec-a and spec-b should have been closed during cleanup
+    // (cleanup calls FileWatcher.close() which closes the underlying FSWatchers)
+    expect(mockFSWatchers).toHaveLength(4);
+    for (const watcher of mockFSWatchers) {
+      expect(watcher.close).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('should re-throw the original error after cleanup', async () => {
+    const instances = [createTestSpecInstance('spec-a')];
+
+    // First FSWatcher (index 0) fails immediately
+    watchShouldFailAtIndex = 0;
+
+    await expect(createPerSpecFileWatchers(instances, mockVite, cwd, options)).rejects.toThrow(
+      'Chokidar init failed',
+    );
   });
 });
