@@ -511,6 +511,9 @@ describe('Per-Spec Reload Isolation', () => {
       // Store should have been cleared (before executeSeeds was attempted)
       expect(specA.server.store.clearAll).toHaveBeenCalledTimes(1);
 
+      // executeSeeds should have been called (and then failed)
+      expect(mockedExecuteSeeds).toHaveBeenCalledTimes(1);
+
       // printError should be called with a message about the store being empty
       expect(mockedPrintError).toHaveBeenCalledWith(
         expect.stringContaining('store is now empty'),
@@ -630,18 +633,20 @@ describe('createPerSpecFileWatchers', () => {
     await createPerSpecFileWatchers(instances, mockVite, cwd, options);
 
     // createFileWatcher creates one watcher per dir (handlers + seeds)
-    // The handler watcher is called with the handler pattern and cwd set to the handlersDir
+    // chokidar v5: watch() receives the absolute directory path (not a glob)
     expect(mockedWatch).toHaveBeenCalledTimes(2);
     expect(mockedWatch).toHaveBeenCalledWith(
-      '**/*.handlers.{ts,js,mjs}',
+      expect.stringContaining('mocks/spec-a/handlers'),
       expect.objectContaining({
-        cwd: expect.stringContaining('mocks/spec-a/handlers'),
+        ignoreInitial: true,
+        ignored: expect.any(Function),
       }),
     );
     expect(mockedWatch).toHaveBeenCalledWith(
-      '**/*.seeds.{ts,js,mjs}',
+      expect.stringContaining('mocks/spec-a/seeds'),
       expect.objectContaining({
-        cwd: expect.stringContaining('mocks/spec-a/seeds'),
+        ignoreInitial: true,
+        ignored: expect.any(Function),
       }),
     );
   });
