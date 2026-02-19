@@ -1,19 +1,23 @@
 /**
  * Hot Reload
  *
- * What: File watcher for hot reloading handlers and seeds
- * How: Uses chokidar to watch for file changes
- * Why: Enables rapid development iteration without server restart
+ * What: File watcher for hot reloading handlers and seeds with per-spec isolation
+ * How: Uses chokidar to watch for file changes, one watcher per spec instance
+ * Why: Enables rapid development iteration without server restart; per-spec
+ *       isolation ensures handler/seed changes in one spec don't affect others
  *
  * @module hot-reload
- *
- * TODO: Full implementation in Task 3.3
- * This module provides placeholder/basic functionality for Task 3.1
  */
 
 import path from 'node:path';
-import type { Logger } from '@websublime/vite-plugin-open-api-core';
+import { executeSeeds, type Logger } from '@websublime/vite-plugin-open-api-core';
 import type { FSWatcher } from 'chokidar';
+import type { ViteDevServer } from 'vite';
+import { printError, printReloadNotification } from './banner.js';
+import { loadHandlers } from './handlers.js';
+import type { SpecInstance } from './orchestrator.js';
+import { loadSeeds } from './seeds.js';
+import type { ResolvedOptions } from './types.js';
 
 /**
  * File watcher configuration
@@ -281,4 +285,133 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
       execute(...args);
     }, delay);
   };
+}
+
+// =============================================================================
+// Per-Spec Hot Reload
+// =============================================================================
+
+/**
+ * Create file watchers for all spec instances
+ *
+ * Each spec gets independent watchers for its handlers and seeds directories.
+ * Changes to one spec's files only trigger reload for that spec instance.
+ *
+ * @param instances - All spec instances to watch
+ * @param vite - Vite dev server (for ssrLoadModule / module invalidation)
+ * @param cwd - Project root directory
+ * @param options - Resolved plugin options
+ * @returns Promise resolving to array of file watchers (one per spec)
+ */
+export async function createPerSpecFileWatchers(
+  instances: SpecInstance[],
+  vite: ViteDevServer,
+  cwd: string,
+  options: ResolvedOptions,
+): Promise<FileWatcher[]> {
+  const watchers: FileWatcher[] = [];
+
+  try {
+    for (const instance of instances) {
+      const debouncedHandlerReload = debounce(
+        () => reloadSpecHandlers(instance, vite, cwd, options),
+        100,
+      );
+      const debouncedSeedReload = debounce(
+        () => reloadSpecSeeds(instance, vite, cwd, options),
+        100,
+      );
+
+      const watcher = await createFileWatcher({
+        handlersDir: instance.config.handlersDir,
+        seedsDir: instance.config.seedsDir,
+        cwd,
+        onHandlerChange: debouncedHandlerReload,
+        onSeedChange: debouncedSeedReload,
+      });
+
+      watchers.push(watcher);
+    }
+  } catch (error) {
+    // Clean up already-created watchers before re-throwing
+    await Promise.allSettled(watchers.map((w) => w.close()));
+    throw error;
+  }
+
+  return watchers;
+}
+
+/**
+ * Reload handlers for a specific spec instance
+ *
+ * Loads fresh handlers from disk via Vite's ssrLoadModule, updates
+ * the spec's server, broadcasts a WebSocket event, and logs the result.
+ *
+ * @param instance - The spec instance to reload handlers for
+ * @param vite - Vite dev server
+ * @param cwd - Project root directory
+ * @param options - Resolved plugin options
+ */
+export async function reloadSpecHandlers(
+  instance: SpecInstance,
+  vite: ViteDevServer,
+  cwd: string,
+  options: ResolvedOptions,
+): Promise<void> {
+  try {
+    const logger = options.logger ?? console;
+    const handlersResult = await loadHandlers(instance.config.handlersDir, vite, cwd, logger);
+    instance.server.updateHandlers(handlersResult.handlers);
+
+    instance.server.wsHub.broadcast({
+      type: 'handlers:updated',
+      data: { count: handlersResult.handlers.size },
+    });
+
+    printReloadNotification('handlers', handlersResult.handlers.size, options);
+  } catch (error) {
+    printError(`Failed to reload handlers for spec "${instance.id}"`, error, options);
+  }
+}
+
+/**
+ * Reload seeds for a specific spec instance
+ *
+ * Loads fresh seeds from disk, clears the spec's store, and re-executes
+ * seeds. Broadcasts a WebSocket event and logs the result.
+ *
+ * Note: This operation is not fully atomic — there's a brief window between
+ * clearing the store and repopulating it where requests may see empty data.
+ * For development tooling, this tradeoff is acceptable.
+ *
+ * @param instance - The spec instance to reload seeds for
+ * @param vite - Vite dev server
+ * @param cwd - Project root directory
+ * @param options - Resolved plugin options
+ */
+export async function reloadSpecSeeds(
+  instance: SpecInstance,
+  vite: ViteDevServer,
+  cwd: string,
+  options: ResolvedOptions,
+): Promise<void> {
+  try {
+    // Load seeds first (before clearing) to minimize the window where store is empty
+    const logger = options.logger ?? console;
+    const seedsResult = await loadSeeds(instance.config.seedsDir, vite, cwd, logger);
+
+    instance.server.store.clearAll();
+    if (seedsResult.seeds.size > 0) {
+      await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
+    }
+
+    instance.server.wsHub.broadcast({
+      type: 'seeds:updated',
+      data: { count: seedsResult.seeds.size },
+    });
+
+    printReloadNotification('seeds', seedsResult.seeds.size, options);
+  } catch (error) {
+    printError(`Failed to reload seeds for spec "${instance.id}"`, error, options);
+  }
 }
