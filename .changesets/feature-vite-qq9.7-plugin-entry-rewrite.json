@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-qq9.7-plugin-entry-rewrite",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-19T00:13:33.336358Z",
+  "updated_at": "2026-02-19T00:13:33.336678Z"
+}
