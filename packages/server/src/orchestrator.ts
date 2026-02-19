@@ -316,6 +316,17 @@ interface WebSocketRouteResult {
 function createOrchestratorHub(specsInfo: SpecInfo[]): WebSocketHub {
   const wsHub = createWebSocketHub({ autoConnect: false });
 
+  // Guard: ensure addClient is writable before overriding. The core hub
+  // returns a plain object literal (writable by default), but this guard
+  // protects against future refactors that might seal/freeze the object.
+  const descriptor = Object.getOwnPropertyDescriptor(wsHub, 'addClient');
+  if (descriptor && !descriptor.writable && !descriptor.configurable) {
+    throw new Error(
+      '[vite-plugin-open-api-server] Cannot override wsHub.addClient: property is non-writable and non-configurable. ' +
+        'The core WebSocketHub implementation may have changed. This will be resolved by createMultiSpecWebSocketHub() in Epic 3.',
+    );
+  }
+
   const originalAddClient = wsHub.addClient.bind(wsHub);
   wsHub.addClient = (ws: WebSocketClient) => {
     originalAddClient(ws);
@@ -342,28 +353,23 @@ async function mountWebSocketRoute(
   wsHub: WebSocketHub,
   logger: Logger,
 ): Promise<WebSocketRouteResult> {
+  // Isolate the dynamic import so only module-not-found errors produce
+  // the 501 fallback. Runtime errors from createNodeWebSocket or route
+  // registration are real bugs and must propagate.
+  let nodeWsModule: typeof import('@hono/node-ws');
   try {
-    const { createNodeWebSocket } = await import('@hono/node-ws');
-    const nodeWs = createNodeWebSocket({ app: mainApp });
+    nodeWsModule = await import('@hono/node-ws');
+  } catch (err: unknown) {
+    const isModuleNotFound =
+      err instanceof Error &&
+      ('code' in err
+        ? (err as NodeJS.ErrnoException).code === 'ERR_MODULE_NOT_FOUND'
+        : err.message.includes('@hono/node-ws'));
 
-    mainApp.get(
-      '/_ws',
-      nodeWs.upgradeWebSocket(() => ({
-        onOpen(_event, ws) {
-          wsHub.addClient(ws);
-        },
-        onMessage(event, ws) {
-          wsHub.handleMessage(ws, event.data);
-        },
-        onClose(_event, ws) {
-          wsHub.removeClient(ws);
-        },
-      })),
-    );
+    if (!isModuleNotFound) {
+      throw err;
+    }
 
-    logger.debug?.('[vite-plugin-open-api-server] WebSocket upgrade enabled at /_ws');
-    return { injectWebSocket: nodeWs.injectWebSocket };
-  } catch {
     // @hono/node-ws not available — serve 501 placeholder
     mainApp.get('/_ws', (c) => {
       return c.json(
@@ -380,6 +386,28 @@ async function mountWebSocketRoute(
     );
     return { injectWebSocket: null };
   }
+
+  // Module loaded — wire up the WebSocket route. Errors here (e.g., from
+  // createNodeWebSocket or mainApp.get) are bugs and must propagate.
+  const nodeWs = nodeWsModule.createNodeWebSocket({ app: mainApp });
+
+  mainApp.get(
+    '/_ws',
+    nodeWs.upgradeWebSocket(() => ({
+      onOpen(_event, ws) {
+        wsHub.addClient(ws);
+      },
+      onMessage(event, ws) {
+        wsHub.handleMessage(ws, event.data);
+      },
+      onClose(_event, ws) {
+        wsHub.removeClient(ws);
+      },
+    })),
+  );
+
+  logger.debug?.('[vite-plugin-open-api-server] WebSocket upgrade enabled at /_ws');
+  return { injectWebSocket: nodeWs.injectWebSocket };
 }
 
 /**
