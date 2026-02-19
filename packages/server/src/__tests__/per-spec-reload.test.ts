@@ -9,13 +9,21 @@
  * @see Task 2.1.5: Test seed reload isolation
  */
 
-import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 import type { HandlerFn, OpenApiServer, Store } from '@websublime/vite-plugin-open-api-core';
+import { executeSeeds } from '@websublime/vite-plugin-open-api-core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { printError, printReloadNotification } from '../banner.js';
+import { loadHandlers } from '../handlers.js';
 import { createPerSpecFileWatchers, reloadSpecHandlers, reloadSpecSeeds } from '../hot-reload.js';
 import type { SpecInstance } from '../orchestrator.js';
+import { loadSeeds } from '../seeds.js';
 import type { ResolvedOptions } from '../types.js';
-import { createMockLogger, createMockViteServer, createMockWebSocketHub } from './test-utils.js';
+import {
+  createMockLogger,
+  createMockViteServer,
+  createMockWebSocketHub,
+  makeDocument,
+} from './test-utils.js';
 
 // =============================================================================
 // Mock Setup
@@ -47,32 +55,36 @@ vi.mock('../banner.js', () => ({
   printError: vi.fn(),
 }));
 
-// Import the mocked modules to configure return values
-const { loadHandlers } = await import('../handlers.js');
-const { loadSeeds } = await import('../seeds.js');
-const { executeSeeds } = await import('@websublime/vite-plugin-open-api-core');
-const { printError } = await import('../banner.js');
-
+// Vitest hoists vi.mock() above imports, so the static imports above
+// resolve to the mocked versions. vi.mocked() provides type-safe access.
 const mockedLoadHandlers = vi.mocked(loadHandlers);
 const mockedLoadSeeds = vi.mocked(loadSeeds);
 const mockedExecuteSeeds = vi.mocked(executeSeeds);
 const mockedPrintError = vi.mocked(printError);
+const mockedPrintReloadNotification = vi.mocked(printReloadNotification);
 
 // =============================================================================
 // Test Fixtures
 // =============================================================================
 
-/** Minimal OpenAPI document for testing */
-function makeTestDocument(title: string): OpenAPIV3_1.Document {
-  return {
-    openapi: '3.1.0',
-    info: { title, version: '1.0.0' },
-    paths: {},
-  };
+/** Mock Store interface for type-safe mocking */
+interface MockStore extends Store {
+  create: ReturnType<typeof vi.fn>;
+  getAll: ReturnType<typeof vi.fn>;
+  getById: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+  clearAll: ReturnType<typeof vi.fn>;
+  clearSchema: ReturnType<typeof vi.fn>;
+  hasSchema: ReturnType<typeof vi.fn>;
+  getSchemas: ReturnType<typeof vi.fn>;
+  getCount: ReturnType<typeof vi.fn>;
+  setIdField: ReturnType<typeof vi.fn>;
+  getIdField: ReturnType<typeof vi.fn>;
 }
 
 /** Create a mock Store with tracked method calls */
-function createMockStore(): Store {
+function createMockStore(): MockStore {
   return {
     create: vi.fn(),
     getAll: vi.fn().mockReturnValue([]),
@@ -86,7 +98,7 @@ function createMockStore(): Store {
     getCount: vi.fn().mockReturnValue(0),
     setIdField: vi.fn(),
     getIdField: vi.fn().mockReturnValue('id'),
-  } as unknown as Store;
+  } as unknown as MockStore;
 }
 
 /** Create a mock OpenApiServer with tracking */
@@ -98,7 +110,7 @@ function createMockOpenApiServer(specId: string): OpenApiServer {
     app: {} as OpenApiServer['app'],
     store,
     registry: {} as OpenApiServer['registry'],
-    document: makeTestDocument(`${specId} API`),
+    document: makeDocument({ title: `${specId} API` }),
     wsHub,
     simulationManager: {} as OpenApiServer['simulationManager'],
     start: vi.fn(),
@@ -161,7 +173,7 @@ describe('Per-Spec Reload Isolation', () => {
   let specA: SpecInstance;
   let specB: SpecInstance;
   let options: ResolvedOptions;
-  const mockVite = createMockViteServer();
+  let mockVite: ReturnType<typeof createMockViteServer>;
   const cwd = '/test/project';
 
   beforeEach(() => {
@@ -169,6 +181,7 @@ describe('Per-Spec Reload Isolation', () => {
     specA = createTestSpecInstance('spec-a');
     specB = createTestSpecInstance('spec-b');
     options = createTestOptions();
+    mockVite = createMockViteServer();
   });
 
   // --------------------------------------------------------------------------
@@ -197,24 +210,20 @@ describe('Per-Spec Reload Isolation', () => {
       expect(specB.server.updateHandlers).not.toHaveBeenCalled();
     });
 
-    it('should only broadcast to the targeted spec wsHub', async () => {
+    it('should print reload notification on success', async () => {
+      const newHandlers = new Map<string, HandlerFn>([
+        ['GET /pets', vi.fn() as unknown as HandlerFn],
+      ]);
+
       mockedLoadHandlers.mockResolvedValue({
-        handlers: new Map(),
-        fileCount: 0,
-        files: [],
+        handlers: newHandlers,
+        fileCount: 1,
+        files: ['pets.handlers.ts'],
       });
 
       await reloadSpecHandlers(specA, mockVite, cwd, options);
 
-      // Spec A wsHub should have broadcast called
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledTimes(1);
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'handlers:updated',
-        data: { count: 0 },
-      });
-
-      // Spec B wsHub should NOT have broadcast called
-      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+      expect(mockedPrintReloadNotification).toHaveBeenCalledWith('handlers', 1, options);
     });
 
     it('should load handlers from the correct spec directory', async () => {
@@ -262,6 +271,16 @@ describe('Per-Spec Reload Isolation', () => {
 
       await reloadSpecHandlers(specA, mockVite, cwd, options);
 
+      // Error should be reported with spec ID
+      expect(mockedPrintError).toHaveBeenCalledWith(
+        expect.stringContaining('spec-a'),
+        expect.any(Error),
+        options,
+      );
+
+      // No reload notification on error
+      expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
+
       // Even with an error, spec B should be untouched
       expect(specB.server.updateHandlers).not.toHaveBeenCalled();
       expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
@@ -295,16 +314,6 @@ describe('Per-Spec Reload Isolation', () => {
       // Each spec updated independently with its own handlers
       expect(specA.server.updateHandlers).toHaveBeenCalledWith(specAHandlers);
       expect(specB.server.updateHandlers).toHaveBeenCalledWith(specBHandlers);
-
-      // Each spec broadcast independently
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'handlers:updated',
-        data: { count: 1 },
-      });
-      expect(specB.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'handlers:updated',
-        data: { count: 2 },
-      });
     });
   });
 
@@ -357,6 +366,32 @@ describe('Per-Spec Reload Isolation', () => {
 
       // Spec B wsHub should NOT have broadcast called
       expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+    });
+
+    it('should print reload notification on success with seeds', async () => {
+      const newSeeds = new Map<string, unknown[]>([['Pet', [{ id: 1, name: 'Rex' }]]]);
+
+      mockedLoadSeeds.mockResolvedValue({
+        seeds: newSeeds,
+        fileCount: 1,
+        files: ['pets.seeds.ts'],
+      });
+
+      await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      expect(mockedPrintReloadNotification).toHaveBeenCalledWith('seeds', 1, options);
+    });
+
+    it('should not print reload notification when no seeds are loaded', async () => {
+      mockedLoadSeeds.mockResolvedValue({
+        seeds: new Map(),
+        fileCount: 0,
+        files: [],
+      });
+
+      await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
     });
 
     it('should load seeds from the correct spec directory', async () => {
@@ -414,6 +449,16 @@ describe('Per-Spec Reload Isolation', () => {
       mockedLoadSeeds.mockRejectedValue(new Error('Seed load failed'));
 
       await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      // Error should be reported with spec ID
+      expect(mockedPrintError).toHaveBeenCalledWith(
+        expect.stringContaining('spec-a'),
+        expect.any(Error),
+        options,
+      );
+
+      // No reload notification on error
+      expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
 
       // Even with an error, spec B should be untouched
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
@@ -521,11 +566,14 @@ describe('Per-Spec Reload Isolation', () => {
         options,
       );
 
-      // Should still broadcast with count 0 to reflect the cleared state
+      // Should broadcast with count 0 to reflect the cleared state
       expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
         type: 'seeds:updated',
         data: { count: 0 },
       });
+
+      // No reload notification on executeSeeds failure
+      expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
     });
 
     it('should not affect spec B when executeSeeds fails for spec A', async () => {
@@ -553,7 +601,9 @@ describe('Per-Spec Reload Isolation', () => {
 // mock limitation (vi.mock cannot intercept internal function calls).
 // =============================================================================
 
-// Track mock FSWatcher instances created by chokidar.watch()
+// Track mock FSWatcher instances created by chokidar.watch().
+// IMPORTANT: All three variables below must be reset in beforeEach
+// for proper test isolation — the vi.mock factory closes over them.
 let mockFSWatchers: Array<{
   on: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
@@ -592,7 +642,7 @@ vi.mock('chokidar', () => ({
 
 describe('createPerSpecFileWatchers', () => {
   let options: ResolvedOptions;
-  const mockVite = createMockViteServer();
+  let mockVite: ReturnType<typeof createMockViteServer>;
   const cwd = '/test/project';
 
   beforeEach(() => {
@@ -600,6 +650,7 @@ describe('createPerSpecFileWatchers', () => {
     mockFSWatchers = [];
     watchCallCount = 0;
     watchShouldFailAtIndex = -1;
+    mockVite = createMockViteServer();
     options = {
       specs: [],
       port: 4999,
@@ -665,6 +716,7 @@ describe('createPerSpecFileWatchers', () => {
       createTestSpecInstance('spec-c'),
     ];
 
+    // With parallel creation (Promise.allSettled), all specs start concurrently.
     // spec-a creates 2 FSWatchers (indices 0,1), spec-b creates 2 (indices 2,3)
     // spec-c's first FSWatcher (index 4) fails
     watchShouldFailAtIndex = 4;

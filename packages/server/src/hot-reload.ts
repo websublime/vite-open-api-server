@@ -380,12 +380,10 @@ export async function reloadSpecHandlers(
   try {
     const logger = options.logger ?? console;
     const handlersResult = await loadHandlers(instance.config.handlersDir, vite, cwd, logger);
-    instance.server.updateHandlers(handlersResult.handlers);
 
-    instance.server.wsHub.broadcast({
-      type: 'handlers:updated',
-      data: { count: handlersResult.handlers.size },
-    });
+    // updateHandlers() broadcasts 'handlers:updated' internally — no explicit broadcast needed.
+    // In Epic 3 (Task 3.1), the broadcast wrapper will add specId automatically.
+    instance.server.updateHandlers(handlersResult.handlers);
 
     printReloadNotification('handlers', handlersResult.handlers.size, options);
   } catch (error) {
@@ -415,36 +413,43 @@ export async function reloadSpecSeeds(
   options: ResolvedOptions,
 ): Promise<void> {
   try {
-    // Load seeds first (before clearing) to minimize the window where store is empty
+    // Load seeds first (before clearing) to minimize the window where store is empty.
+    // NOTE: We bypass instance.server.updateSeeds() because it expects static data
+    // (Map<string, unknown[]>), while loadSeeds() returns seed functions (Map<string, AnySeedFn>)
+    // that must be materialized via executeSeeds(). The explicit broadcast below is necessary
+    // because we're not going through updateSeeds()'s built-in broadcast.
+    // TODO: Epic 3 (Task 3.1) will wire the broadcast wrapper to add specId automatically.
+    // TODO: Epic 3 (Task 3.2) should also update registry hasSeed flags after seed reload,
+    //       which are currently skipped because updateSeeds() is bypassed.
     const logger = options.logger ?? console;
     const seedsResult = await loadSeeds(instance.config.seedsDir, vite, cwd, logger);
 
+    let broadcastCount = seedsResult.seeds.size;
     instance.server.store.clearAll();
+
     if (seedsResult.seeds.size > 0) {
       try {
         await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
       } catch (execError) {
         // Store was already cleared — warn that it's now empty due to seed execution failure
+        broadcastCount = 0;
         printError(
           `Seeds loaded but executeSeeds failed for spec "${instance.id}"; store is now empty`,
           execError,
           options,
         );
-        // Still broadcast so DevTools reflects the cleared state
-        instance.server.wsHub.broadcast({
-          type: 'seeds:updated',
-          data: { count: 0 },
-        });
-        return;
       }
     }
 
+    // Single broadcast for both success and failure paths
     instance.server.wsHub.broadcast({
       type: 'seeds:updated',
-      data: { count: seedsResult.seeds.size },
+      data: { count: broadcastCount },
     });
 
-    printReloadNotification('seeds', seedsResult.seeds.size, options);
+    if (broadcastCount > 0) {
+      printReloadNotification('seeds', broadcastCount, options);
+    }
   } catch (error) {
     printError(`Failed to reload seeds for spec "${instance.id}"`, error, options);
   }
