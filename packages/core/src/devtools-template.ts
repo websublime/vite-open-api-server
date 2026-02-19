@@ -100,6 +100,9 @@ export function generateDevToolsHtml(): string {
         The DevTools SPA is not built yet. Run <code>pnpm build</code> to enable the full DevTools UI.
       </p>
       <p>In the meantime, you can access the API endpoints directly:</p>
+      <!-- These hrefs are hard-coded and do not reference API_PROXY_PATH from
+           packages/server/src/multi-proxy.ts. If API_PROXY_PATH changes, update
+           these links or replace with runtime/template substitution. -->
       <div class="links">
         <a href="/_api/registry">Registry</a>
         <a href="/_api/timeline">Timeline</a>
