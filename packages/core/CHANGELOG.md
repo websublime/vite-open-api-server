@@ -1,3 +1,187 @@
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.14.0-next.7] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
 ## [0.14.0-next.6] - 2026-02-19
 
 ### Features
