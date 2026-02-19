@@ -1,34 +1,41 @@
 /**
  * Vite Plugin Implementation
  *
- * What: Main Vite plugin for OpenAPI mock server
- * How: Uses configureServer hook to start mock server and configure proxy
- * Why: Integrates OpenAPI mock server seamlessly into Vite dev workflow
+ * What: Main Vite plugin for OpenAPI mock server (multi-spec)
+ * How: Uses orchestrator to create N spec instances, configures multi-proxy
+ * Why: Integrates multiple OpenAPI mock servers seamlessly into Vite dev workflow
  *
  * @module plugin
  */
 
-import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import {
-  createOpenApiServer,
-  executeSeeds,
-  type OpenApiServer,
-} from '@websublime/vite-plugin-open-api-core';
+import { executeSeeds, type OpenApiServer } from '@websublime/vite-plugin-open-api-core';
 import type { Plugin, ViteDevServer } from 'vite';
 import { extractBannerInfo, printBanner, printError, printReloadNotification } from './banner.js';
 import { loadHandlers } from './handlers.js';
 import { createFileWatcher, debounce, type FileWatcher } from './hot-reload.js';
+import { configureMultiProxy } from './multi-proxy.js';
+import { createOrchestrator, type OrchestratorResult } from './orchestrator.js';
 import { loadSeeds } from './seeds.js';
 import { type OpenApiServerOptions, resolveOptions } from './types.js';
 
 /**
+ * Virtual module ID for the DevTools tab registration script.
+ *
+ * This script is served as a Vite module (not inline HTML) so that bare
+ * import specifiers like `@vue/devtools-api` are resolved through Vite's
+ * module pipeline. Inline `<script type="module">` blocks in HTML are
+ * executed directly by the browser, which cannot resolve bare specifiers.
+ */
+const VIRTUAL_DEVTOOLS_TAB_ID = 'virtual:open-api-devtools-tab';
+const RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID = `\0${VIRTUAL_DEVTOOLS_TAB_ID}`;
+
+/**
  * Create the OpenAPI Server Vite plugin
  *
- * This plugin starts a mock server based on an OpenAPI specification
- * and configures Vite to proxy API requests to it.
+ * This plugin starts mock servers based on OpenAPI specifications
+ * and configures Vite to proxy API requests to them. Supports
+ * multiple specs via the orchestrator pattern.
  *
  * @example
  * ```typescript
@@ -41,11 +48,11 @@ import { type OpenApiServerOptions, resolveOptions } from './types.js';
  *   plugins: [
  *     vue(),
  *     openApiServer({
- *       spec: './openapi/petstore.yaml',
+ *       specs: [
+ *         { spec: './openapi/petstore.yaml', proxyPath: '/api/pets' },
+ *         { spec: './openapi/inventory.yaml', proxyPath: '/api/inventory' },
+ *       ],
  *       port: 4000,
- *       proxyPath: '/api',
- *       handlersDir: './mocks/handlers',
- *       seedsDir: './mocks/seeds',
  *     }),
  *   ],
  * });
@@ -54,36 +61,15 @@ import { type OpenApiServerOptions, resolveOptions } from './types.js';
  * @param options - Plugin configuration options
  * @returns Vite plugin
  */
-/**
- * Virtual module ID for the DevTools tab registration script.
- *
- * This script is served as a Vite module (not inline HTML) so that bare
- * import specifiers like `@vue/devtools-api` are resolved through Vite's
- * module pipeline. Inline `<script type="module">` blocks in HTML are
- * executed directly by the browser, which cannot resolve bare specifiers.
- */
-const VIRTUAL_DEVTOOLS_TAB_ID = 'virtual:open-api-devtools-tab';
-const RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID = `\0${VIRTUAL_DEVTOOLS_TAB_ID}`;
-
 export function openApiServer(options: OpenApiServerOptions): Plugin {
   const resolvedOptions = resolveOptions(options);
 
-  // Server instance (created in configureServer)
-  let server: OpenApiServer | null = null;
-
-  // Vite dev server reference (needed for ssrLoadModule)
-  let vite: ViteDevServer | null = null;
-
-  // File watcher for hot reload
-  let fileWatcher: FileWatcher | null = null;
-
-  // Current working directory (set in configureServer)
+  let orchestrator: OrchestratorResult | null = null;
+  let fileWatchers: FileWatcher[] = [];
   let cwd: string = process.cwd();
 
   return {
     name: 'vite-plugin-open-api-server',
-
-    // Only active in dev mode
     apply: 'serve',
 
     /**
@@ -160,104 +146,57 @@ try {
      *
      * This hook is called when the dev server is created.
      * We use it to:
-     * 1. Start the OpenAPI mock server
-     * 2. Configure the Vite proxy to forward API requests
-     * 3. Set up file watching for hot reload
+     * 1. Create and start the multi-spec orchestrator
+     * 2. Configure Vite's multi-proxy for all specs
+     * 3. Set up per-spec file watchers for hot reload
+     * 4. Print startup banner
      */
     async configureServer(viteServer: ViteDevServer): Promise<void> {
-      vite = viteServer;
       cwd = viteServer.config.root;
 
-      // Check if plugin is disabled
       if (!resolvedOptions.enabled) {
         return;
       }
 
       try {
-        // Load handlers from handlers directory (using Vite's ssrLoadModule for TS support)
-        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-        const handlersResult = await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd);
+        // Create multi-spec orchestrator (processes all specs, loads handlers/seeds)
+        orchestrator = await createOrchestrator(resolvedOptions, viteServer, cwd);
 
-        // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
-        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-        const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
+        // Start the shared HTTP server
+        await orchestrator.start();
 
-        // Resolve DevTools SPA directory (shipped inside this package's dist/)
-        let devtoolsSpaDir: string | undefined;
-        if (resolvedOptions.devtools) {
-          const pluginDir = dirname(fileURLToPath(import.meta.url));
-          const spaDir = join(pluginDir, 'devtools-spa');
-          if (existsSync(spaDir)) {
-            devtoolsSpaDir = spaDir;
-          } else {
-            resolvedOptions.logger?.warn?.(
-              '[vite-plugin-open-api-server] DevTools SPA not found at',
-              spaDir,
-              '- serving placeholder. Run "pnpm build" to include the SPA.',
-            );
-          }
-        }
+        // Configure Vite proxies for all specs
+        configureMultiProxy(viteServer, orchestrator.instances, orchestrator.port);
 
-        // Create the OpenAPI mock server
-        // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-        // Using 'as any' because v0.x plugin code references old single-spec shape
-        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
-        const opts = resolvedOptions as any;
-        server = await createOpenApiServer({
-          spec: opts.spec,
-          port: opts.port,
-          idFields: opts.idFields,
-          handlers: handlersResult.handlers,
-          // Seeds are populated via executeSeeds, not directly
-          seeds: new Map(),
-          timelineLimit: opts.timelineLimit,
-          devtools: opts.devtools,
-          devtoolsSpaDir,
-          cors: opts.cors,
-          corsOrigin: opts.corsOrigin,
-          logger: opts.logger,
-        });
+        // Set up per-spec file watchers for hot reload
+        // TODO: Replace with createPerSpecFileWatchers() in Epic 2 (Task 2.1)
+        fileWatchers = await setupPerSpecFileWatching(orchestrator, viteServer, cwd);
 
-        // Execute seeds to populate the store
-        if (seedsResult.seeds.size > 0) {
-          await executeSeeds(seedsResult.seeds, server.store, server.document);
-        }
-
-        // Start the mock server
-        await server.start();
-
-        // Configure Vite proxy
-        // @ts-expect-error NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-        configureProxy(viteServer, resolvedOptions.proxyPath, resolvedOptions.port);
-
-        // Print startup banner
-        const bannerInfo = extractBannerInfo(
-          server.registry,
-          {
-            info: {
-              title: server.document.info?.title ?? 'OpenAPI Server',
-              version: server.document.info?.version ?? '1.0.0',
+        // Print startup banner (v0.x single-spec banner, shows first spec only)
+        // TODO: Replace with printMultiSpecBanner() in Epic 5 (Task 5.1)
+        if (!resolvedOptions.silent && orchestrator.instances.length > 0) {
+          const firstInstance = orchestrator.instances[0];
+          const bannerInfo = extractBannerInfo(
+            firstInstance.server.registry,
+            {
+              info: {
+                title: firstInstance.server.document.info?.title ?? 'OpenAPI Server',
+                version: firstInstance.server.document.info?.version ?? '1.0.0',
+              },
             },
-          },
-          handlersResult.handlers.size,
-          seedsResult.seeds.size,
-          resolvedOptions,
-        );
-        printBanner(bannerInfo, resolvedOptions);
-
-        // Set up file watching for hot reload
-        await setupFileWatching();
+            // Handler/seed counts are internal to orchestrator processSpec.
+            // Use info from SpecInfo for now; multi-spec banner (Epic 5) will
+            // display proper per-spec counts.
+            firstInstance.info.endpointCount,
+            firstInstance.info.schemaCount,
+            resolvedOptions,
+          );
+          printBanner(bannerInfo, resolvedOptions);
+        }
       } catch (error) {
         printError('Failed to start OpenAPI mock server', error, resolvedOptions);
         throw error;
       }
-    },
-
-    /**
-     * Clean up when Vite server closes
-     */
-    async closeBundle(): Promise<void> {
-      await cleanup();
     },
 
     /**
@@ -281,94 +220,87 @@ try {
         },
       ];
     },
+
+    /**
+     * Clean up when Vite server closes
+     *
+     * NOTE: closeBundle() is called by Vite when the dev server shuts down
+     * (e.g., Ctrl+C). This is the same lifecycle hook used in v0.x.
+     * While configureServer's viteServer.httpServer?.on('close', ...) is
+     * an alternative, closeBundle() is more reliable across Vite versions
+     * and is the established pattern in this codebase.
+     */
+    async closeBundle(): Promise<void> {
+      // Close all per-spec file watchers
+      for (const watcher of fileWatchers) {
+        await watcher.close();
+      }
+      fileWatchers = [];
+
+      // Stop the orchestrator (shared HTTP server)
+      await orchestrator?.stop();
+      orchestrator = null;
+    },
   };
 
   /**
-   * Configure Vite proxy for API requests
+   * Set up per-spec file watchers for hot reload
    *
-   * @param vite - Vite dev server
-   * @param proxyPath - Base path to proxy
-   * @param port - Mock server port
+   * Creates one FileWatcher per spec instance, each watching that spec's
+   * handlers and seeds directories. Reload callbacks are scoped to the
+   * individual spec — changing a handler in spec A does not affect spec B.
+   *
+   * TODO: This will be replaced by createPerSpecFileWatchers() in Epic 2 (Task 2.1)
+   * which will add proper reload-spec isolation and WebSocket notifications.
    */
-  function configureProxy(vite: ViteDevServer, proxyPath: string, port: number): void {
-    // Ensure server config exists (create mutable copy if needed)
-    const serverConfig = vite.config.server ?? {};
-    const proxyConfig = serverConfig.proxy ?? {};
+  async function setupPerSpecFileWatching(
+    orch: OrchestratorResult,
+    viteServer: ViteDevServer,
+    projectCwd: string,
+  ): Promise<FileWatcher[]> {
+    const watchers: FileWatcher[] = [];
 
-    // Escape special regex characters in proxy path and pre-compile regex
-    const escapedPath = proxyPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pathPrefixRegex = new RegExp(`^${escapedPath}`);
+    for (const instance of orch.instances) {
+      const specServer = instance.server;
+      const specConfig = instance.config;
 
-    // Add proxy configuration for API requests
-    proxyConfig[proxyPath] = {
-      target: `http://localhost:${port}`,
-      changeOrigin: true,
-      // Remove the proxy path prefix when forwarding
-      rewrite: (path: string) => path.replace(pathPrefixRegex, ''),
-    };
-
-    // Proxy internal routes so they work through Vite's dev server port
-    proxyConfig['/_devtools'] = {
-      target: `http://localhost:${port}`,
-      changeOrigin: true,
-    };
-
-    proxyConfig['/_api'] = {
-      target: `http://localhost:${port}`,
-      changeOrigin: true,
-    };
-
-    proxyConfig['/_ws'] = {
-      target: `http://localhost:${port}`,
-      changeOrigin: true,
-      ws: true,
-    };
-
-    // Update the proxy config (Vite's proxy is mutable)
-    if (vite.config.server) {
-      vite.config.server.proxy = proxyConfig;
-    }
-  }
-
-  /**
-   * Set up file watching for hot reload
-   */
-  async function setupFileWatching(): Promise<void> {
-    if (!server || !vite) return;
-
-    // Debounce reload functions to prevent rapid-fire reloads
-    const debouncedHandlerReload = debounce(reloadHandlers, 100);
-    const debouncedSeedReload = debounce(reloadSeeds, 100);
-
-    // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-    // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
-    const watchOpts = resolvedOptions as any;
-    fileWatcher = await createFileWatcher({
-      handlersDir: watchOpts.handlersDir,
-      seedsDir: watchOpts.seedsDir,
-      cwd,
-      onHandlerChange: debouncedHandlerReload,
-      onSeedChange: debouncedSeedReload,
-    });
-  }
-
-  /**
-   * Reload handlers when files change
-   */
-  async function reloadHandlers(): Promise<void> {
-    if (!server || !vite) return;
-
-    try {
-      // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-      const handlersResult = await loadHandlers(
-        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
-        (resolvedOptions as any).handlersDir,
-        vite,
-        cwd,
+      // Create debounced reload functions scoped to this spec
+      const debouncedHandlerReload = debounce(
+        () => reloadSpecHandlers(specServer, specConfig.handlersDir, viteServer, projectCwd),
+        100,
       );
+      const debouncedSeedReload = debounce(
+        () => reloadSpecSeeds(specServer, specConfig.seedsDir, viteServer, projectCwd),
+        100,
+      );
+
+      const watcher = await createFileWatcher({
+        handlersDir: specConfig.handlersDir,
+        seedsDir: specConfig.seedsDir,
+        cwd: projectCwd,
+        onHandlerChange: debouncedHandlerReload,
+        onSeedChange: debouncedSeedReload,
+      });
+
+      watchers.push(watcher);
+    }
+
+    return watchers;
+  }
+
+  /**
+   * Reload handlers for a single spec instance
+   */
+  async function reloadSpecHandlers(
+    server: OpenApiServer,
+    handlersDir: string,
+    viteServer: ViteDevServer,
+    projectCwd: string,
+  ): Promise<void> {
+    try {
+      const handlersResult = await loadHandlers(handlersDir, viteServer, projectCwd);
       server.updateHandlers(handlersResult.handlers);
 
-      // Notify via WebSocket
       server.wsHub.broadcast({
         type: 'handlers:updated',
         data: { count: handlersResult.handlers.size },
@@ -381,37 +313,30 @@ try {
   }
 
   /**
-   * Reload seeds when files change
+   * Reload seeds for a single spec instance
    *
    * Note: This operation is not fully atomic - there's a brief window between
    * clearing the store and repopulating it where requests may see empty data.
    * For development tooling, this tradeoff is acceptable.
    */
-  async function reloadSeeds(): Promise<void> {
-    if (!server || !vite) return;
-
+  async function reloadSpecSeeds(
+    server: OpenApiServer,
+    seedsDir: string,
+    viteServer: ViteDevServer,
+    projectCwd: string,
+  ): Promise<void> {
     try {
       // Load seeds first (before clearing) to minimize the window where store is empty
-      // NOTE: plugin.ts will be rewritten in Task 1.7 (vite-qq9.7)
-      const seedsResult = await loadSeeds(
-        // biome-ignore lint/suspicious/noExplicitAny: v0.x compat — plugin.ts rewritten in Task 1.7
-        (resolvedOptions as any).seedsDir,
-        vite,
-        cwd,
-      );
+      const seedsResult = await loadSeeds(seedsDir, viteServer, projectCwd);
 
-      // Only clear and repopulate if we successfully loaded seeds
-      // This prevents clearing the store on load errors
       if (seedsResult.seeds.size > 0) {
-        // Clear and immediately repopulate - minimizes empty window
         server.store.clearAll();
         await executeSeeds(seedsResult.seeds, server.store, server.document);
       } else {
-        // User removed all seed files - clear the store
+        // User removed all seed files — clear the store
         server.store.clearAll();
       }
 
-      // Notify via WebSocket
       server.wsHub.broadcast({
         type: 'seeds:updated',
         data: { count: seedsResult.seeds.size },
@@ -421,24 +346,5 @@ try {
     } catch (error) {
       printError('Failed to reload seeds', error, resolvedOptions);
     }
-  }
-
-  /**
-   * Clean up resources
-   */
-  async function cleanup(): Promise<void> {
-    // Close file watcher
-    if (fileWatcher) {
-      await fileWatcher.close();
-      fileWatcher = null;
-    }
-
-    // Stop mock server
-    if (server) {
-      await server.stop();
-      server = null;
-    }
-
-    vite = null;
   }
 }
