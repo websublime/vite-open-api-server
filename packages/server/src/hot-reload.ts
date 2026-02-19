@@ -97,9 +97,10 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
   const readyPromises: Promise<void>[] = [];
   let isWatching = true;
 
-  // Handler file patterns
-  const handlerPattern = '**/*.handlers.{ts,js,mjs}';
-  const seedPattern = '**/*.seeds.{ts,js,mjs}';
+  // File extension filters — chokidar v4+/v5 removed glob support,
+  // so we watch the directory and filter via the `ignored` callback.
+  const handlerRe = /\.handlers\.(ts|js|mjs)$/;
+  const seedRe = /\.seeds\.(ts|js|mjs)$/;
 
   /**
    * Wrapper to safely invoke async callbacks and log errors
@@ -120,90 +121,107 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
       });
   };
 
-  // Watch handlers directory
-  if (handlersDir && onHandlerChange) {
-    const absoluteHandlersDir = path.resolve(cwd, handlersDir);
-    const handlerWatcher = watch(handlerPattern, {
-      cwd: absoluteHandlersDir,
-      ignoreInitial: true,
-      ignored: ['**/node_modules/**', '**/dist/**'],
-      persistent: true,
-      awaitWriteFinish: {
-        stabilityThreshold: 100,
-        pollInterval: 50,
-      },
-    });
+  /**
+   * Build an `ignored` function for chokidar that accepts only files
+   * matching the given pattern and skips node_modules/dist directories.
+   */
+  const buildIgnored = (pattern: RegExp) => {
+    return (filePath: string, stats?: { isFile(): boolean }): boolean => {
+      // Always ignore node_modules and dist directories
+      if (filePath.includes('node_modules') || filePath.includes('dist')) {
+        return true;
+      }
+      // Allow directories to be traversed (only filter files)
+      if (!stats?.isFile()) {
+        return false;
+      }
+      // Ignore files that don't match the expected pattern
+      return !pattern.test(filePath);
+    };
+  };
 
-    handlerWatcher.on('add', (file) => {
-      const absolutePath = path.join(absoluteHandlersDir, file);
-      safeInvoke(onHandlerChange, absolutePath, 'Handler add');
-    });
+  try {
+    // Watch handlers directory
+    if (handlersDir && onHandlerChange) {
+      const absoluteHandlersDir = path.resolve(cwd, handlersDir);
+      const handlerWatcher = watch(absoluteHandlersDir, {
+        ignoreInitial: true,
+        ignored: buildIgnored(handlerRe),
+        persistent: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 100,
+          pollInterval: 50,
+        },
+      });
 
-    handlerWatcher.on('change', (file) => {
-      const absolutePath = path.join(absoluteHandlersDir, file);
-      safeInvoke(onHandlerChange, absolutePath, 'Handler change');
-    });
+      handlerWatcher.on('add', (file) => {
+        safeInvoke(onHandlerChange, file, 'Handler add');
+      });
 
-    handlerWatcher.on('unlink', (file) => {
-      const absolutePath = path.join(absoluteHandlersDir, file);
-      safeInvoke(onHandlerChange, absolutePath, 'Handler unlink');
-    });
+      handlerWatcher.on('change', (file) => {
+        safeInvoke(onHandlerChange, file, 'Handler change');
+      });
 
-    handlerWatcher.on('error', (error) => {
-      logger.error('[vite-plugin-open-api-server] Handler watcher error:', error);
-    });
+      handlerWatcher.on('unlink', (file) => {
+        safeInvoke(onHandlerChange, file, 'Handler unlink');
+      });
 
-    // Track ready promise for this watcher
-    readyPromises.push(
-      new Promise<void>((resolve) => {
-        handlerWatcher.on('ready', () => resolve());
-      }),
-    );
+      handlerWatcher.on('error', (error) => {
+        logger.error('[vite-plugin-open-api-server] Handler watcher error:', error);
+      });
 
-    watchers.push(handlerWatcher);
-  }
+      // Track ready promise for this watcher
+      readyPromises.push(
+        new Promise<void>((resolve) => {
+          handlerWatcher.on('ready', () => resolve());
+        }),
+      );
 
-  // Watch seeds directory
-  if (seedsDir && onSeedChange) {
-    const absoluteSeedsDir = path.resolve(cwd, seedsDir);
-    const seedWatcher = watch(seedPattern, {
-      cwd: absoluteSeedsDir,
-      ignoreInitial: true,
-      ignored: ['**/node_modules/**', '**/dist/**'],
-      persistent: true,
-      awaitWriteFinish: {
-        stabilityThreshold: 100,
-        pollInterval: 50,
-      },
-    });
+      watchers.push(handlerWatcher);
+    }
 
-    seedWatcher.on('add', (file) => {
-      const absolutePath = path.join(absoluteSeedsDir, file);
-      safeInvoke(onSeedChange, absolutePath, 'Seed add');
-    });
+    // Watch seeds directory
+    if (seedsDir && onSeedChange) {
+      const absoluteSeedsDir = path.resolve(cwd, seedsDir);
+      const seedWatcher = watch(absoluteSeedsDir, {
+        ignoreInitial: true,
+        ignored: buildIgnored(seedRe),
+        persistent: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 100,
+          pollInterval: 50,
+        },
+      });
 
-    seedWatcher.on('change', (file) => {
-      const absolutePath = path.join(absoluteSeedsDir, file);
-      safeInvoke(onSeedChange, absolutePath, 'Seed change');
-    });
+      seedWatcher.on('add', (file) => {
+        safeInvoke(onSeedChange, file, 'Seed add');
+      });
 
-    seedWatcher.on('unlink', (file) => {
-      const absolutePath = path.join(absoluteSeedsDir, file);
-      safeInvoke(onSeedChange, absolutePath, 'Seed unlink');
-    });
+      seedWatcher.on('change', (file) => {
+        safeInvoke(onSeedChange, file, 'Seed change');
+      });
 
-    seedWatcher.on('error', (error) => {
-      logger.error('[vite-plugin-open-api-server] Seed watcher error:', error);
-    });
+      seedWatcher.on('unlink', (file) => {
+        safeInvoke(onSeedChange, file, 'Seed unlink');
+      });
 
-    // Track ready promise for this watcher
-    readyPromises.push(
-      new Promise<void>((resolve) => {
-        seedWatcher.on('ready', () => resolve());
-      }),
-    );
+      seedWatcher.on('error', (error) => {
+        logger.error('[vite-plugin-open-api-server] Seed watcher error:', error);
+      });
 
-    watchers.push(seedWatcher);
+      // Track ready promise for this watcher
+      readyPromises.push(
+        new Promise<void>((resolve) => {
+          seedWatcher.on('ready', () => resolve());
+        }),
+      );
+
+      watchers.push(seedWatcher);
+    }
+  } catch (error) {
+    // Clean up any already-created FSWatchers before re-throwing
+    await Promise.allSettled(watchers.map((w) => w.close()));
+    throw error;
   }
 
   // Create combined ready promise
@@ -326,6 +344,7 @@ export async function createPerSpecFileWatchers(
         handlersDir: instance.config.handlersDir,
         seedsDir: instance.config.seedsDir,
         cwd,
+        logger: options.logger,
         onHandlerChange: debouncedHandlerReload,
         onSeedChange: debouncedSeedReload,
       });
