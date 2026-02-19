@@ -78,7 +78,13 @@ export { getSeedFiles, loadSeeds } from './seeds.js';
 // =============================================================================
 
 export type { FileWatcher, FileWatcherOptions } from './hot-reload.js';
-export { createFileWatcher, debounce } from './hot-reload.js';
+export {
+  createFileWatcher,
+  createPerSpecFileWatchers,
+  debounce,
+  reloadSpecHandlers,
+  reloadSpecSeeds,
+} from './hot-reload.js';
 
 // =============================================================================
 // DevTools Integration

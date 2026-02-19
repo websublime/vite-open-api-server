@@ -9,14 +9,11 @@
  */
 
 import { createRequire } from 'node:module';
-import { executeSeeds, type OpenApiServer } from '@websublime/vite-plugin-open-api-core';
 import type { Plugin, ViteDevServer } from 'vite';
-import { extractBannerInfo, printBanner, printError, printReloadNotification } from './banner.js';
-import { loadHandlers } from './handlers.js';
-import { createFileWatcher, debounce, type FileWatcher } from './hot-reload.js';
+import { extractBannerInfo, printBanner, printError } from './banner.js';
+import { createPerSpecFileWatchers, type FileWatcher } from './hot-reload.js';
 import { configureMultiProxy, DEVTOOLS_PROXY_PATH } from './multi-proxy.js';
 import { createOrchestrator, type OrchestratorResult } from './orchestrator.js';
-import { loadSeeds } from './seeds.js';
 import { type OpenApiServerOptions, resolveOptions } from './types.js';
 
 /**
@@ -169,8 +166,12 @@ try {
         configureMultiProxy(viteServer, orchestrator.instances, orchestrator.port);
 
         // Set up per-spec file watchers for hot reload
-        // TODO: Replace with createPerSpecFileWatchers() in Epic 2 (Task 2.1)
-        fileWatchers = await setupPerSpecFileWatching(orchestrator, viteServer, cwd);
+        fileWatchers = await createPerSpecFileWatchers(
+          orchestrator.instances,
+          viteServer,
+          cwd,
+          resolvedOptions,
+        );
 
         // Print startup banner (v0.x single-spec banner, shows first spec only)
         // TODO: Replace with printMultiSpecBanner() in Epic 5 (Task 5.1)
@@ -254,116 +255,6 @@ try {
         // Swallow stop errors — nothing actionable at shutdown
       }
       orchestrator = null;
-    }
-  }
-
-  /**
-   * Set up per-spec file watchers for hot reload
-   *
-   * Creates one FileWatcher per spec instance, each watching that spec's
-   * handlers and seeds directories. Reload callbacks are scoped to the
-   * individual spec — changing a handler in spec A does not affect spec B.
-   *
-   * TODO: This will be replaced by createPerSpecFileWatchers() in Epic 2 (Task 2.1)
-   * which will add proper reload-spec isolation and WebSocket notifications.
-   */
-  async function setupPerSpecFileWatching(
-    orch: OrchestratorResult,
-    viteServer: ViteDevServer,
-    projectCwd: string,
-  ): Promise<FileWatcher[]> {
-    const watchers: FileWatcher[] = [];
-
-    try {
-      for (const instance of orch.instances) {
-        const specServer = instance.server;
-        const specConfig = instance.config;
-
-        // Create debounced reload functions scoped to this spec
-        const debouncedHandlerReload = debounce(
-          () => reloadSpecHandlers(specServer, specConfig.handlersDir, viteServer, projectCwd),
-          100,
-        );
-        const debouncedSeedReload = debounce(
-          () => reloadSpecSeeds(specServer, specConfig.seedsDir, viteServer, projectCwd),
-          100,
-        );
-
-        const watcher = await createFileWatcher({
-          handlersDir: specConfig.handlersDir,
-          seedsDir: specConfig.seedsDir,
-          cwd: projectCwd,
-          onHandlerChange: debouncedHandlerReload,
-          onSeedChange: debouncedSeedReload,
-        });
-
-        watchers.push(watcher);
-      }
-    } catch (error) {
-      // Clean up already-created watchers before re-throwing
-      await Promise.allSettled(watchers.map((w) => w.close()));
-      throw error;
-    }
-
-    return watchers;
-  }
-
-  /**
-   * Reload handlers for a single spec instance
-   */
-  async function reloadSpecHandlers(
-    server: OpenApiServer,
-    handlersDir: string,
-    viteServer: ViteDevServer,
-    projectCwd: string,
-  ): Promise<void> {
-    try {
-      const logger = resolvedOptions.logger ?? console;
-      const handlersResult = await loadHandlers(handlersDir, viteServer, projectCwd, logger);
-      server.updateHandlers(handlersResult.handlers);
-
-      server.wsHub.broadcast({
-        type: 'handlers:updated',
-        data: { count: handlersResult.handlers.size },
-      });
-
-      printReloadNotification('handlers', handlersResult.handlers.size, resolvedOptions);
-    } catch (error) {
-      printError('Failed to reload handlers', error, resolvedOptions);
-    }
-  }
-
-  /**
-   * Reload seeds for a single spec instance
-   *
-   * Note: This operation is not fully atomic - there's a brief window between
-   * clearing the store and repopulating it where requests may see empty data.
-   * For development tooling, this tradeoff is acceptable.
-   */
-  async function reloadSpecSeeds(
-    server: OpenApiServer,
-    seedsDir: string,
-    viteServer: ViteDevServer,
-    projectCwd: string,
-  ): Promise<void> {
-    try {
-      // Load seeds first (before clearing) to minimize the window where store is empty
-      const logger = resolvedOptions.logger ?? console;
-      const seedsResult = await loadSeeds(seedsDir, viteServer, projectCwd, logger);
-
-      server.store.clearAll();
-      if (seedsResult.seeds.size > 0) {
-        await executeSeeds(seedsResult.seeds, server.store, server.document);
-      }
-
-      server.wsHub.broadcast({
-        type: 'seeds:updated',
-        data: { count: seedsResult.seeds.size },
-      });
-
-      printReloadNotification('seeds', seedsResult.seeds.size, resolvedOptions);
-    } catch (error) {
-      printError('Failed to reload seeds', error, resolvedOptions);
     }
   }
 }
