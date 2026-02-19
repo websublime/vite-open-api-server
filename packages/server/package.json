@@ -49,7 +49,7 @@
   },
   "peerDependencies": {
     "@hono/node-server": "^1.14.0",
-    "@hono/node-ws": "^1.0.0",
+    "@hono/node-ws": "^1.3.0",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
     "vue": "^3.0.0",
     "hono": "^4.11.4"
