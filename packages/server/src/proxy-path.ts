@@ -11,8 +11,20 @@
 
 import type { OpenAPIV3_1 } from '@scalar/openapi-types';
 
+import { API_PROXY_PATH, DEVTOOLS_PROXY_PATH, WS_PROXY_PATH } from './multi-proxy.js';
 import type { ProxyPathSource } from './types.js';
 import { ValidationError } from './types.js';
+
+/**
+ * Reserved proxy path prefixes used by shared services.
+ *
+ * User-defined `proxyPath` values must not collide with these.
+ */
+const RESERVED_PROXY_PATHS: readonly string[] = [
+  DEVTOOLS_PROXY_PATH,
+  API_PROXY_PATH,
+  WS_PROXY_PATH,
+];
 
 // =============================================================================
 // Result Types
@@ -252,6 +264,8 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
       continue;
     }
 
+    validateNotReservedPath(path, spec.id);
+
     if (paths.has(path)) {
       throw new ValidationError(
         'PROXY_PATH_DUPLICATE',
@@ -262,6 +276,33 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
     paths.set(path, spec.id);
   }
 
+  validateNoPrefixOverlaps(paths);
+}
+
+/**
+ * Throw if the given path collides with a reserved shared-service prefix
+ * (e.g. `/_devtools`, `/_api`, `/_ws`).
+ */
+function validateNotReservedPath(path: string, specId: string): void {
+  for (const reserved of RESERVED_PROXY_PATHS) {
+    if (path === reserved || path.startsWith(`${reserved}/`)) {
+      throw new ValidationError(
+        'PROXY_PATH_OVERLAP',
+        `[${specId}] proxyPath "${path}" collides with reserved path "${reserved}" ` +
+          'used by the shared DevTools/API/WebSocket service.',
+      );
+    }
+  }
+}
+
+/**
+ * Detect segment-boundary overlaps (`/api` vs `/api/v1`) and raw
+ * string-prefix collisions (`/api` vs `/api2`) among validated proxy paths.
+ *
+ * Vite's proxy matching uses `url.startsWith(context)` with no segment
+ * awareness, so `/api` would incorrectly capture `/api2/*` requests.
+ */
+function validateNoPrefixOverlaps(paths: Map<string, string>): void {
   const sortedPaths = Array.from(paths.entries()).sort(([a], [b]) => a.length - b.length);
   for (let i = 0; i < sortedPaths.length; i++) {
     for (let j = i + 1; j < sortedPaths.length; j++) {
@@ -278,9 +319,6 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
       }
 
       // Raw string-prefix collision: "/api" is a string prefix of "/api2".
-      // Vite's proxy matching uses plain url.startsWith(context) with no
-      // segment awareness, so "/api" would incorrectly capture "/api2/*"
-      // requests and route them with the wrong X-Spec-Id header.
       if (longer.startsWith(shorter)) {
         throw new ValidationError(
           'PROXY_PATH_PREFIX_COLLISION',

@@ -6,12 +6,13 @@
  * Why: Ensures plugin correctly creates orchestrator, configures multi-proxy,
  *      preserves existing hooks, and cleans up on close
  *
- * @see Task 1.7.4: Write integration test for plugin
+ * @see vite-qq9.7 Plugin Entry Point Rewrite
  */
 
 import type { ProxyOptions } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { DEVTOOLS_PROXY_PATH } from '../multi-proxy.js';
 import { openApiServer } from '../plugin.js';
 import { createMockLogger, createMockViteServer } from './test-utils.js';
 
@@ -97,13 +98,18 @@ const inventorySpec = JSON.stringify({
 // Helpers
 // =============================================================================
 
+/** Return type for the plugin test Vite server mock */
+type PluginTestViteServer = ReturnType<typeof createMockViteServer> & {
+  config: { root: string; server: { proxy: Record<string, ProxyOptions> } };
+};
+
 /**
  * Create a mock ViteDevServer enhanced with config.server.proxy for proxy testing.
  *
  * Extends the standard mock with the `config` structure that `configureMultiProxy`
  * expects to mutate.
  */
-function createPluginTestViteServer() {
+function createPluginTestViteServer(): PluginTestViteServer {
   const baseMock = createMockViteServer();
 
   return {
@@ -114,9 +120,7 @@ function createPluginTestViteServer() {
         proxy: {} as Record<string, ProxyOptions>,
       },
     },
-  } as ReturnType<typeof createMockViteServer> & {
-    config: { root: string; server: { proxy: Record<string, ProxyOptions> } };
-  };
+  } as PluginTestViteServer;
 }
 
 /** Track the orchestrator HTTP server for cleanup in afterEach */
@@ -134,6 +138,50 @@ afterEach(async () => {
 // =============================================================================
 
 describe('openApiServer plugin', () => {
+  // ---------------------------------------------------------------------------
+  // config hook — optimizeDeps
+  // ---------------------------------------------------------------------------
+
+  describe('config hook', () => {
+    it('should return undefined when devtools is disabled', () => {
+      const plugin = openApiServer({
+        specs: [{ spec: petstoreSpec, proxyPath: '/pets/v1' }],
+        devtools: false,
+      });
+
+      const config = plugin.config as () => unknown;
+      expect(config.call({})).toBeUndefined();
+    });
+
+    it('should return undefined when plugin is disabled', () => {
+      const plugin = openApiServer({
+        specs: [{ spec: petstoreSpec, proxyPath: '/pets/v1' }],
+        enabled: false,
+        devtools: true,
+      });
+
+      const config = plugin.config as () => unknown;
+      expect(config.call({})).toBeUndefined();
+    });
+
+    it('should include @vue/devtools-api in optimizeDeps when available', () => {
+      const plugin = openApiServer({
+        specs: [{ spec: petstoreSpec, proxyPath: '/pets/v1' }],
+        devtools: true,
+      });
+
+      const config = plugin.config as () => unknown;
+      const result = config.call({}) as { optimizeDeps?: { include?: string[] } } | undefined;
+
+      // The package may or may not be installed in this test environment.
+      // If installed, it must appear in optimizeDeps.include.
+      // If not installed, config() returns undefined (graceful fallback).
+      if (result !== undefined) {
+        expect(result.optimizeDeps?.include).toContain('@vue/devtools-api');
+      }
+    });
+  });
+
   // ---------------------------------------------------------------------------
   // configureServer — orchestrator and multi-proxy
   // ---------------------------------------------------------------------------
@@ -153,14 +201,12 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
-      const vite = createPluginTestViteServer();
+      // Register cleanup before configureServer to prevent leak if it throws
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
 
-      // Invoke configureServer hook
+      const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
-
-      // Register cleanup
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const proxy = vite.config.server.proxy;
 
@@ -191,10 +237,11 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
+
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const proxy = vite.config.server.proxy;
       expect(proxy['/pets/v1'].headers).toEqual(
@@ -219,10 +266,11 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
+
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const proxy = vite.config.server.proxy;
 
@@ -246,6 +294,10 @@ describe('openApiServer plugin', () => {
 
       // Proxy should remain empty — no orchestrator was created
       expect(Object.keys(vite.config.server.proxy)).toHaveLength(0);
+
+      // closeBundle must also be safe when plugin was disabled
+      const closeBundle = plugin.closeBundle as () => Promise<void>;
+      await expect(closeBundle()).resolves.toBeUndefined();
     });
 
     it('should use the actual bound port in proxy target', async () => {
@@ -259,10 +311,11 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
+
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const proxy = vite.config.server.proxy;
       const target = proxy['/pets/v1'].target as string;
@@ -273,6 +326,26 @@ describe('openApiServer plugin', () => {
       // biome-ignore lint/style/noNonNullAssertion: guarded by expect().not.toBeNull() above
       const boundPort = Number.parseInt(portMatch![1], 10);
       expect(boundPort).toBeGreaterThan(0);
+    });
+
+    it('should re-throw when orchestration fails and leave closeBundle safe', async () => {
+      const plugin = openApiServer({
+        specs: [{ spec: '{ invalid json !!!', id: 'broken', proxyPath: '/broken/v1' }],
+        port: 0,
+        cors: false,
+        devtools: false,
+        silent: true,
+      });
+
+      const vite = createPluginTestViteServer();
+      const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
+
+      // configureServer should propagate the error from orchestrator
+      await expect(configureServer(vite)).rejects.toThrow();
+
+      // closeBundle must be safe even after a failed configureServer (teardown already ran)
+      const closeBundle = plugin.closeBundle as () => Promise<void>;
+      await expect(closeBundle()).resolves.toBeUndefined();
     });
   });
 
@@ -315,7 +388,7 @@ describe('openApiServer plugin', () => {
 
       expect(result).toBeDefined();
       expect(result).toContain('addCustomTab');
-      expect(result).toContain('/_devtools/');
+      expect(result).toContain(`${DEVTOOLS_PROXY_PATH}/`);
     });
 
     it('should return undefined for non-matching IDs', () => {
@@ -345,7 +418,7 @@ describe('openApiServer plugin', () => {
       expect(result).toHaveLength(1);
       expect(result[0].tag).toBe('script');
       expect(result[0].attrs.type).toBe('module');
-      expect(result[0].attrs.src).toContain('virtual:open-api-devtools-tab');
+      expect(result[0].attrs.src).toBe('/@id/virtual:open-api-devtools-tab');
       expect(result[0].injectTo).toBe('head');
     });
 
@@ -387,12 +460,11 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
+
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
-
-      // Register cleanup immediately so the server is stopped even if assertions below fail
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       // Capture the bound port before cleanup
       const proxy = vite.config.server.proxy;
@@ -404,6 +476,8 @@ describe('openApiServer plugin', () => {
       // Invoke closeBundle to clean up
       const closeBundle = plugin.closeBundle as () => Promise<void>;
       await closeBundle();
+      // Prevent afterEach from calling it again
+      cleanupFn = null;
 
       // Verify the server port is no longer accepting connections
       const { createConnection } = await import('node:net');
@@ -441,15 +515,16 @@ describe('openApiServer plugin', () => {
         logger,
       });
 
+      cleanupFn = () => (plugin.closeBundle as () => Promise<void>)();
+
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
 
-      // Register cleanup so the server is stopped even if assertions below fail
-      cleanupFn = plugin.closeBundle as () => Promise<void>;
-
       const closeBundle = plugin.closeBundle as () => Promise<void>;
       await closeBundle();
+      // Prevent afterEach from calling again
+      cleanupFn = null;
       // Second call should be a no-op, not throw
       await expect(closeBundle()).resolves.toBeUndefined();
     });
