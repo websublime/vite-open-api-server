@@ -23,6 +23,7 @@ export default defineConfig({
     'vite',
     'hono',
     '@hono/node-server',
+    '@hono/node-ws',
     // Dependencies - bundled or consumer-installed
     '@websublime/vite-plugin-open-api-core',
     'chokidar',

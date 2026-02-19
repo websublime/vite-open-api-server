@@ -1,0 +1,14 @@
+{
+  "branch": "feature/vite-eb9-ws-route-orchestrator",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server",
+    "@websublime/vite-plugin-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-02-19T10:40:04.375912Z",
+  "updated_at": "2026-02-19T10:40:04.376424Z"
+}
