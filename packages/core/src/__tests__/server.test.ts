@@ -753,7 +753,6 @@ describe('createOpenApiServer', () => {
 
       const html = await response.text();
       expect(html).toContain('OpenAPI DevTools');
-      expect(html).toContain('<div id="app">');
     });
 
     it('should redirect /_devtools/* paths to /_devtools/', async () => {

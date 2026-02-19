@@ -184,17 +184,16 @@ try {
                 version: firstInstance.server.document.info?.version ?? '1.0.0',
               },
             },
-            // Handler/seed counts are internal to orchestrator processSpec.
-            // Use info from SpecInfo for now; multi-spec banner (Epic 5) will
-            // display proper per-spec counts.
-            firstInstance.info.endpointCount,
-            firstInstance.info.schemaCount,
+            // Handler/seed counts are not tracked per-instance yet.
+            // Multi-spec banner (Epic 5, Task 5.1) will display proper per-spec counts.
+            0,
+            0,
             resolvedOptions,
           );
           printBanner(bannerInfo, resolvedOptions);
         }
       } catch (error) {
-        await teardownPartialInit();
+        await teardown();
         printError('Failed to start OpenAPI mock server', error, resolvedOptions);
         throw error;
       }
@@ -232,33 +231,19 @@ try {
      * and is the established pattern in this codebase.
      */
     async closeBundle(): Promise<void> {
-      // Close all per-spec file watchers — use allSettled so one failure
-      // doesn't prevent the rest from being cleaned up
-      await Promise.allSettled(fileWatchers.map((w) => w.close()));
-      fileWatchers = [];
-
-      // Stop the orchestrator (shared HTTP server)
-      // Wrap in try/catch so a stop() rejection doesn't propagate —
-      // matches the teardownPartialInit pattern.
-      if (orchestrator) {
-        try {
-          await orchestrator.stop();
-        } catch {
-          // Swallow stop errors — nothing actionable at shutdown
-        }
-        orchestrator = null;
-      }
+      await teardown();
     },
   };
 
   /**
-   * Clean up partially-initialised resources when configureServer fails.
+   * Tear down all plugin resources: close file watchers and stop the orchestrator.
    *
-   * Closes any file watchers that were created and stops the orchestrator
-   * HTTP server if it was started. Swallows errors so the original failure
-   * propagates unchanged.
+   * Shared by `closeBundle` (normal shutdown) and the error path in
+   * `configureServer` (partial-init cleanup). Uses `Promise.allSettled`
+   * and try/catch so failures in one resource do not prevent cleanup
+   * of the others.
    */
-  async function teardownPartialInit(): Promise<void> {
+  async function teardown(): Promise<void> {
     await Promise.allSettled(fileWatchers.map((w) => w.close()));
     fileWatchers = [];
 
@@ -266,7 +251,7 @@ try {
       try {
         await orchestrator.stop();
       } catch {
-        // Swallow stop errors — the original error is more important
+        // Swallow stop errors — nothing actionable at shutdown
       }
       orchestrator = null;
     }
@@ -333,7 +318,8 @@ try {
     projectCwd: string,
   ): Promise<void> {
     try {
-      const handlersResult = await loadHandlers(handlersDir, viteServer, projectCwd);
+      const logger = resolvedOptions.logger ?? console;
+      const handlersResult = await loadHandlers(handlersDir, viteServer, projectCwd, logger);
       server.updateHandlers(handlersResult.handlers);
 
       server.wsHub.broadcast({
@@ -362,7 +348,8 @@ try {
   ): Promise<void> {
     try {
       // Load seeds first (before clearing) to minimize the window where store is empty
-      const seedsResult = await loadSeeds(seedsDir, viteServer, projectCwd);
+      const logger = resolvedOptions.logger ?? console;
+      const seedsResult = await loadSeeds(seedsDir, viteServer, projectCwd, logger);
 
       server.store.clearAll();
       if (seedsResult.seeds.size > 0) {

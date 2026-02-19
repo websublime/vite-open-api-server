@@ -286,6 +286,12 @@ export function validateSpecs(specs: SpecConfig[]): void {
 
   for (let i = 0; i < specs.length; i++) {
     const spec = specs[i];
+    if (!spec || typeof spec !== 'object') {
+      throw new ValidationError(
+        'SPEC_NOT_FOUND',
+        `specs[${i}]: must be a SpecConfig object, got ${spec === null ? 'null' : typeof spec}`,
+      );
+    }
     if (!spec.spec || typeof spec.spec !== 'string' || spec.spec.trim() === '') {
       const identifier = spec.id ? ` (id: "${spec.id}")` : '';
       throw new ValidationError(

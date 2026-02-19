@@ -9,6 +9,7 @@
  */
 
 import { existsSync } from 'node:fs';
+import type { Server as NodeServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -83,7 +84,13 @@ export interface SpecInstance {
  * individual spec instances, aggregated metadata, and lifecycle methods.
  */
 export interface OrchestratorResult {
-  /** Main Hono app with all specs mounted via X-Spec-Id dispatch */
+  /**
+   * Main Hono app with all specs mounted via X-Spec-Id dispatch.
+   *
+   * **Note**: Consumers using this property directly must have `hono`
+   * as a dependency. The `start()`/`stop()` lifecycle methods do not
+   * require direct interaction with this Hono instance.
+   */
   app: Hono;
 
   /** All spec instances (in config order) */
@@ -226,10 +233,7 @@ function buildCorsConfig(options: ResolvedOptions): CorsConfig {
     options.corsOrigin === '*' ||
     (Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*'));
 
-  const effectiveCorsOrigin =
-    Array.isArray(options.corsOrigin) && options.corsOrigin.includes('*')
-      ? '*'
-      : options.corsOrigin;
+  const effectiveCorsOrigin: string | string[] = isWildcardOrigin ? '*' : options.corsOrigin;
 
   return {
     origin: effectiveCorsOrigin,
@@ -271,9 +275,15 @@ function mountDevToolsSpa(mainApp: Hono, logger: Logger): void {
  *
  * Uses slugify() to normalize the incoming header so it matches the
  * instanceMap keys produced by deriveSpecId().
+ *
+ * **Note**: Dispatched requests bypass `mainApp` response middleware
+ * because `instance.server.app.fetch()` returns a raw `Response`.
+ * Shared response concerns (e.g., CORS) are applied per-instance.
  */
-function createDispatchMiddleware(instanceMap: Map<string, SpecInstance>) {
-  return async (c: Context, next: () => Promise<void>) => {
+function createDispatchMiddleware(
+  instanceMap: Map<string, SpecInstance>,
+): (c: Context, next: () => Promise<void>) => Promise<Response | undefined> {
+  return async (c: Context, next: () => Promise<void>): Promise<Response | undefined> => {
     const rawSpecId = c.req.header('x-spec-id');
     if (!rawSpecId) {
       await next();
@@ -310,9 +320,10 @@ function createDispatchMiddleware(instanceMap: Map<string, SpecInstance>) {
  * 3. **Phase 3 — Build main app**: Create a single Hono app with CORS,
  *    DevTools, Internal API, and X-Spec-Id dispatch middleware.
  *
- * **Note**: This function mutates `options.specs[i]` to write back resolved
- * values (id, proxyPath, proxyPathSource, handlersDir, seedsDir) so that
- * downstream consumers (banner, file watcher, plugin.ts) see the final values.
+ * **Note**: This function populates the resolved values (id, proxyPath,
+ * proxyPathSource, handlersDir, seedsDir) on each `options.specs[i]` object.
+ * Since `instances[i].config` is the same object reference, consumers should
+ * access resolved values through `instances[i].config` (the authoritative view).
  *
  * @param options - Resolved plugin options (from `resolveOptions()`)
  * @param vite - Vite dev server instance (for ssrLoadModule)
@@ -341,16 +352,16 @@ export async function createOrchestrator(
       logger,
     );
 
-    // Write resolved values back to options.specs[i]. Since processSpec
-    // received this same object reference as specConfig, and the instance
-    // was created with `config: specConfig`, these mutations are visible
-    // through both options.specs[i] and instance.config (shared object).
-    const specConfig = options.specs[i];
-    specConfig.id = resolvedConfig.id;
-    specConfig.proxyPath = resolvedConfig.proxyPath;
-    specConfig.proxyPathSource = resolvedConfig.proxyPathSource;
-    specConfig.handlersDir = resolvedConfig.handlersDir;
-    specConfig.seedsDir = resolvedConfig.seedsDir;
+    // Populate the resolved values on the shared spec config object.
+    // `instance.config` and `options.specs[i]` are the same reference,
+    // so these writes are visible through both. This is intentional:
+    // downstream consumers (banner, file watcher, plugin.ts) access
+    // the final values via `instance.config`.
+    instance.config.id = resolvedConfig.id;
+    instance.config.proxyPath = resolvedConfig.proxyPath;
+    instance.config.proxyPathSource = resolvedConfig.proxyPathSource;
+    instance.config.handlersDir = resolvedConfig.handlersDir;
+    instance.config.seedsDir = resolvedConfig.seedsDir;
 
     instances.push(instance);
   }
@@ -390,12 +401,17 @@ export async function createOrchestrator(
   }
 
   // --- Internal API — first spec only (multi-spec: Epic 3, Task 3.x) ---
+  if (instances.length > 1) {
+    logger.warn?.(
+      "[vite-plugin-open-api-server] Only first spec's internal API mounted on /_api; multi-spec support planned in Epic 3 (Task 3.x).",
+    );
+    // Add a warning header so DevTools / callers know the data is scoped to one spec
+    mainApp.use('/_api/*', async (c, next) => {
+      await next();
+      c.header('X-Multi-Spec-Warning', `Only showing data for spec "${instances[0].id}"`);
+    });
+  }
   if (instances.length > 0) {
-    if (instances.length > 1) {
-      logger.warn?.(
-        "[vite-plugin-open-api-server] Only first spec's internal API mounted on /_api; multi-spec support planned in Epic 3 (Task 3.x).",
-      );
-    }
     const firstInstance = instances[0];
     mountInternalApi(mainApp, {
       store: firstInstance.server.store,
@@ -423,11 +439,54 @@ export async function createOrchestrator(
   // Lifecycle
   // ========================================================================
 
-  /** Minimal interface for the Node.js HTTP server returned by @hono/node-server */
-  type NodeServer = import('node:http').Server;
-
   let serverInstance: NodeServer | null = null;
   let boundPort = 0;
+
+  /**
+   * Start a Node.js HTTP server and wait for it to bind.
+   *
+   * @returns The actual bound port (handles ephemeral port 0).
+   */
+  async function startServerOnPort(
+    fetchHandler: Hono['fetch'],
+    port: number,
+  ): Promise<{ server: NodeServer; actualPort: number }> {
+    let createAdaptorServer: typeof import('@hono/node-server').createAdaptorServer;
+    try {
+      const nodeServer = await import('@hono/node-server');
+      createAdaptorServer = nodeServer.createAdaptorServer;
+    } catch {
+      throw new Error('@hono/node-server is required. Install with: npm install @hono/node-server');
+    }
+
+    const server = createAdaptorServer({ fetch: fetchHandler }) as NodeServer;
+
+    // Attach listeners BEFORE calling listen() to avoid a race condition
+    // where the 'listening' event fires before the handler is registered.
+    const actualPort = await new Promise<number>((resolve, reject) => {
+      const onListening = () => {
+        server.removeListener('error', onError);
+        const addr = server.address();
+        resolve(typeof addr === 'object' && addr ? addr.port : port);
+      };
+
+      const onError = (err: NodeJS.ErrnoException) => {
+        server.removeListener('listening', onListening);
+        server.close(() => {});
+        if (err.code === 'EADDRINUSE') {
+          reject(new Error(`[vite-plugin-open-api-server] Port ${port} is already in use.`));
+        } else {
+          reject(new Error(`[vite-plugin-open-api-server] Server error: ${err.message}`));
+        }
+      };
+
+      server.once('listening', onListening);
+      server.once('error', onError);
+      server.listen(port);
+    });
+
+    return { server, actualPort };
+  }
 
   return {
     app: mainApp,
@@ -439,68 +498,25 @@ export async function createOrchestrator(
     },
 
     async start(): Promise<void> {
-      // Guard against double-start — prevents leaking the first server
       if (serverInstance) {
         throw new Error('[vite-plugin-open-api-server] Server already running. Call stop() first.');
       }
 
-      // Dynamic import — only one HTTP server for all specs.
-      // Use createAdaptorServer() to separate server creation from listen(),
-      // ensuring event listeners are attached before listen() is called.
-      let createAdaptorServer: typeof import('@hono/node-server').createAdaptorServer;
-      try {
-        const nodeServer = await import('@hono/node-server');
-        createAdaptorServer = nodeServer.createAdaptorServer;
-      } catch {
-        throw new Error(
-          '@hono/node-server is required. Install with: npm install @hono/node-server',
-        );
-      }
-
-      const server = createAdaptorServer({ fetch: mainApp.fetch }) as NodeServer;
-
-      // Wait for the server to be listening before resolving.
-      // Attach listeners BEFORE calling listen() to avoid a race condition
-      // where the 'listening' event fires before the handler is registered.
-      await new Promise<void>((resolve, reject) => {
-        const onListening = () => {
-          server.removeListener('error', onError);
-          // Read the actual bound port from the server (handles port 0 / ephemeral)
-          const addr = server.address();
-          const actualPort = typeof addr === 'object' && addr ? addr.port : options.port;
-          logger.info(
-            `[vite-plugin-open-api-server] Server started on http://localhost:${actualPort}`,
-          );
-          boundPort = actualPort;
-          serverInstance = server;
-          resolve();
-        };
-
-        const onError = (err: NodeJS.ErrnoException) => {
-          server.removeListener('listening', onListening);
-          // Close and null the server to prevent leaks on error
-          server.close(() => {});
-          serverInstance = null;
-          boundPort = 0;
-          if (err.code === 'EADDRINUSE') {
-            reject(
-              new Error(`[vite-plugin-open-api-server] Port ${options.port} is already in use.`),
-            );
-          } else {
-            reject(new Error(`[vite-plugin-open-api-server] Server error: ${err.message}`));
-          }
-        };
-
-        server.once('listening', onListening);
-        server.once('error', onError);
-        server.listen(options.port);
-      });
+      const { server, actualPort } = await startServerOnPort(mainApp.fetch, options.port);
+      serverInstance = server;
+      boundPort = actualPort;
+      logger.info(`[vite-plugin-open-api-server] Server started on http://localhost:${actualPort}`);
     },
 
     async stop(): Promise<void> {
       const server = serverInstance;
       if (server) {
         try {
+          // Forcibly destroy all open connections (including WebSocket clients)
+          // so server.close() resolves promptly instead of waiting for idle drain.
+          if (typeof server.closeAllConnections === 'function') {
+            server.closeAllConnections();
+          }
           await new Promise<void>((resolve, reject) => {
             server.close((err?: Error) => {
               if (err) {
