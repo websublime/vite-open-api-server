@@ -391,6 +391,9 @@ describe('openApiServer plugin', () => {
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
 
+      // Register cleanup immediately so the server is stopped even if assertions below fail
+      cleanupFn = plugin.closeBundle as () => Promise<void>;
+
       // Capture the bound port before cleanup
       const proxy = vite.config.server.proxy;
       const target = proxy['/pets/v1'].target as string;
@@ -441,6 +444,9 @@ describe('openApiServer plugin', () => {
       const vite = createPluginTestViteServer();
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
+
+      // Register cleanup so the server is stopped even if assertions below fail
+      cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const closeBundle = plugin.closeBundle as () => Promise<void>;
       await closeBundle();

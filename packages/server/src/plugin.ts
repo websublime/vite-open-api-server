@@ -14,7 +14,7 @@ import type { Plugin, ViteDevServer } from 'vite';
 import { extractBannerInfo, printBanner, printError, printReloadNotification } from './banner.js';
 import { loadHandlers } from './handlers.js';
 import { createFileWatcher, debounce, type FileWatcher } from './hot-reload.js';
-import { configureMultiProxy } from './multi-proxy.js';
+import { configureMultiProxy, DEVTOOLS_PROXY_PATH } from './multi-proxy.js';
 import { createOrchestrator, type OrchestratorResult } from './orchestrator.js';
 import { loadSeeds } from './seeds.js';
 import { type OpenApiServerOptions, resolveOptions } from './types.js';
@@ -122,7 +122,7 @@ import { addCustomTab } from '@vue/devtools-api';
 
 try {
   // Route through Vite's proxy so it works in all environments
-  const iframeSrc = window.location.origin + '/_devtools/';
+  const iframeSrc = window.location.origin + '${DEVTOOLS_PROXY_PATH}/';
 
   addCustomTab({
     name: 'vite-plugin-open-api-server',
@@ -238,8 +238,16 @@ try {
       fileWatchers = [];
 
       // Stop the orchestrator (shared HTTP server)
-      await orchestrator?.stop();
-      orchestrator = null;
+      // Wrap in try/catch so a stop() rejection doesn't propagate —
+      // matches the teardownPartialInit pattern.
+      if (orchestrator) {
+        try {
+          await orchestrator.stop();
+        } catch {
+          // Swallow stop errors — nothing actionable at shutdown
+        }
+        orchestrator = null;
+      }
     },
   };
 

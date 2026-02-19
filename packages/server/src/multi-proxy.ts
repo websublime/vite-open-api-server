@@ -14,6 +14,18 @@ import type { ProxyOptions, ViteDevServer } from 'vite';
 import type { SpecInstance } from './orchestrator.js';
 
 /**
+ * Shared service proxy path prefixes.
+ *
+ * These constants are the single source of truth for the reserved proxy paths
+ * used by the DevTools iframe, internal API, and WebSocket connections.
+ * Both `configureMultiProxy()` and the virtual DevTools tab module in
+ * `plugin.ts` reference these to prevent divergence.
+ */
+export const DEVTOOLS_PROXY_PATH = '/_devtools';
+export const API_PROXY_PATH = '/_api';
+export const WS_PROXY_PATH = '/_ws';
+
+/**
  * Ensure `vite.config.server.proxy` exists and return a mutable reference.
  *
  * Returns `null` when `vite.config.server` is falsy, which can happen if
@@ -92,17 +104,17 @@ export function configureMultiProxy(
   // In practice validateUniqueProxyPaths() guards against such collisions
   // before this function is reached.
 
-  proxyConfig['/_devtools'] = {
+  proxyConfig[DEVTOOLS_PROXY_PATH] = {
     target: httpTarget,
     changeOrigin: true,
   };
 
-  proxyConfig['/_api'] = {
+  proxyConfig[API_PROXY_PATH] = {
     target: httpTarget,
     changeOrigin: true,
   };
 
-  proxyConfig['/_ws'] = {
+  proxyConfig[WS_PROXY_PATH] = {
     target: `ws://localhost:${port}`,
     changeOrigin: true,
     ws: true,
