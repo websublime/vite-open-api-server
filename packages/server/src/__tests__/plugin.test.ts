@@ -12,7 +12,7 @@
 import type { ProxyOptions } from 'vite';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { DEVTOOLS_PROXY_PATH } from '../multi-proxy.js';
+import { API_PROXY_PATH, DEVTOOLS_PROXY_PATH, WS_PROXY_PATH } from '../multi-proxy.js';
 import { openApiServer } from '../plugin.js';
 import { createMockLogger, createMockViteServer } from './test-utils.js';
 
@@ -215,9 +215,9 @@ describe('openApiServer plugin', () => {
       expect(proxy['/inventory/v1']).toBeDefined();
 
       // Shared service proxies
-      expect(proxy['/_devtools']).toBeDefined();
-      expect(proxy['/_api']).toBeDefined();
-      expect(proxy['/_ws']).toBeDefined();
+      expect(proxy[DEVTOOLS_PROXY_PATH]).toBeDefined();
+      expect(proxy[API_PROXY_PATH]).toBeDefined();
+      expect(proxy[WS_PROXY_PATH]).toBeDefined();
 
       // Total: 2 per-spec + 3 shared = 5
       expect(Object.keys(proxy)).toHaveLength(5);
@@ -489,7 +489,7 @@ describe('openApiServer plugin', () => {
         socket.setTimeout(1000);
         socket.on('timeout', () => {
           socket.destroy();
-          resolve(true);
+          resolve(false);
         });
         socket.on('error', () => {
           socket.destroy();

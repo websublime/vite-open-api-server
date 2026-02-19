@@ -285,7 +285,7 @@ export function validateUniqueProxyPaths(specs: Array<{ id: string; proxyPath: s
  */
 function validateNotReservedPath(path: string, specId: string): void {
   for (const reserved of RESERVED_PROXY_PATHS) {
-    if (path === reserved || path.startsWith(`${reserved}/`) || reserved.startsWith(`${path}/`)) {
+    if (path === reserved || path.startsWith(`${reserved}/`) || reserved.startsWith(path)) {
       throw new ValidationError(
         'PROXY_PATH_OVERLAP',
         `[${specId}] proxyPath "${path}" collides with reserved path "${reserved}" ` +
