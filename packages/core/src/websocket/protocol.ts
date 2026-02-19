@@ -192,9 +192,10 @@ export type ClientCommand =
  * The core protocol.ts remains unchanged — the wrapper adds specId at the
  * orchestrator level before broadcasting.
  *
- * **Note**: The `connected` event (with `specs: SpecInfo[]`) is not yet
- * emitted by the orchestrator. It will be wired up in Epic 3 when the
- * multi-spec WebSocket wrapper is implemented. See beads task vite-vh2.
+ * **Note**: The `connected` event (with `specs: SpecInfo[]`) is emitted by
+ * the orchestrator's shared WebSocket hub when a client connects (see
+ * `packages/server/src/orchestrator.ts`). Broadcast interception and
+ * multi-spec command routing will be added in Epic 3 (Task 3.1).
  */
 export type MultiSpecServerEvent =
   | { type: 'connected'; data: { serverVersion: string; specs: SpecInfo[] } }
