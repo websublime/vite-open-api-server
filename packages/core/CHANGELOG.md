@@ -1,3 +1,234 @@
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.14.0-next.6] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
 ## [0.14.0-next.5] - 2026-02-18
 
 ### Features
