@@ -52,7 +52,12 @@ export { createOrchestrator, SPEC_COLORS } from './orchestrator.js';
 // Multi-Proxy Configuration
 // =============================================================================
 
-export { configureMultiProxy } from './multi-proxy.js';
+export {
+  API_PROXY_PATH,
+  configureMultiProxy,
+  DEVTOOLS_PROXY_PATH,
+  WS_PROXY_PATH,
+} from './multi-proxy.js';
 
 // =============================================================================
 // Handler Loading (for advanced use cases)
