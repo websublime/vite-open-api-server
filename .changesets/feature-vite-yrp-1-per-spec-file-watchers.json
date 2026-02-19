@@ -1,0 +1,13 @@
+{
+  "branch": "feature/vite-yrp-1-per-spec-file-watchers",
+  "bump": "minor",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-19T13:54:59.105998Z",
+  "updated_at": "2026-02-19T13:54:59.106378Z"
+}
