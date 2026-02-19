@@ -942,16 +942,11 @@ describe('createOrchestrator', () => {
     it('should mount /_ws route with upgradeWebSocket middleware', async () => {
       const { result } = await createTestOrchestrator();
 
-      // @hono/node-ws is a devDependency so the upgradeWebSocket middleware
-      // is active. A plain HTTP request (no Upgrade header) returns 404
-      // because upgradeWebSocket returns undefined for non-upgrade requests.
-      //
-      // Note: A missing route would also 404, so this is a weak assertion.
-      // Full WebSocket protocol verification requires a running server
-      // (covered by integration tests in Task 5.4.5). The hub wiring below
-      // provides the stronger confirmation.
-      const response = await result.app.request('/_ws');
-      expect(response.status).toBe(404);
+      // Assert route registration directly via Hono's routes array
+      const hasWsRoute = result.app.routes.some(
+        (route) => route.path === '/_ws' && route.method === 'GET',
+      );
+      expect(hasWsRoute).toBe(true);
 
       // The wsHub is wired and functional (see addClient tests below)
       expect(result.wsHub).toBeDefined();
