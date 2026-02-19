@@ -63,7 +63,7 @@ export interface RegisterDevToolsOptions {
  *
  * // Register OpenAPI Server DevTools
  * if (import.meta.env.DEV) {
- *   await registerDevTools(app, { port: 3000 });
+ *   await registerDevTools(app);
  * }
  *
  * app.mount('#app');

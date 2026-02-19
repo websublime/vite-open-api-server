@@ -486,7 +486,13 @@ describe('openApiServer plugin', () => {
           socket.destroy();
           resolve(false);
         });
+        socket.setTimeout(1000);
+        socket.on('timeout', () => {
+          socket.destroy();
+          resolve(true);
+        });
         socket.on('error', () => {
+          socket.destroy();
           resolve(true);
         });
       });
