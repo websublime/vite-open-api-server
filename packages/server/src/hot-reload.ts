@@ -402,7 +402,22 @@ export async function reloadSpecSeeds(
 
     instance.server.store.clearAll();
     if (seedsResult.seeds.size > 0) {
-      await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
+      try {
+        await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
+      } catch (execError) {
+        // Store was already cleared — warn that it's now empty due to seed execution failure
+        printError(
+          `Seeds loaded but executeSeeds failed for spec "${instance.id}"; store is now empty`,
+          execError,
+          options,
+        );
+        // Still broadcast so DevTools reflects the cleared state
+        instance.server.wsHub.broadcast({
+          type: 'seeds:updated',
+          data: { count: 0 },
+        });
+        return;
+      }
     }
 
     instance.server.wsHub.broadcast({
