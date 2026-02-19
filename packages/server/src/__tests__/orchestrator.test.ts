@@ -10,6 +10,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import packageJson from '../../package.json' with { type: 'json' };
 import { createOrchestrator, type OrchestratorResult, SPEC_COLORS } from '../orchestrator.js';
 import { type ResolvedOptions, resolveOptions } from '../types.js';
 import { createMockLogger, createMockViteServer, type MockLogger } from './test-utils.js';
@@ -938,19 +939,21 @@ describe('createOrchestrator', () => {
       expect(result.wsHub.getClientCount()).toBe(0);
     });
 
-    it('should mount /_ws route on mainApp', async () => {
+    it('should mount /_ws route with upgradeWebSocket middleware', async () => {
       const { result } = await createTestOrchestrator();
 
       // @hono/node-ws is a devDependency so the upgradeWebSocket middleware
-      // is active. A plain HTTP request (no Upgrade header) is not handled
-      // by the middleware — Hono replies 404 because upgradeWebSocket returns
-      // undefined for non-upgrade requests. This 404 proves the route exists
-      // with the upgrade middleware (a missing route would also 404, but the
-      // route is confirmed via the wsHub being accessible and functional).
+      // is active. A plain HTTP request (no Upgrade header) returns 404
+      // because upgradeWebSocket returns undefined for non-upgrade requests.
+      //
+      // Note: A missing route would also 404, so this is a weak assertion.
+      // Full WebSocket protocol verification requires a running server
+      // (covered by integration tests in Task 5.4.5). The hub wiring below
+      // provides the stronger confirmation.
       const response = await result.app.request('/_ws');
       expect(response.status).toBe(404);
 
-      // The route is confirmed via the hub being accessible and wired
+      // The wsHub is wired and functional (see addClient tests below)
       expect(result.wsHub).toBeDefined();
       expect(result.wsHub.getClientCount()).toBe(0);
     });
@@ -970,8 +973,7 @@ describe('createOrchestrator', () => {
 
       const sentMessage = JSON.parse(mockClient.send.mock.calls[0][0]);
       expect(sentMessage.type).toBe('connected');
-      expect(sentMessage.data.serverVersion).toBeDefined();
-      expect(typeof sentMessage.data.serverVersion).toBe('string');
+      expect(sentMessage.data.serverVersion).toBe(packageJson.version);
       expect(sentMessage.data.specs).toBeInstanceOf(Array);
       expect(sentMessage.data.specs).toHaveLength(2);
 

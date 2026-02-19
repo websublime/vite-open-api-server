@@ -116,6 +116,8 @@ export interface OrchestratorResult {
    * In multi-spec mode (Epic 3, Task 3.1), this hub will be replaced by
    * `createMultiSpecWebSocketHub()` which also wires broadcast interception
    * and multi-spec command routing.
+   *
+   * @experimental Will be replaced by `createMultiSpecWebSocketHub()` in Epic 3.
    */
   wsHub: WebSocketHub;
 
@@ -291,6 +293,96 @@ function mountDevToolsSpa(mainApp: Hono, logger: Logger): void {
 }
 
 /**
+ * Result of WebSocket route setup.
+ *
+ * Contains the injection function that must be called on `start()` to
+ * hook the Node.js HTTP server's `upgrade` event for WS handshakes.
+ */
+interface WebSocketRouteResult {
+  // biome-ignore lint/suspicious/noExplicitAny: @hono/node-ws types expect node http.Server but we store generically
+  injectWebSocket: ((server: any) => void) | null;
+}
+
+/**
+ * Create the orchestrator's shared WebSocket hub with enhanced `connected` event.
+ *
+ * Uses `autoConnect: false` to suppress the core hub's default connected event,
+ * then overrides `addClient` to send the multi-spec `connected` event instead
+ * (with `specs` metadata and package version).
+ *
+ * **Note**: This override will be replaced by `createMultiSpecWebSocketHub()` in
+ * Epic 3 (Task 3.1), which provides a proper factory with typed events.
+ */
+function createOrchestratorHub(specsInfo: SpecInfo[]): WebSocketHub {
+  const wsHub = createWebSocketHub({ autoConnect: false });
+
+  const originalAddClient = wsHub.addClient.bind(wsHub);
+  wsHub.addClient = (ws: WebSocketClient) => {
+    originalAddClient(ws);
+    wsHub.sendTo(ws, {
+      type: 'connected',
+      // biome-ignore lint/suspicious/noExplicitAny: MultiSpecServerEvent connected data extends ServerEvent connected data with specs[]
+      data: { serverVersion: PACKAGE_VERSION, specs: specsInfo } as any,
+    });
+  };
+
+  return wsHub;
+}
+
+/**
+ * Mount the `/_ws` WebSocket route on the main Hono app.
+ *
+ * Attempts to dynamically import `@hono/node-ws`. On success, registers
+ * the upgrade middleware and returns the `injectWebSocket` function for
+ * use during `start()`. On failure (optional peer not installed), mounts
+ * a 501 placeholder.
+ */
+async function mountWebSocketRoute(
+  mainApp: Hono,
+  wsHub: WebSocketHub,
+  logger: Logger,
+): Promise<WebSocketRouteResult> {
+  try {
+    const { createNodeWebSocket } = await import('@hono/node-ws');
+    const nodeWs = createNodeWebSocket({ app: mainApp });
+
+    mainApp.get(
+      '/_ws',
+      nodeWs.upgradeWebSocket(() => ({
+        onOpen(_event, ws) {
+          wsHub.addClient(ws);
+        },
+        onMessage(event, ws) {
+          wsHub.handleMessage(ws, event.data);
+        },
+        onClose(_event, ws) {
+          wsHub.removeClient(ws);
+        },
+      })),
+    );
+
+    logger.debug?.('[vite-plugin-open-api-server] WebSocket upgrade enabled at /_ws');
+    return { injectWebSocket: nodeWs.injectWebSocket };
+  } catch {
+    // @hono/node-ws not available — serve 501 placeholder
+    mainApp.get('/_ws', (c) => {
+      return c.json(
+        {
+          message: 'WebSocket endpoint - use ws:// protocol',
+          note: 'Install @hono/node-ws to enable WebSocket support',
+        },
+        501,
+      );
+    });
+
+    logger.debug?.(
+      '[vite-plugin-open-api-server] @hono/node-ws not available, WebSocket upgrade disabled',
+    );
+    return { injectWebSocket: null };
+  }
+}
+
+/**
  * Create the X-Spec-Id dispatch middleware.
  *
  * Uses slugify() to normalize the incoming header so it matches the
@@ -448,66 +540,11 @@ export async function createOrchestrator(
   // --- Spec metadata (computed early for the connected event) ---
   const specsInfo = instances.map((inst) => inst.info);
 
-  // --- Shared WebSocket Hub ---
-  // The orchestrator owns a single WebSocket hub for all client connections.
-  // autoConnect: false suppresses the default 'connected' event — the
-  // orchestrator sends an enhanced version with specs metadata instead.
-  const wsHub = createWebSocketHub({ autoConnect: false });
-
-  // Override addClient to send enhanced connected event with specs metadata.
-  // This is the orchestrator-level equivalent of the core hub's auto-connect,
-  // but with additional multi-spec data (specs array, package version).
-  const originalAddClient = wsHub.addClient.bind(wsHub);
-  wsHub.addClient = (ws: WebSocketClient) => {
-    originalAddClient(ws);
-    wsHub.sendTo(ws, {
-      type: 'connected',
-      // biome-ignore lint/suspicious/noExplicitAny: MultiSpecServerEvent connected data extends ServerEvent connected data with specs[]
-      data: { serverVersion: PACKAGE_VERSION, specs: specsInfo } as any,
-    });
-  };
+  // --- Shared WebSocket Hub (with enhanced connected event) ---
+  const wsHub = createOrchestratorHub(specsInfo);
 
   // --- WebSocket Route (/_ws) ---
-  // biome-ignore lint/suspicious/noExplicitAny: @hono/node-ws types expect node http.Server but we store generically
-  let injectWebSocket: ((server: any) => void) | null = null;
-
-  try {
-    const { createNodeWebSocket } = await import('@hono/node-ws');
-    const nodeWs = createNodeWebSocket({ app: mainApp });
-    injectWebSocket = nodeWs.injectWebSocket;
-
-    mainApp.get(
-      '/_ws',
-      nodeWs.upgradeWebSocket(() => ({
-        onOpen(_event, ws) {
-          wsHub.addClient(ws);
-        },
-        onMessage(event, ws) {
-          wsHub.handleMessage(ws, event.data);
-        },
-        onClose(_event, ws) {
-          wsHub.removeClient(ws);
-        },
-      })),
-    );
-
-    logger.debug?.('[vite-plugin-open-api-server] WebSocket upgrade enabled at /_ws');
-  } catch {
-    // @hono/node-ws not available — serve 501 placeholder
-    mainApp.get('/_ws', (c) => {
-      return c.json(
-        {
-          message: 'WebSocket endpoint - use ws:// protocol',
-          note: 'Install @hono/node-ws to enable WebSocket support',
-        },
-        501,
-      );
-    });
-
-    logger.debug?.(
-      '[vite-plugin-open-api-server] @hono/node-ws not available, WebSocket upgrade disabled',
-    );
-  }
+  const { injectWebSocket } = await mountWebSocketRoute(mainApp, wsHub, logger);
 
   // --- X-Spec-Id dispatch middleware ---
   const instanceMap = new Map(instances.map((inst) => [inst.id, inst]));
@@ -598,7 +635,9 @@ export async function createOrchestrator(
       const server = serverInstance;
       if (server) {
         try {
-          // Clear all WebSocket clients before closing the server
+          // Remove all clients from the hub's tracking set so broadcasts
+          // during teardown are no-ops. Does not close WS connections —
+          // closeAllConnections() handles the network layer below.
           wsHub.clear();
 
           // Forcibly destroy all open connections (including WebSocket clients)
