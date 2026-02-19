@@ -194,6 +194,7 @@ try {
           printBanner(bannerInfo, resolvedOptions);
         }
       } catch (error) {
+        await teardownPartialInit();
         printError('Failed to start OpenAPI mock server', error, resolvedOptions);
         throw error;
       }
@@ -231,10 +232,9 @@ try {
      * and is the established pattern in this codebase.
      */
     async closeBundle(): Promise<void> {
-      // Close all per-spec file watchers
-      for (const watcher of fileWatchers) {
-        await watcher.close();
-      }
+      // Close all per-spec file watchers — use allSettled so one failure
+      // doesn't prevent the rest from being cleaned up
+      await Promise.allSettled(fileWatchers.map((w) => w.close()));
       fileWatchers = [];
 
       // Stop the orchestrator (shared HTTP server)
@@ -242,6 +242,27 @@ try {
       orchestrator = null;
     },
   };
+
+  /**
+   * Clean up partially-initialised resources when configureServer fails.
+   *
+   * Closes any file watchers that were created and stops the orchestrator
+   * HTTP server if it was started. Swallows errors so the original failure
+   * propagates unchanged.
+   */
+  async function teardownPartialInit(): Promise<void> {
+    await Promise.allSettled(fileWatchers.map((w) => w.close()));
+    fileWatchers = [];
+
+    if (orchestrator) {
+      try {
+        await orchestrator.stop();
+      } catch {
+        // Swallow stop errors — the original error is more important
+      }
+      orchestrator = null;
+    }
+  }
 
   /**
    * Set up per-spec file watchers for hot reload
@@ -260,29 +281,35 @@ try {
   ): Promise<FileWatcher[]> {
     const watchers: FileWatcher[] = [];
 
-    for (const instance of orch.instances) {
-      const specServer = instance.server;
-      const specConfig = instance.config;
+    try {
+      for (const instance of orch.instances) {
+        const specServer = instance.server;
+        const specConfig = instance.config;
 
-      // Create debounced reload functions scoped to this spec
-      const debouncedHandlerReload = debounce(
-        () => reloadSpecHandlers(specServer, specConfig.handlersDir, viteServer, projectCwd),
-        100,
-      );
-      const debouncedSeedReload = debounce(
-        () => reloadSpecSeeds(specServer, specConfig.seedsDir, viteServer, projectCwd),
-        100,
-      );
+        // Create debounced reload functions scoped to this spec
+        const debouncedHandlerReload = debounce(
+          () => reloadSpecHandlers(specServer, specConfig.handlersDir, viteServer, projectCwd),
+          100,
+        );
+        const debouncedSeedReload = debounce(
+          () => reloadSpecSeeds(specServer, specConfig.seedsDir, viteServer, projectCwd),
+          100,
+        );
 
-      const watcher = await createFileWatcher({
-        handlersDir: specConfig.handlersDir,
-        seedsDir: specConfig.seedsDir,
-        cwd: projectCwd,
-        onHandlerChange: debouncedHandlerReload,
-        onSeedChange: debouncedSeedReload,
-      });
+        const watcher = await createFileWatcher({
+          handlersDir: specConfig.handlersDir,
+          seedsDir: specConfig.seedsDir,
+          cwd: projectCwd,
+          onHandlerChange: debouncedHandlerReload,
+          onSeedChange: debouncedSeedReload,
+        });
 
-      watchers.push(watcher);
+        watchers.push(watcher);
+      }
+    } catch (error) {
+      // Clean up already-created watchers before re-throwing
+      await Promise.allSettled(watchers.map((w) => w.close()));
+      throw error;
     }
 
     return watchers;
@@ -329,12 +356,9 @@ try {
       // Load seeds first (before clearing) to minimize the window where store is empty
       const seedsResult = await loadSeeds(seedsDir, viteServer, projectCwd);
 
+      server.store.clearAll();
       if (seedsResult.seeds.size > 0) {
-        server.store.clearAll();
         await executeSeeds(seedsResult.seeds, server.store, server.document);
-      } else {
-        // User removed all seed files — clear the store
-        server.store.clearAll();
       }
 
       server.wsHub.broadcast({
