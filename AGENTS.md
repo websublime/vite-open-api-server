@@ -152,6 +152,8 @@ For more details, see README.md and QUICKSTART.md.
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
+**Branch Strategy:** Active v1.0.0 development targets the `next` branch. Only hotfixes target `main`.
+
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up

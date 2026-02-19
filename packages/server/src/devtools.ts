@@ -16,7 +16,7 @@ import type { App } from 'vue';
 export interface RegisterDevToolsOptions {
   /**
    * The port where the OpenAPI server is running
-   * @default 3000
+   * @default 4000
    */
   port?: number;
 
@@ -63,7 +63,7 @@ export interface RegisterDevToolsOptions {
  *
  * // Register OpenAPI Server DevTools
  * if (import.meta.env.DEV) {
- *   await registerDevTools(app, { port: 3000 });
+ *   await registerDevTools(app);
  * }
  *
  * app.mount('#app');
@@ -127,12 +127,12 @@ export async function registerDevTools(
  * When running in a browser, protocol and host are automatically derived from
  * window.location if not explicitly provided.
  *
- * @param port - Server port (default: 3000)
+ * @param port - Server port (default: 4000, matching OpenApiServerOptions.port)
  * @param host - Server host (default: 'localhost' or window.location.hostname)
  * @param protocol - Protocol to use (default: 'http' or window.location.protocol)
  * @returns DevTools SPA URL
  */
-export function getDevToolsUrl(port = 3000, host?: string, protocol?: 'http' | 'https'): string {
+export function getDevToolsUrl(port = 4000, host?: string, protocol?: 'http' | 'https'): string {
   // Derive defaults from browser environment if available
   const actualProtocol =
     protocol ||

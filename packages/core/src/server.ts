@@ -141,6 +141,36 @@ export interface OpenApiServer {
   updateSeeds(seeds: Map<string, unknown[]>): void;
 
   /**
+   * Get the request/response timeline for this server instance
+   *
+   * Returns the internal timeline array. The orchestrator uses this
+   * to serve per-spec timeline data via the aggregated internal API
+   * and multi-spec WebSocket commands.
+   *
+   * @returns Timeline entries array (most recent last)
+   */
+  getTimeline(): readonly TimelineEntry[];
+
+  /**
+   * Clear the timeline for this server instance
+   *
+   * Used by the orchestrator for spec-scoped `clear:timeline` commands.
+   *
+   * @returns Number of entries cleared
+   */
+  clearTimeline(): number;
+
+  /**
+   * Truncate the timeline without broadcasting a WebSocket event.
+   *
+   * Used by the orchestrator when passing clearTimeline to mountInternalApi,
+   * which broadcasts its own `timeline:cleared` event after calling this.
+   *
+   * @returns Number of entries removed
+   */
+  truncateTimeline(): number;
+
+  /**
    * Get the configured port
    */
   readonly port: number;
@@ -283,6 +313,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       cors({
         origin: corsOrigin,
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+        // Note: X-Spec-Id is intentionally NOT included here. It is an
+        // orchestrator-level header added by the server package's CORS config.
+        // Consumers using createOpenApiServer() directly don't need it.
         allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
         exposeHeaders: ['Content-Length', 'X-Request-Id'],
         maxAge: 86400,
@@ -304,6 +337,11 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     wsHub,
     timeline,
     timelineLimit,
+    clearTimeline: () => {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
+    },
     document,
   });
 
@@ -478,6 +516,28 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       });
 
       logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
+    },
+
+    getTimeline(): readonly TimelineEntry[] {
+      return timeline;
+    },
+
+    clearTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
+
+      wsHub.broadcast({
+        type: 'timeline:cleared',
+        data: { count },
+      });
+
+      return count;
+    },
+
+    truncateTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
     },
 
     /**

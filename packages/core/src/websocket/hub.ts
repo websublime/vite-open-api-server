@@ -76,6 +76,17 @@ export interface WebSocketHubOptions {
   onCommand?: CommandHandler;
 
   /**
+   * Whether to automatically send a 'connected' event when a client is added
+   *
+   * When `false`, `addClient()` registers the client but skips the automatic
+   * `connected` event. This is used by the multi-spec orchestrator which
+   * sends its own `connected` event with spec metadata.
+   *
+   * @default true
+   */
+  autoConnect?: boolean;
+
+  /**
    * Optional logger for debugging
    *
    * If not provided, defaults to `console` at runtime.
@@ -229,7 +240,7 @@ const WS_READY_STATE = {
  * @returns WebSocket hub instance
  */
 export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocketHub {
-  const { serverVersion = '2.0.0', onCommand, logger: customLogger } = options;
+  const { serverVersion = '2.0.0', onCommand, autoConnect = true, logger: customLogger } = options;
 
   /**
    * Logger instance - defaults to console if not provided
@@ -475,13 +486,15 @@ export function createWebSocketHub(options: WebSocketHubOptions = {}): WebSocket
       clients.add(client);
       log.debug(`Client added, total clients: ${clients.size}`);
 
-      // Send connected event with server version
-      const connectedEvent: ServerEvent = {
-        type: 'connected',
-        data: { serverVersion },
-      };
+      // Send connected event with server version (unless autoConnect is false)
+      if (autoConnect) {
+        const connectedEvent: ServerEvent = {
+          type: 'connected',
+          data: { serverVersion },
+        };
 
-      safeSend(client, JSON.stringify(connectedEvent));
+        safeSend(client, JSON.stringify(connectedEvent));
+      }
     },
 
     removeClient(client: WebSocketClient): void {

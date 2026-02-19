@@ -128,11 +128,15 @@ function centerText(text: string, width: number): string {
 /**
  * Extract banner info from server registry and document
  *
+ * Note: This is the v0.x single-spec banner. It will be redesigned for
+ * multi-spec display in Task 1.7 (vite-qq9.7). Currently only shows the
+ * first spec's information.
+ *
  * @param registry - Endpoint registry
  * @param document - OpenAPI document
  * @param handlerCount - Number of loaded handlers
  * @param seedCount - Number of loaded seed schemas
- * @param options - Resolved options
+ * @param options - Resolved options (must contain at least one spec)
  * @returns Banner info
  */
 export function extractBannerInfo(
@@ -144,7 +148,7 @@ export function extractBannerInfo(
 ): BannerInfo {
   return {
     port: options.port,
-    proxyPath: options.proxyPath,
+    proxyPath: options.specs[0]?.proxyPath || '(pending resolution)',
     title: document.info.title,
     version: document.info.version,
     endpointCount: registry.endpoints.size,

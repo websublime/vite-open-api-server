@@ -2,13 +2,146 @@
  * Vite Plugin Types
  *
  * What: Type definitions for the OpenAPI server Vite plugin
- * How: Defines configuration options and internal types
+ * How: Defines configuration options, resolved types, and validation errors
  * Why: Provides type safety and documentation for plugin consumers
  *
  * @module types
  */
 
 import type { Logger } from '@websublime/vite-plugin-open-api-core';
+
+// =============================================================================
+// Validation Error Codes (Appendix B)
+// =============================================================================
+
+/**
+ * Error codes for configuration validation errors.
+ *
+ * Used across Tasks 1.2–1.4 for typed error handling.
+ * Matches TECHNICAL-SPECIFICATION-V2.md Appendix B.
+ */
+export type ValidationErrorCode =
+  | 'SPEC_ID_MISSING'
+  | 'SPEC_ID_DUPLICATE'
+  | 'PROXY_PATH_MISSING'
+  | 'PROXY_PATH_TOO_BROAD'
+  | 'PROXY_PATH_DUPLICATE'
+  | 'PROXY_PATH_OVERLAP'
+  | 'PROXY_PATH_PREFIX_COLLISION'
+  | 'SPEC_NOT_FOUND'
+  | 'SPECS_EMPTY';
+
+/**
+ * Typed validation error for configuration issues.
+ *
+ * Thrown by resolveOptions() and validation functions in spec-id.ts
+ * and proxy-path.ts. Consumers can catch and inspect the `code` field
+ * for programmatic error handling.
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   resolveOptions({ specs: [] });
+ * } catch (error) {
+ *   if (error instanceof ValidationError && error.code === 'SPECS_EMPTY') {
+ *     // handle empty specs
+ *   }
+ * }
+ * ```
+ */
+export class ValidationError extends Error {
+  readonly code: ValidationErrorCode;
+
+  constructor(code: ValidationErrorCode, message: string) {
+    super(message);
+    this.name = 'ValidationError';
+    this.code = code;
+  }
+}
+
+// =============================================================================
+// Shared Type Aliases
+// =============================================================================
+
+/**
+ * How a proxy path was determined.
+ *
+ * - `'explicit'` — set directly in SpecConfig.proxyPath
+ * - `'auto'` — auto-derived from the OpenAPI document's servers[0].url
+ *
+ * Used by both DeriveProxyPathResult and ResolvedSpecConfig to ensure
+ * the two sources of this value stay in sync.
+ */
+export type ProxyPathSource = 'auto' | 'explicit';
+
+// =============================================================================
+// User-Facing Configuration Types
+// =============================================================================
+
+/**
+ * Configuration for a single OpenAPI spec instance
+ *
+ * @example
+ * ```typescript
+ * const petstore: SpecConfig = {
+ *   spec: './openapi/petstore.yaml',
+ *   id: 'petstore',
+ *   proxyPath: '/api/v3',
+ *   handlersDir: './mocks/petstore/handlers',
+ *   seedsDir: './mocks/petstore/seeds',
+ *   idFields: { Pet: 'petId' },
+ * };
+ * ```
+ */
+export interface SpecConfig {
+  /**
+   * Path to OpenAPI spec file (required)
+   *
+   * Supports: file paths, URLs, YAML, JSON
+   *
+   * @example './openapi/petstore.yaml'
+   * @example 'https://petstore3.swagger.io/api/v3/openapi.json'
+   */
+  spec: string;
+
+  /**
+   * Unique identifier for this spec instance
+   *
+   * Used for routing, DevTools grouping, logging, default directory names.
+   * If omitted, auto-derived from spec's info.title (slugified).
+   *
+   * @example 'petstore'
+   */
+  id?: string;
+
+  /**
+   * Base path for request proxy
+   *
+   * If omitted, auto-derived from spec's servers[0].url.
+   * Must be unique across all specs.
+   *
+   * @example '/api/v3'
+   */
+  proxyPath?: string;
+
+  /**
+   * Directory containing handler files for this spec
+   * @default './mocks/{specId}/handlers'
+   */
+  handlersDir?: string;
+
+  /**
+   * Directory containing seed files for this spec
+   * @default './mocks/{specId}/seeds'
+   */
+  seedsDir?: string;
+
+  /**
+   * ID field configuration per schema for this spec
+   * @default {} (uses 'id' for all schemas)
+   */
+  idFields?: Record<string, string>;
+}
 
 /**
  * Plugin configuration options
@@ -20,11 +153,11 @@ import type { Logger } from '@websublime/vite-plugin-open-api-core';
  * export default defineConfig({
  *   plugins: [
  *     openApiServer({
- *       spec: './openapi/petstore.yaml',
+ *       specs: [
+ *         { spec: './openapi/petstore.yaml' },
+ *         { spec: './openapi/inventory.yaml', id: 'inventory' },
+ *       ],
  *       port: 4000,
- *       proxyPath: '/api',
- *       handlersDir: './mocks/handlers',
- *       seedsDir: './mocks/seeds',
  *     }),
  *   ],
  * });
@@ -32,150 +165,98 @@ import type { Logger } from '@websublime/vite-plugin-open-api-core';
  */
 export interface OpenApiServerOptions {
   /**
-   * Path to OpenAPI spec file (required)
-   *
-   * Supports:
-   * - Local file paths (relative or absolute)
-   * - URLs (http:// or https://)
-   * - YAML or JSON format
-   *
-   * @example './openapi/petstore.yaml'
-   * @example 'https://petstore3.swagger.io/api/v3/openapi.json'
+   * Array of OpenAPI spec configurations (required)
+   * Each entry runs as an isolated instance.
    */
-  spec: string;
+  specs: SpecConfig[];
 
   /**
-   * Server port for the mock server
-   *
-   * The mock server runs on this port, and Vite proxies
-   * requests from `proxyPath` to this server.
-   *
+   * Server port — all spec instances share this port
    * @default 4000
    */
   port?: number;
 
   /**
-   * Base path for request proxy
-   *
-   * All requests to this path in your Vite dev server
-   * will be proxied to the mock server.
-   *
-   * @example '/api/v3'
-   * @default '/api'
-   */
-  proxyPath?: string;
-
-  /**
-   * Directory containing handler files
-   *
-   * Handler files should export an object with operationId keys
-   * and handler functions as values. Use `defineHandlers()` for
-   * type-safe handler definitions.
-   *
-   * @example './mocks/handlers'
-   * @default './mocks/handlers'
-   */
-  handlersDir?: string;
-
-  /**
-   * Directory containing seed files
-   *
-   * Seed files should export an object with schema name keys
-   * and seed functions as values. Use `defineSeeds()` for
-   * type-safe seed definitions.
-   *
-   * @example './mocks/seeds'
-   * @default './mocks/seeds'
-   */
-  seedsDir?: string;
-
-  /**
-   * Enable/disable the plugin
-   *
-   * When false, the plugin does nothing and Vite runs normally.
-   * Useful for conditional enabling based on environment.
-   *
+   * Enable/disable plugin
    * @default true
    */
   enabled?: boolean;
 
   /**
-   * ID field configuration per schema
-   *
-   * Maps schema names to the field used as the primary identifier.
-   * Used by the store for CRUD operations.
-   *
-   * @example { User: 'username', Order: 'orderId' }
-   * @default {} (uses 'id' for all schemas)
-   */
-  idFields?: Record<string, string>;
-
-  /**
-   * Maximum timeline events to keep
-   *
-   * The timeline stores request/response history for DevTools.
-   * Older events are removed when this limit is exceeded.
-   *
+   * Maximum timeline events per spec
    * @default 500
    */
   timelineLimit?: number;
 
   /**
    * Enable DevTools integration
-   *
-   * When true, mounts the DevTools SPA at `/_devtools`
-   * and enables Vue DevTools custom tab.
-   *
    * @default true
    */
   devtools?: boolean;
 
   /**
-   * Enable CORS on the mock server
-   *
+   * Enable CORS
    * @default true
    */
   cors?: boolean;
 
   /**
    * CORS origin configuration
-   *
    * @default '*'
    */
   corsOrigin?: string | string[];
 
   /**
    * Custom logger instance
-   *
-   * Defaults to a Vite-integrated logger that respects
-   * Vite's logging level settings.
    */
   logger?: Logger;
 
   /**
    * Suppress startup banner
-   *
-   * When true, the plugin won't print the startup banner
-   * showing server details and loaded handlers/seeds.
-   *
    * @default false
    */
   silent?: boolean;
 }
 
+// =============================================================================
+// Internal Resolved Types
+// =============================================================================
+
 /**
- * Resolved plugin options with defaults applied
+ * Resolved spec config with all defaults applied
  *
- * @internal
+ * Exported for advanced use cases (e.g., custom orchestrators or
+ * test utilities that need to inspect resolved configuration).
  */
-export interface ResolvedOptions {
+export interface ResolvedSpecConfig {
   spec: string;
-  port: number;
+  /** Empty string until orchestrator resolution; guaranteed non-empty after `createOrchestrator()` */
+  id: string;
+  /** Empty string until orchestrator resolution; guaranteed non-empty after `createOrchestrator()` */
   proxyPath: string;
+  /**
+   * How proxyPath was determined — used for banner display.
+   *
+   * Written back by the orchestrator after document processing.
+   * Used by the startup banner to display `(auto-derived)` vs
+   * `(explicit)` next to each proxy path.
+   */
+  proxyPathSource: ProxyPathSource;
   handlersDir: string;
   seedsDir: string;
-  enabled: boolean;
   idFields: Record<string, string>;
+}
+
+/**
+ * Resolved options with defaults applied
+ *
+ * Exported for advanced use cases (e.g., custom orchestrators or
+ * test utilities that need to inspect resolved configuration).
+ */
+export interface ResolvedOptions {
+  specs: ResolvedSpecConfig[];
+  port: number;
+  enabled: boolean;
   timelineLimit: number;
   devtools: boolean;
   cors: boolean;
@@ -184,28 +265,71 @@ export interface ResolvedOptions {
   logger?: Logger;
 }
 
+// =============================================================================
+// Option Resolution
+// =============================================================================
+
 /**
- * Resolve options with defaults
+ * Validate that specs array is non-empty and each entry has a valid spec field.
+ *
+ * @param specs - Array of spec configurations to validate
+ * @throws {ValidationError} SPECS_EMPTY if specs array is missing or empty
+ * @throws {ValidationError} SPEC_NOT_FOUND if a spec entry has empty spec field
+ */
+export function validateSpecs(specs: SpecConfig[]): void {
+  if (!specs || !Array.isArray(specs) || specs.length === 0) {
+    throw new ValidationError(
+      'SPECS_EMPTY',
+      'specs is required and must be a non-empty array of SpecConfig',
+    );
+  }
+
+  for (let i = 0; i < specs.length; i++) {
+    const spec = specs[i];
+    if (!spec || typeof spec !== 'object') {
+      throw new ValidationError(
+        'SPEC_NOT_FOUND',
+        `specs[${i}]: must be a SpecConfig object, got ${spec === null ? 'null' : typeof spec}`,
+      );
+    }
+    if (!spec.spec || typeof spec.spec !== 'string' || spec.spec.trim() === '') {
+      const identifier = spec.id ? ` (id: "${spec.id}")` : '';
+      throw new ValidationError(
+        'SPEC_NOT_FOUND',
+        `specs[${i}]${identifier}: spec field is required and must be a non-empty string (path or URL to OpenAPI spec)`,
+      );
+    }
+  }
+}
+
+/**
+ * Resolve options with defaults.
+ *
+ * Note: spec ID and proxyPath resolution requires processing the OpenAPI document
+ * first, so they are resolved later in the orchestrator.
+ * This function only resolves static defaults.
  *
  * @param options - User-provided options
  * @returns Resolved options with all defaults applied
  */
 export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
-  // Validate required spec option
-  if (!options.spec || typeof options.spec !== 'string' || options.spec.trim() === '') {
-    throw new Error(
-      'spec is required and must be a non-empty string (path or URL to OpenAPI spec)',
-    );
-  }
+  validateSpecs(options.specs);
 
   return {
-    spec: options.spec,
+    specs: options.specs.map((s) => ({
+      spec: s.spec,
+      // Placeholder — populated by orchestrator after document processing
+      id: s.id ?? '',
+      // Placeholder — populated by orchestrator after document processing
+      proxyPath: s.proxyPath ?? '',
+      // Preliminary — overwritten by deriveProxyPath() during orchestration
+      proxyPathSource: s.proxyPath?.trim() ? 'explicit' : 'auto',
+      handlersDir: s.handlersDir ?? '',
+      seedsDir: s.seedsDir ?? '',
+      idFields: s.idFields ?? {},
+    })),
     port: options.port ?? 4000,
-    proxyPath: options.proxyPath ?? '/api',
-    handlersDir: options.handlersDir ?? './mocks/handlers',
-    seedsDir: options.seedsDir ?? './mocks/seeds',
     enabled: options.enabled ?? true,
-    idFields: options.idFields ?? {},
     timelineLimit: options.timelineLimit ?? 500,
     devtools: options.devtools ?? true,
     cors: options.cors ?? true,
