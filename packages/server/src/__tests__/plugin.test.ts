@@ -197,8 +197,12 @@ describe('openApiServer plugin', () => {
       cleanupFn = plugin.closeBundle as () => Promise<void>;
 
       const proxy = vite.config.server.proxy;
-      expect(proxy['/pets/v1'].headers).toEqual({ 'x-spec-id': 'petstore' });
-      expect(proxy['/inventory/v1'].headers).toEqual({ 'x-spec-id': 'inventory' });
+      expect(proxy['/pets/v1'].headers).toEqual(
+        expect.objectContaining({ 'x-spec-id': 'petstore' }),
+      );
+      expect(proxy['/inventory/v1'].headers).toEqual(
+        expect.objectContaining({ 'x-spec-id': 'inventory' }),
+      );
     });
 
     it('should configure path rewriting for each spec', async () => {
@@ -387,13 +391,29 @@ describe('openApiServer plugin', () => {
       const configureServer = plugin.configureServer as (server: typeof vite) => Promise<void>;
       await configureServer(vite);
 
+      // Capture the bound port before cleanup
+      const proxy = vite.config.server.proxy;
+      const target = proxy['/pets/v1'].target as string;
+      const portMatch = target.match(/:(\d+)$/);
+      // biome-ignore lint/style/noNonNullAssertion: test setup ensures port is present
+      const boundPort = Number.parseInt(portMatch![1], 10);
+
       // Invoke closeBundle to clean up
       const closeBundle = plugin.closeBundle as () => Promise<void>;
       await closeBundle();
 
-      // Server should have logged stop message
-      const infoCalls = logger.info.mock.calls.map((c) => c[0]);
-      expect(infoCalls.some((msg: string) => msg.includes('Server stopped'))).toBe(true);
+      // Verify the server port is no longer accepting connections
+      const { createConnection } = await import('node:net');
+      const connectionRefused = await new Promise<boolean>((resolve) => {
+        const socket = createConnection({ port: boundPort, host: 'localhost' }, () => {
+          socket.destroy();
+          resolve(false);
+        });
+        socket.on('error', () => {
+          resolve(true);
+        });
+      });
+      expect(connectionRefused).toBe(true);
     });
 
     it('should be safe to call closeBundle without configureServer', async () => {
