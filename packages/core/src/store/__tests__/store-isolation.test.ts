@@ -274,7 +274,10 @@ describe('Store isolation: per-spec idFields (Task 2.2.3)', () => {
     storeB.update('User', 'alice@test.com', { role: 'editor' });
 
     expect(storeA.get('User', 'alice')).toEqual({ username: 'alice', role: 'superadmin' });
-    expect(storeB.get('User', 'alice@test.com')).toEqual({ email: 'alice@test.com', role: 'editor' });
+    expect(storeB.get('User', 'alice@test.com')).toEqual({
+      email: 'alice@test.com',
+      role: 'editor',
+    });
   });
 
   it('should delete using the correct idField per store', () => {

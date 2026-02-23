@@ -700,6 +700,165 @@ describe('createOrchestrator', () => {
   });
 
   // --------------------------------------------------------------------------
+  // Default directory resolution (Tasks 2.3.2, 2.3.3)
+  // --------------------------------------------------------------------------
+
+  describe('default directory resolution', () => {
+    // 2.3.2: Omitting handlersDir/seedsDir → verify correct defaults
+
+    it('should resolve default handlersDir as ./mocks/{specId}/handlers', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          { spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' },
+          { spec: inventorySpec, id: 'inventory', proxyPath: '/inventory/v1' },
+        ],
+      });
+
+      expect(result.instances[0].config.handlersDir).toBe('./mocks/petstore/handlers');
+      expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory/handlers');
+    });
+
+    it('should resolve default seedsDir as ./mocks/{specId}/seeds', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          { spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' },
+          { spec: inventorySpec, id: 'inventory', proxyPath: '/inventory/v1' },
+        ],
+      });
+
+      expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore/seeds');
+      expect(result.instances[1].config.seedsDir).toBe('./mocks/inventory/seeds');
+    });
+
+    it('should use spec-{index} namespace when id is omitted', async () => {
+      const mockLogger = createMockLogger();
+      const mockVite = createMockViteServer();
+
+      // When id is omitted, resolveOptions sets it to '' (empty string).
+      // processSpec resolves directories BEFORE deriveSpecId runs,
+      // so the fallback namespace is spec-{index}, not the auto-derived ID.
+      const options = resolveOptions({
+        specs: [
+          {
+            spec: petstoreSpec,
+            // No explicit id
+            proxyPath: '/pets/v1',
+          },
+          {
+            spec: inventorySpec,
+            // No explicit id
+            proxyPath: '/inventory/v1',
+          },
+        ],
+        port: 4999,
+        cors: false,
+        devtools: false,
+        logger: mockLogger,
+      });
+
+      const result = await createOrchestrator(options, mockVite, process.cwd());
+
+      // Directories use spec-{index} fallback because id was empty during resolution
+      expect(result.instances[0].config.handlersDir).toBe('./mocks/spec-0/handlers');
+      expect(result.instances[0].config.seedsDir).toBe('./mocks/spec-0/seeds');
+      expect(result.instances[1].config.handlersDir).toBe('./mocks/spec-1/handlers');
+      expect(result.instances[1].config.seedsDir).toBe('./mocks/spec-1/seeds');
+    });
+
+    // 2.3.3: Explicit handlersDir/seedsDir → verify override
+
+    it('should use explicit handlersDir when provided', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          {
+            spec: petstoreSpec,
+            id: 'petstore',
+            proxyPath: '/pets/v1',
+            handlersDir: './custom/handlers',
+          },
+          {
+            spec: inventorySpec,
+            id: 'inventory',
+            proxyPath: '/inventory/v1',
+            handlersDir: './other/inventory-handlers',
+          },
+        ],
+      });
+
+      expect(result.instances[0].config.handlersDir).toBe('./custom/handlers');
+      expect(result.instances[1].config.handlersDir).toBe('./other/inventory-handlers');
+    });
+
+    it('should use explicit seedsDir when provided', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          {
+            spec: petstoreSpec,
+            id: 'petstore',
+            proxyPath: '/pets/v1',
+            seedsDir: './custom/seeds',
+          },
+          {
+            spec: inventorySpec,
+            id: 'inventory',
+            proxyPath: '/inventory/v1',
+            seedsDir: './other/inventory-seeds',
+          },
+        ],
+      });
+
+      expect(result.instances[0].config.seedsDir).toBe('./custom/seeds');
+      expect(result.instances[1].config.seedsDir).toBe('./other/inventory-seeds');
+    });
+
+    it('should allow mixing explicit and default directories per spec', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          {
+            spec: petstoreSpec,
+            id: 'petstore',
+            proxyPath: '/pets/v1',
+            handlersDir: './custom/handlers',
+            // seedsDir omitted → default
+          },
+          {
+            spec: inventorySpec,
+            id: 'inventory',
+            proxyPath: '/inventory/v1',
+            // handlersDir omitted → default
+            seedsDir: './custom/inventory-seeds',
+          },
+        ],
+      });
+
+      // Spec 0: explicit handlersDir, default seedsDir
+      expect(result.instances[0].config.handlersDir).toBe('./custom/handlers');
+      expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore/seeds');
+
+      // Spec 1: default handlersDir, explicit seedsDir
+      expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory/handlers');
+      expect(result.instances[1].config.seedsDir).toBe('./custom/inventory-seeds');
+    });
+
+    it('should allow mixing explicit and default within the same spec', async () => {
+      const { result } = await createTestOrchestrator({
+        specs: [
+          {
+            spec: petstoreSpec,
+            id: 'petstore',
+            proxyPath: '/pets/v1',
+            handlersDir: './explicit/handlers',
+            // seedsDir not provided — should use default
+          },
+        ],
+      });
+
+      expect(result.instances[0].config.handlersDir).toBe('./explicit/handlers');
+      expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore/seeds');
+    });
+  });
+
+  // --------------------------------------------------------------------------
   // Internal API on first spec (Finding #16)
   // --------------------------------------------------------------------------
 
