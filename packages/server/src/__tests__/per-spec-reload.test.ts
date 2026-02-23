@@ -210,19 +210,22 @@ describe('Per-Spec Reload Isolation', () => {
       expect(specB.server.updateHandlers).not.toHaveBeenCalled();
     });
 
-    it('should print reload notification on success', async () => {
+    it('should print reload notification with handlers.size (not fileCount)', async () => {
       const newHandlers = new Map<string, HandlerFn>([
         ['GET /pets', vi.fn() as unknown as HandlerFn],
       ]);
 
+      // fileCount deliberately differs from handlers.size to ensure
+      // the implementation uses handlers.size for the notification
       mockedLoadHandlers.mockResolvedValue({
         handlers: newHandlers,
-        fileCount: 1,
-        files: ['pets.handlers.ts'],
+        fileCount: 3,
+        files: ['pets.handlers.ts', 'owners.handlers.ts', 'admin.handlers.ts'],
       });
 
       await reloadSpecHandlers(specA, mockVite, cwd, options);
 
+      // Should report handlers.size (1), not fileCount (3)
       expect(mockedPrintReloadNotification).toHaveBeenCalledWith('handlers', 1, options);
     });
 
@@ -368,17 +371,20 @@ describe('Per-Spec Reload Isolation', () => {
       expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
     });
 
-    it('should print reload notification on success with seeds', async () => {
+    it('should print reload notification with seeds.size (not fileCount)', async () => {
       const newSeeds = new Map<string, unknown[]>([['Pet', [{ id: 1, name: 'Rex' }]]]);
 
+      // fileCount deliberately differs from seeds.size to ensure
+      // the implementation uses seeds.size for the notification
       mockedLoadSeeds.mockResolvedValue({
         seeds: newSeeds,
-        fileCount: 1,
-        files: ['pets.seeds.ts'],
+        fileCount: 3,
+        files: ['pets.seeds.ts', 'owners.seeds.ts', 'admin.seeds.ts'],
       });
 
       await reloadSpecSeeds(specA, mockVite, cwd, options);
 
+      // Should report seeds.size (1), not fileCount (3)
       expect(mockedPrintReloadNotification).toHaveBeenCalledWith('seeds', 1, options);
     });
 
@@ -716,7 +722,7 @@ describe('createPerSpecFileWatchers', () => {
       createTestSpecInstance('spec-c'),
     ];
 
-    // With parallel creation (Promise.allSettled), all specs start concurrently.
+    // With sequential creation (for...of loop), specs are processed in order.
     // spec-a creates 2 FSWatchers (indices 0,1), spec-b creates 2 (indices 2,3)
     // spec-c's first FSWatcher (index 4) fails
     watchShouldFailAtIndex = 4;

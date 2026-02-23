@@ -19,6 +19,11 @@ import type { SpecInstance } from './orchestrator.js';
 import { loadSeeds } from './seeds.js';
 import type { ResolvedOptions } from './types.js';
 
+// Segment-boundary patterns: match "node_modules" or "dist" as a directory
+// segment, not as a substring (avoids false positives like "distribution/").
+const nodeModulesRe = /(^|[\\/])node_modules([\\/]|$)/;
+const distRe = /(^|[\\/])dist([\\/]|$)/;
+
 /**
  * File watcher configuration
  */
@@ -128,7 +133,7 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
   const buildIgnored = (pattern: RegExp) => {
     return (filePath: string, stats?: { isFile(): boolean }): boolean => {
       // Always ignore node_modules and dist directories
-      if (filePath.includes('node_modules') || filePath.includes('dist')) {
+      if (nodeModulesRe.test(filePath) || distRe.test(filePath)) {
         return true;
       }
       // Allow directories to be traversed (only filter files)
@@ -242,6 +247,15 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
 }
 
 /**
+ * Debounced function with cancel support
+ */
+export interface DebouncedFunction<T extends (...args: unknown[]) => unknown> {
+  (...args: Parameters<T>): void;
+  /** Cancel any pending debounce timer and queued execution */
+  cancel(): void;
+}
+
+/**
  * Debounce a function with async execution guard
  *
  * Useful for preventing multiple rapid reloads when
@@ -254,20 +268,23 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
  *
  * @param fn - Function to debounce (can be sync or async)
  * @param delay - Debounce delay in milliseconds
- * @returns Debounced function
+ * @returns Debounced function with cancel() method
  */
 export function debounce<T extends (...args: unknown[]) => unknown>(
   fn: T,
   delay: number,
-): (...args: Parameters<T>) => void {
+): DebouncedFunction<T> {
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let isRunning = false;
   let pendingArgs: Parameters<T> | null = null;
+  let cancelled = false;
 
   const execute = async (...args: Parameters<T>): Promise<void> => {
-    if (isRunning) {
-      // Queue the latest args for execution after current run completes
-      pendingArgs = args;
+    if (cancelled || isRunning) {
+      if (isRunning && !cancelled) {
+        // Queue the latest args for execution after current run completes
+        pendingArgs = args;
+      }
       return;
     }
 
@@ -285,7 +302,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
       isRunning = false;
 
       // If there were calls during execution, run with the latest args
-      if (pendingArgs !== null) {
+      if (pendingArgs !== null && !cancelled) {
         const nextArgs = pendingArgs;
         pendingArgs = null;
         // Use setTimeout to avoid deep recursion
@@ -294,7 +311,8 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
     }
   };
 
-  return (...args: Parameters<T>): void => {
+  const debouncedFn = (...args: Parameters<T>): void => {
+    if (cancelled) return;
     if (timeoutId !== null) {
       clearTimeout(timeoutId);
     }
@@ -303,6 +321,17 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
       execute(...args);
     }, delay);
   };
+
+  debouncedFn.cancel = (): void => {
+    cancelled = true;
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+    pendingArgs = null;
+  };
+
+  return debouncedFn;
 }
 
 // =============================================================================
@@ -328,6 +357,7 @@ export async function createPerSpecFileWatchers(
   options: ResolvedOptions,
 ): Promise<FileWatcher[]> {
   const watchers: FileWatcher[] = [];
+  const allDebouncedFns: DebouncedFunction<(...args: unknown[]) => unknown>[] = [];
 
   try {
     for (const instance of instances) {
@@ -339,8 +369,9 @@ export async function createPerSpecFileWatchers(
         () => reloadSpecSeeds(instance, vite, cwd, options),
         100,
       );
+      allDebouncedFns.push(debouncedHandlerReload, debouncedSeedReload);
 
-      const watcher = await createFileWatcher({
+      const innerWatcher = await createFileWatcher({
         handlersDir: instance.config.handlersDir,
         seedsDir: instance.config.seedsDir,
         cwd,
@@ -349,10 +380,25 @@ export async function createPerSpecFileWatchers(
         onSeedChange: debouncedSeedReload,
       });
 
-      watchers.push(watcher);
+      // Wrap each FileWatcher so close() also cancels its debounced timers,
+      // preventing post-teardown execution of reload functions.
+      watchers.push({
+        async close(): Promise<void> {
+          debouncedHandlerReload.cancel();
+          debouncedSeedReload.cancel();
+          await innerWatcher.close();
+        },
+        get isWatching(): boolean {
+          return innerWatcher.isWatching;
+        },
+        get ready(): Promise<void> {
+          return innerWatcher.ready;
+        },
+      });
     }
   } catch (error) {
-    // Clean up already-created watchers before re-throwing
+    // Cancel all debounced timers before closing watchers
+    for (const fn of allDebouncedFns) fn.cancel();
     await Promise.allSettled(watchers.map((w) => w.close()));
     throw error;
   }
