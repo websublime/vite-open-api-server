@@ -467,6 +467,9 @@ describe('Per-Spec Reload Isolation', () => {
       // No reload notification on error
       expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
 
+      // No broadcast on seed-load failure (store was never modified)
+      expect(specA.server.wsHub.broadcast).not.toHaveBeenCalled();
+
       // Even with an error, spec B should be untouched
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
       expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
