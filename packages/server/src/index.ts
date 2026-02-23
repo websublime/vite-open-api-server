@@ -77,7 +77,7 @@ export { getSeedFiles, loadSeeds } from './seeds.js';
 // Hot Reload (for advanced use cases)
 // =============================================================================
 
-export type { FileWatcher, FileWatcherOptions } from './hot-reload.js';
+export type { DebouncedFunction, FileWatcher, FileWatcherOptions } from './hot-reload.js';
 export {
   createFileWatcher,
   createPerSpecFileWatchers,
