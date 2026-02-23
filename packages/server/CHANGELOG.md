@@ -1,3 +1,336 @@
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
 ## [0.24.0-next.6] - 2026-02-19
 
 ### Features

@@ -1,6 +1,6 @@
 {
   "name": "@websublime/vite-plugin-open-api-server",
-  "version": "0.24.0-next.6",
+  "version": "0.24.0-next.7",
   "description": "Vite plugin for OpenAPI mock server with DevTools integration",
   "keywords": [
     "vite",
@@ -23,36 +23,36 @@
     "directory": "packages/server"
   },
   "scripts": {
-    "build": "tsup && pnpm run copy:devtools-spa",
-    "typecheck": "tsc --noEmit",
     "copy:devtools-spa": "node scripts/copy-devtools-spa.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsup && pnpm run copy:devtools-spa",
     "dev": "tsup --watch"
   },
   "dependencies": {
+    "fast-glob": "^3.3.3",
     "picocolors": "^1.1.1",
-    "@websublime/vite-plugin-open-api-core": "workspace:*",
     "chokidar": "^5.0.0",
     "@vue/devtools-api": "^8.0.6",
-    "fast-glob": "^3.3.3"
+    "@websublime/vite-plugin-open-api-core": "workspace:*"
   },
   "devDependencies": {
+    "@websublime/vite-plugin-open-api-devtools": "workspace:*",
     "@scalar/openapi-types": "^0.5.3",
-    "vite": "^7.0.0",
-    "typescript": "^5.9.0",
-    "vue": "^3.5.27",
-    "@types/node": "^20.17.10",
-    "tsup": "^8.5.0",
-    "@hono/node-server": "^1.14.3",
-    "@hono/node-ws": "^1.3.0",
     "hono": "^4.11.4",
-    "@websublime/vite-plugin-open-api-devtools": "workspace:*"
+    "@types/node": "^20.17.10",
+    "@hono/node-server": "^1.14.3",
+    "typescript": "^5.9.0",
+    "tsup": "^8.5.0",
+    "@hono/node-ws": "^1.3.0",
+    "vue": "^3.5.27",
+    "vite": "^7.0.0"
   },
   "peerDependencies": {
+    "vue": "^3.0.0",
     "hono": "^4.11.4",
-    "@hono/node-ws": "^1.3.0",
     "@hono/node-server": "^1.14.0",
     "vite": "^5.0.0 || ^6.0.0 || ^7.0.0",
-    "vue": "^3.0.0"
+    "@hono/node-ws": "^1.3.0"
   },
   "peerDependenciesMeta": {
     "vue": {
