@@ -169,15 +169,19 @@ async function processSpec(
   cwd: string,
   logger: Logger,
 ): Promise<ProcessedSpec> {
-  // Derive a filesystem-safe namespace for fallback directories.
-  // Uses slugified ID to match the final resolved spec ID (e.g., "My API" → "my-api").
-  const specNamespace = specConfig.id ? slugify(specConfig.id) : `spec-${index}`;
+  // Derive a preliminary namespace for handler/seed loading.
+  // When the user provides an explicit ID, slugify it immediately.
+  // Otherwise, use spec-{index} as a temporary fallback so that
+  // loadHandlers/loadSeeds have a directory to scan during startup.
+  const preliminaryNamespace = specConfig.id ? slugify(specConfig.id) : `spec-${index}`;
 
-  // Resolve handlers directory (fallback uses spec namespace)
-  const handlersDir = specConfig.handlersDir || `./mocks/${specNamespace}/handlers`;
-
-  // Resolve seeds directory (same namespace pattern)
-  const seedsDir = specConfig.seedsDir || `./mocks/${specNamespace}/seeds`;
+  // Resolve handler/seed directories using the preliminary namespace.
+  // These paths are used for initial loading; they may be updated below
+  // once the final spec ID is known (from deriveSpecId).
+  const userProvidedHandlersDir = !!specConfig.handlersDir;
+  const userProvidedSeedsDir = !!specConfig.seedsDir;
+  let handlersDir = specConfig.handlersDir || `./mocks/${preliminaryNamespace}/handlers`;
+  let seedsDir = specConfig.seedsDir || `./mocks/${preliminaryNamespace}/seeds`;
 
   // Load handlers via Vite's ssrLoadModule
   const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
@@ -209,6 +213,18 @@ async function processSpec(
 
   // Derive spec ID (now that document is processed and info.title is available)
   const id = deriveSpecId(specConfig.id, server.document);
+
+  // Re-derive default directories using the final spec ID.
+  // When the user omitted handlersDir/seedsDir AND the preliminary namespace
+  // differs from the final ID (e.g., "spec-0" vs "petstore-api"), update
+  // the directories to use the canonical ID for a predictable structure.
+  const finalNamespace = slugify(id);
+  if (!userProvidedHandlersDir && finalNamespace !== preliminaryNamespace) {
+    handlersDir = `./mocks/${finalNamespace}/handlers`;
+  }
+  if (!userProvidedSeedsDir && finalNamespace !== preliminaryNamespace) {
+    seedsDir = `./mocks/${finalNamespace}/seeds`;
+  }
 
   // Derive proxy path (from explicit config or servers[0].url)
   const { proxyPath, proxyPathSource } = deriveProxyPath(specConfig.proxyPath, server.document, id);
