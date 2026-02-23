@@ -730,23 +730,23 @@ describe('createOrchestrator', () => {
       expect(result.instances[1].config.seedsDir).toBe('./mocks/inventory/seeds');
     });
 
-    it('should use spec-{index} namespace when id is omitted', async () => {
+    it('should use auto-derived ID for default directories when id is omitted', async () => {
       const mockLogger = createMockLogger();
       const mockVite = createMockViteServer();
 
       // When id is omitted, resolveOptions sets it to '' (empty string).
-      // processSpec resolves directories BEFORE deriveSpecId runs,
-      // so the fallback namespace is spec-{index}, not the auto-derived ID.
+      // processSpec re-derives default directories after deriveSpecId runs,
+      // so the final namespace uses the auto-derived ID from info.title.
       const options = resolveOptions({
         specs: [
           {
             spec: petstoreSpec,
-            // No explicit id
+            // No explicit id — auto-derives "petstore-api" from "Petstore API"
             proxyPath: '/pets/v1',
           },
           {
             spec: inventorySpec,
-            // No explicit id
+            // No explicit id — auto-derives "inventory-api" from "Inventory API"
             proxyPath: '/inventory/v1',
           },
         ],
@@ -758,11 +758,11 @@ describe('createOrchestrator', () => {
 
       const result = await createOrchestrator(options, mockVite, process.cwd());
 
-      // Directories use spec-{index} fallback because id was empty during resolution
-      expect(result.instances[0].config.handlersDir).toBe('./mocks/spec-0/handlers');
-      expect(result.instances[0].config.seedsDir).toBe('./mocks/spec-0/seeds');
-      expect(result.instances[1].config.handlersDir).toBe('./mocks/spec-1/handlers');
-      expect(result.instances[1].config.seedsDir).toBe('./mocks/spec-1/seeds');
+      // Directories use the auto-derived ID (slugified info.title)
+      expect(result.instances[0].config.handlersDir).toBe('./mocks/petstore-api/handlers');
+      expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore-api/seeds');
+      expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory-api/handlers');
+      expect(result.instances[1].config.seedsDir).toBe('./mocks/inventory-api/seeds');
     });
 
     // 2.3.3: Explicit handlersDir/seedsDir → verify override
@@ -838,23 +838,6 @@ describe('createOrchestrator', () => {
       // Spec 1: default handlersDir, explicit seedsDir
       expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory/handlers');
       expect(result.instances[1].config.seedsDir).toBe('./custom/inventory-seeds');
-    });
-
-    it('should allow mixing explicit and default within the same spec', async () => {
-      const { result } = await createTestOrchestrator({
-        specs: [
-          {
-            spec: petstoreSpec,
-            id: 'petstore',
-            proxyPath: '/pets/v1',
-            handlersDir: './explicit/handlers',
-            // seedsDir not provided — should use default
-          },
-        ],
-      });
-
-      expect(result.instances[0].config.handlersDir).toBe('./explicit/handlers');
-      expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore/seeds');
     });
   });
 
