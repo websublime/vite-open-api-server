@@ -136,11 +136,15 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
       if (nodeModulesRe.test(filePath) || distRe.test(filePath)) {
         return true;
       }
-      // Allow directories to be traversed (only filter files)
-      if (!stats?.isFile()) {
+      // Allow confirmed directories to be traversed so chokidar
+      // descends into sub-folders even though they won't match the
+      // file-extension pattern.
+      if (stats && !stats.isFile()) {
         return false;
       }
-      // Ignore files that don't match the expected pattern
+      // Ignore files (or paths with no stats yet) that don't match the
+      // expected pattern — prevents non-matching files from slipping
+      // through when chokidar omits the stats argument.
       return !pattern.test(filePath);
     };
   };
