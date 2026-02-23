@@ -1,0 +1,14 @@
+{
+  "branch": "feature/vite-ezf-store-isolation-and-defaults",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-23T17:38:25.698205Z",
+  "updated_at": "2026-02-23T17:38:25.698952Z"
+}
