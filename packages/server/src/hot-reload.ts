@@ -9,6 +9,7 @@
  * @module hot-reload
  */
 
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { executeSeeds, type Logger } from '@websublime/vite-plugin-open-api-core';
 import type { FSWatcher } from 'chokidar';
@@ -153,79 +154,91 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
     // Watch handlers directory
     if (handlersDir && onHandlerChange) {
       const absoluteHandlersDir = path.resolve(cwd, handlersDir);
-      const handlerWatcher = watch(absoluteHandlersDir, {
-        ignoreInitial: true,
-        ignored: buildIgnored(handlerRe),
-        persistent: true,
-        awaitWriteFinish: {
-          stabilityThreshold: 100,
-          pollInterval: 50,
-        },
-      });
+      if (!existsSync(absoluteHandlersDir)) {
+        logger.warn(
+          `[vite-plugin-open-api-server] Handlers directory does not exist, skipping watcher: ${absoluteHandlersDir}`,
+        );
+      } else {
+        const handlerWatcher = watch(absoluteHandlersDir, {
+          ignoreInitial: true,
+          ignored: buildIgnored(handlerRe),
+          persistent: true,
+          awaitWriteFinish: {
+            stabilityThreshold: 100,
+            pollInterval: 50,
+          },
+        });
 
-      handlerWatcher.on('add', (file) => {
-        safeInvoke(onHandlerChange, file, 'Handler add');
-      });
+        handlerWatcher.on('add', (file) => {
+          safeInvoke(onHandlerChange, file, 'Handler add');
+        });
 
-      handlerWatcher.on('change', (file) => {
-        safeInvoke(onHandlerChange, file, 'Handler change');
-      });
+        handlerWatcher.on('change', (file) => {
+          safeInvoke(onHandlerChange, file, 'Handler change');
+        });
 
-      handlerWatcher.on('unlink', (file) => {
-        safeInvoke(onHandlerChange, file, 'Handler unlink');
-      });
+        handlerWatcher.on('unlink', (file) => {
+          safeInvoke(onHandlerChange, file, 'Handler unlink');
+        });
 
-      handlerWatcher.on('error', (error) => {
-        logger.error('[vite-plugin-open-api-server] Handler watcher error:', error);
-      });
+        handlerWatcher.on('error', (error) => {
+          logger.error('[vite-plugin-open-api-server] Handler watcher error:', error);
+        });
 
-      // Track ready promise for this watcher
-      readyPromises.push(
-        new Promise<void>((resolve) => {
-          handlerWatcher.on('ready', () => resolve());
-        }),
-      );
+        // Track ready promise for this watcher
+        readyPromises.push(
+          new Promise<void>((resolve) => {
+            handlerWatcher.on('ready', () => resolve());
+          }),
+        );
 
-      watchers.push(handlerWatcher);
+        watchers.push(handlerWatcher);
+      }
     }
 
     // Watch seeds directory
     if (seedsDir && onSeedChange) {
       const absoluteSeedsDir = path.resolve(cwd, seedsDir);
-      const seedWatcher = watch(absoluteSeedsDir, {
-        ignoreInitial: true,
-        ignored: buildIgnored(seedRe),
-        persistent: true,
-        awaitWriteFinish: {
-          stabilityThreshold: 100,
-          pollInterval: 50,
-        },
-      });
+      if (!existsSync(absoluteSeedsDir)) {
+        logger.warn(
+          `[vite-plugin-open-api-server] Seeds directory does not exist, skipping watcher: ${absoluteSeedsDir}`,
+        );
+      } else {
+        const seedWatcher = watch(absoluteSeedsDir, {
+          ignoreInitial: true,
+          ignored: buildIgnored(seedRe),
+          persistent: true,
+          awaitWriteFinish: {
+            stabilityThreshold: 100,
+            pollInterval: 50,
+          },
+        });
 
-      seedWatcher.on('add', (file) => {
-        safeInvoke(onSeedChange, file, 'Seed add');
-      });
+        seedWatcher.on('add', (file) => {
+          safeInvoke(onSeedChange, file, 'Seed add');
+        });
 
-      seedWatcher.on('change', (file) => {
-        safeInvoke(onSeedChange, file, 'Seed change');
-      });
+        seedWatcher.on('change', (file) => {
+          safeInvoke(onSeedChange, file, 'Seed change');
+        });
 
-      seedWatcher.on('unlink', (file) => {
-        safeInvoke(onSeedChange, file, 'Seed unlink');
-      });
+        seedWatcher.on('unlink', (file) => {
+          safeInvoke(onSeedChange, file, 'Seed unlink');
+        });
 
-      seedWatcher.on('error', (error) => {
-        logger.error('[vite-plugin-open-api-server] Seed watcher error:', error);
-      });
+        seedWatcher.on('error', (error) => {
+          logger.error('[vite-plugin-open-api-server] Seed watcher error:', error);
+        });
 
-      // Track ready promise for this watcher
-      readyPromises.push(
-        new Promise<void>((resolve) => {
-          seedWatcher.on('ready', () => resolve());
-        }),
-      );
+        // Track ready promise for this watcher
+        readyPromises.push(
+          new Promise<void>((resolve) => {
+            seedWatcher.on('ready', () => resolve());
+          }),
+        );
 
-      watchers.push(seedWatcher);
+        watchers.push(seedWatcher);
+      }
     }
   } catch (error) {
     // Clean up any already-created FSWatchers before re-throwing
