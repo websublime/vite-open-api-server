@@ -67,38 +67,29 @@ const mockedPrintReloadNotification = vi.mocked(printReloadNotification);
 // Test Fixtures
 // =============================================================================
 
-/** Mock Store interface for type-safe mocking */
-interface MockStore extends Store {
-  create: ReturnType<typeof vi.fn>;
-  getAll: ReturnType<typeof vi.fn>;
-  getById: ReturnType<typeof vi.fn>;
-  update: ReturnType<typeof vi.fn>;
-  delete: ReturnType<typeof vi.fn>;
-  clearAll: ReturnType<typeof vi.fn>;
-  clearSchema: ReturnType<typeof vi.fn>;
-  hasSchema: ReturnType<typeof vi.fn>;
-  getSchemas: ReturnType<typeof vi.fn>;
-  getCount: ReturnType<typeof vi.fn>;
-  setIdField: ReturnType<typeof vi.fn>;
-  getIdField: ReturnType<typeof vi.fn>;
-}
+// Typed against the real Store interface so the mock stays in sync —
+// if Store gains or changes a method, TypeScript will flag the mismatch here
+// rather than silently drifting. The trade-off is extra cast noise for methods
+// the tests don't exercise, but that's preferable to undetected API drift.
+type MockStore = { [K in keyof Store]: vi.Mock };
 
 /** Create a mock Store with tracked method calls */
 function createMockStore(): MockStore {
   return {
+    list: vi.fn().mockReturnValue([]),
+    get: vi.fn(),
     create: vi.fn(),
-    getAll: vi.fn().mockReturnValue([]),
-    getById: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    clear: vi.fn(),
     clearAll: vi.fn(),
-    clearSchema: vi.fn(),
-    hasSchema: vi.fn().mockReturnValue(false),
-    getSchemas: vi.fn().mockReturnValue([]),
-    getCount: vi.fn().mockReturnValue(0),
     setIdField: vi.fn(),
     getIdField: vi.fn().mockReturnValue('id'),
-  } as unknown as MockStore;
+    getSchemas: vi.fn().mockReturnValue([]),
+    getCount: vi.fn().mockReturnValue(0),
+    hasSchema: vi.fn().mockReturnValue(false),
+    has: vi.fn().mockReturnValue(false),
+  };
 }
 
 /** Create a mock OpenApiServer with tracking */
@@ -657,17 +648,7 @@ describe('createPerSpecFileWatchers', () => {
     watchCallCount = 0;
     watchShouldFailAtIndex = -1;
     mockVite = createMockViteServer();
-    options = {
-      specs: [],
-      port: 4999,
-      enabled: true,
-      timelineLimit: 100,
-      devtools: false,
-      cors: false,
-      corsOrigin: '*',
-      silent: false,
-      logger: createMockLogger(),
-    };
+    options = createTestOptions();
   });
 
   it('should return one FileWatcher per spec instance', async () => {
