@@ -169,36 +169,14 @@ async function processSpec(
   cwd: string,
   logger: Logger,
 ): Promise<ProcessedSpec> {
-  // Derive a preliminary namespace for handler/seed loading.
-  // When the user provides an explicit ID, slugify it immediately.
-  // Otherwise, use spec-{index} as a temporary fallback so that
-  // loadHandlers/loadSeeds have a directory to scan during startup.
-  const preliminaryNamespace = specConfig.id ? slugify(specConfig.id) : `spec-${index}`;
-
-  // Resolve handler/seed directories using the preliminary namespace.
-  // These paths are used for initial loading; they may be updated below
-  // once the final spec ID is known (from deriveSpecId).
-  const userProvidedHandlersDir = !!specConfig.handlersDir;
-  const userProvidedSeedsDir = !!specConfig.seedsDir;
-  let handlersDir = specConfig.handlersDir || `./mocks/${preliminaryNamespace}/handlers`;
-  let seedsDir = specConfig.seedsDir || `./mocks/${preliminaryNamespace}/seeds`;
-
-  // Load handlers via Vite's ssrLoadModule
-  const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
-
-  // Load seeds via Vite's ssrLoadModule
-  const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
-
-  // Create core server instance (processes the OpenAPI document internally)
-  // NOTE: Pass empty Map for seeds — createOpenApiServer.seeds expects
-  // Map<string, unknown[]> (static data), while loadSeeds() returns
-  // Map<string, AnySeedFn> (functions). Seeds are executed separately
-  // via executeSeeds() after server creation.
+  // ---- Step 1: Create core server to parse the OpenAPI document ----
+  // Pass empty handlers and seeds — they will be loaded from the correct
+  // directory once the spec ID is finalized (step 3).
   const server = await createOpenApiServer({
     spec: specConfig.spec,
     port: options.port,
     idFields: specConfig.idFields,
-    handlers: handlersResult.handlers,
+    handlers: new Map(),
     seeds: new Map(),
     timelineLimit: options.timelineLimit,
     cors: false, // CORS handled at main app level
@@ -206,24 +184,26 @@ async function processSpec(
     logger,
   });
 
+  // ---- Step 2: Derive spec ID and resolve directories ----
+  // Now that the document is parsed, we can derive the final spec ID
+  // and compute the correct default directory paths.
+  const id = deriveSpecId(specConfig.id, server.document);
+  const specNamespace = slugify(id);
+  const handlersDir = specConfig.handlersDir || `./mocks/${specNamespace}/handlers`;
+  const seedsDir = specConfig.seedsDir || `./mocks/${specNamespace}/seeds`;
+
+  // ---- Step 3: Load handlers and seeds from the correct directories ----
+  const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
+  const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
+
+  // Register loaded handlers on the server
+  if (handlersResult.handlers.size > 0) {
+    server.updateHandlers(handlersResult.handlers);
+  }
+
   // Execute seed functions to populate the store
   if (seedsResult.seeds.size > 0) {
     await executeSeeds(seedsResult.seeds, server.store, server.document);
-  }
-
-  // Derive spec ID (now that document is processed and info.title is available)
-  const id = deriveSpecId(specConfig.id, server.document);
-
-  // Re-derive default directories using the final spec ID.
-  // When the user omitted handlersDir/seedsDir AND the preliminary namespace
-  // differs from the final ID (e.g., "spec-0" vs "petstore-api"), update
-  // the directories to use the canonical ID for a predictable structure.
-  const finalNamespace = slugify(id);
-  if (!userProvidedHandlersDir && finalNamespace !== preliminaryNamespace) {
-    handlersDir = `./mocks/${finalNamespace}/handlers`;
-  }
-  if (!userProvidedSeedsDir && finalNamespace !== preliminaryNamespace) {
-    seedsDir = `./mocks/${finalNamespace}/seeds`;
   }
 
   // Derive proxy path (from explicit config or servers[0].url)
