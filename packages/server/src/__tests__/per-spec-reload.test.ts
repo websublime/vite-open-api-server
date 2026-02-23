@@ -55,6 +55,15 @@ vi.mock('../banner.js', () => ({
   printError: vi.fn(),
 }));
 
+// Mock node:fs so createFileWatcher's existsSync check passes for test directories
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return {
+    ...actual,
+    existsSync: vi.fn().mockReturnValue(true),
+  };
+});
+
 // Vitest hoists vi.mock() above imports, so the static imports above
 // resolve to the mocked versions. vi.mocked() provides type-safe access.
 const mockedLoadHandlers = vi.mocked(loadHandlers);
@@ -92,18 +101,19 @@ function createMockStore(): MockStore {
   };
 }
 
-/** Create a mock OpenApiServer with tracking */
-function createMockOpenApiServer(specId: string): OpenApiServer {
-  const store = createMockStore();
+/** Create a mock OpenApiServer with tracking.
+ *  Typed as Partial<OpenApiServer> so TypeScript validates every provided
+ *  property against the real interface; properties unused by hot-reload
+ *  tests (app, registry, simulationManager) are omitted rather than
+ *  cast-silenced, keeping the mock honest. */
+function createMockOpenApiServer(specId: string): Partial<OpenApiServer> {
+  const store = createMockStore() as unknown as Store;
   const wsHub = createMockWebSocketHub();
 
   return {
-    app: {} as OpenApiServer['app'],
     store,
-    registry: {} as OpenApiServer['registry'],
     document: makeDocument({ title: `${specId} API` }),
     wsHub,
-    simulationManager: {} as OpenApiServer['simulationManager'],
     start: vi.fn(),
     stop: vi.fn(),
     updateHandlers: vi.fn(),
@@ -112,7 +122,7 @@ function createMockOpenApiServer(specId: string): OpenApiServer {
     clearTimeline: vi.fn().mockReturnValue(0),
     truncateTimeline: vi.fn().mockReturnValue(0),
     port: 0,
-  } as unknown as OpenApiServer;
+  };
 }
 
 /** Create a SpecInstance for testing */
@@ -128,7 +138,7 @@ function createTestSpecInstance(id: string): SpecInstance {
       endpointCount: 1,
       schemaCount: 0,
     },
-    server: createMockOpenApiServer(id),
+    server: createMockOpenApiServer(id) as OpenApiServer,
     config: {
       spec: 'inline',
       id,
@@ -717,6 +727,33 @@ describe('createPerSpecFileWatchers', () => {
     expect(mockFSWatchers).toHaveLength(4);
     for (const watcher of mockFSWatchers) {
       expect(watcher.close).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('should cancel pending debounced reloads when watcher is closed', async () => {
+    vi.useFakeTimers();
+    try {
+      const instances = [createTestSpecInstance('spec-a')];
+      const watchers = await createPerSpecFileWatchers(instances, mockVite, cwd, options);
+
+      // spec-a creates 2 FSWatchers: index 0 = handlers, index 1 = seeds
+      const handlerFSWatcher = mockFSWatchers[0];
+
+      // Trigger a handler file change via the chokidar 'change' listener
+      const changeListeners = handlerFSWatcher._listeners.get('change') ?? [];
+      expect(changeListeners.length).toBeGreaterThan(0);
+      changeListeners[0]('some-file.handlers.ts');
+
+      // Close the watcher BEFORE the 100ms debounce fires
+      await watchers[0].close();
+
+      // Advance timers well past the debounce delay
+      await vi.advanceTimersByTimeAsync(500);
+
+      // reloadSpecHandlers calls loadHandlers — it should never have been invoked
+      expect(mockedLoadHandlers).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
     }
   });
 
