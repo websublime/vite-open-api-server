@@ -137,15 +137,18 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
       if (nodeModulesRe.test(filePath) || distRe.test(filePath)) {
         return true;
       }
+      // When stats is unavailable (chokidar's initial pass), allow
+      // traversal so subdirectories are not accidentally skipped.
+      if (!stats) {
+        return false;
+      }
       // Allow confirmed directories to be traversed so chokidar
       // descends into sub-folders even though they won't match the
       // file-extension pattern.
-      if (stats && !stats.isFile()) {
+      if (!stats.isFile()) {
         return false;
       }
-      // Ignore files (or paths with no stats yet) that don't match the
-      // expected pattern — prevents non-matching files from slipping
-      // through when chokidar omits the stats argument.
+      // Ignore files that don't match the expected pattern
       return !pattern.test(filePath);
     };
   };
@@ -252,7 +255,7 @@ export async function createFileWatcher(options: FileWatcherOptions): Promise<Fi
   return {
     async close(): Promise<void> {
       isWatching = false;
-      await Promise.all(watchers.map((w) => w.close()));
+      await Promise.allSettled(watchers.map((w) => w.close()));
     },
     get isWatching(): boolean {
       return isWatching;
