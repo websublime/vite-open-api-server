@@ -96,7 +96,10 @@ function handleGetSpecs(
 }
 
 /**
- * Handle get:registry — single spec (by specId) or all specs
+ * Handle get:registry — single spec (by specId) or all specs.
+ *
+ * Constructs the registry response directly (with specId) rather than
+ * delegating to per-spec hubs, for consistency with other handlers.
  */
 function handleGetRegistry(
   cmd: ParsedCommand,
@@ -105,14 +108,30 @@ function handleGetRegistry(
   instances: SpecInstance[],
   instanceMap: Map<string, SpecInstance>,
 ): void {
+  const sendRegistry = (instance: SpecInstance, id: string) => {
+    const registryEvent = {
+      type: 'registry',
+      data: {
+        specId: id,
+        endpoints: Array.from(instance.server.registry.endpoints.entries()).map(([key, entry]) => ({
+          key,
+          ...entry,
+        })),
+        stats: { ...instance.server.registry.stats },
+      },
+    };
+    // biome-ignore lint/suspicious/noExplicitAny: registry data with specId extends ServerEvent
+    hub.sendTo(client, registryEvent as any);
+  };
+
   const specId = cmd.data?.specId;
   if (specId) {
     const instance = resolveInstance(specId, instanceMap, hub, client, cmd.type);
     if (!instance) return;
-    instance.server.wsHub.handleMessage(client, JSON.stringify({ type: 'get:registry' }));
+    sendRegistry(instance, specId);
   } else {
     for (const instance of instances) {
-      instance.server.wsHub.handleMessage(client, JSON.stringify({ type: 'get:registry' }));
+      sendRegistry(instance, instance.id);
     }
   }
 }
@@ -234,7 +253,13 @@ export function createMultiSpecCommandHandler(
   const instanceMap = new Map(instances.map((i) => [i.id, i]));
 
   return (client: WebSocketClient, command: unknown) => {
+    if (!command || typeof command !== 'object' || !('type' in command)) {
+      return;
+    }
     const cmd = command as ParsedCommand;
+    if (typeof cmd.type !== 'string') {
+      return;
+    }
 
     switch (cmd.type) {
       case 'get:specs':
@@ -252,6 +277,8 @@ export function createMultiSpecCommandHandler(
       default:
         if (SPEC_SCOPED_COMMANDS.has(cmd.type)) {
           handleSpecScoped(cmd, hub, client, instanceMap);
+        } else {
+          sendError(hub, client, cmd.type, `Unknown command type: ${cmd.type}`);
         }
         break;
     }

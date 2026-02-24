@@ -126,8 +126,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Registry for one spec
    */
   app.get('/_api/specs/:specId/registry', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     return c.json({
       specId: instance.id,
@@ -144,8 +145,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * List schemas for one spec
    */
   app.get('/_api/specs/:specId/store', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     const schemas = instance.server.store.getSchemas().map((schema) => ({
       name: schema,
@@ -160,8 +162,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Store data for one spec
    */
   app.get('/_api/specs/:specId/store/:schema', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     const schema = c.req.param('schema');
     const items = instance.server.store.list(schema);
@@ -173,8 +176,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * OpenAPI document for one spec
    */
   app.get('/_api/specs/:specId/document', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     return c.json(instance.server.document);
   });
@@ -184,8 +188,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Simulations for one spec
    */
   app.get('/_api/specs/:specId/simulations', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     return c.json({
       simulations: instance.server.simulationManager.list(),
@@ -198,8 +203,9 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Timeline for one spec
    */
   app.get('/_api/specs/:specId/timeline', (c) => {
-    const instance = resolveSpec(c.req.param('specId'));
-    if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
+    const specId = c.req.param('specId');
+    const instance = resolveSpec(specId);
+    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     const parsed = Number(c.req.query('limit'));
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 1000) : 100;
