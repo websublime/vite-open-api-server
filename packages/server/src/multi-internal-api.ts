@@ -80,8 +80,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
       specTitle: i.info.title,
       specColor: i.info.color,
       endpoints: Array.from(i.server.registry.endpoints.entries()).map(([key, entry]) => ({
-        key,
         ...entry,
+        key,
       })),
       stats: i.server.registry.stats,
     }));
@@ -133,8 +133,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     return c.json({
       specId: instance.id,
       endpoints: Array.from(instance.server.registry.endpoints.entries()).map(([key, entry]) => ({
-        key,
         ...entry,
+        key,
       })),
       stats: instance.server.registry.stats,
     });
@@ -159,7 +159,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
 
   /**
    * GET /_api/specs/:specId/store/:schema
-   * Store data for one spec
+   * Store data for one spec. Supports optional `limit` and `offset` query params.
    */
   app.get('/_api/specs/:specId/store/:schema', (c) => {
     const specId = c.req.param('specId');
@@ -167,8 +167,19 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
 
     const schema = c.req.param('schema');
-    const items = instance.server.store.list(schema);
-    return c.json({ schema, count: items.length, items });
+    const allItems = instance.server.store.list(schema);
+    const total = allItems.length;
+
+    const rawOffset = Number(c.req.query('offset'));
+    const offset = Number.isFinite(rawOffset) ? Math.max(Math.floor(rawOffset), 0) : 0;
+
+    const rawLimit = Number(c.req.query('limit'));
+    const limit = Number.isFinite(rawLimit)
+      ? Math.min(Math.max(Math.floor(rawLimit), 0), 1000)
+      : total;
+
+    const items = limit === 0 ? [] : allItems.slice(offset, offset + limit);
+    return c.json({ schema, items, count: items.length, total, offset, limit });
   });
 
   /**
