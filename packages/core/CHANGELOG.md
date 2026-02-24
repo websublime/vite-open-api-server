@@ -1,3 +1,293 @@
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.14.0-next.9] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
 ## [0.14.0-next.8] - 2026-02-23
 
 ### Features
