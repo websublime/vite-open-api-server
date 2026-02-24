@@ -131,14 +131,15 @@ function handleGetTimeline(
   const limit = (cmd.data?.limit as number) ?? 100;
 
   const sendTimeline = (instance: SpecInstance, id: string) => {
-    const entries = instance.server.getTimeline().slice(-limit);
+    const timeline = instance.server.getTimeline();
+    const entries = timeline.slice(-limit);
     const timelineEvent = {
       type: 'timeline',
       data: {
         specId: id,
         entries,
         count: entries.length,
-        total: instance.server.getTimeline().length,
+        total: timeline.length,
       },
     };
     // biome-ignore lint/suspicious/noExplicitAny: timeline data with specId extends ServerEvent
