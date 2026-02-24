@@ -7,11 +7,17 @@
  * Why: Ensures processSpec derives the spec ID before loading handlers/seeds,
  *       so the loaded content matches the directories reported in config
  *
+ * Note: This file uses white-box assertions on internal loader call arguments.
+ * The complementary black-box tests in orchestrator.test.ts verify the same
+ * directories via `instance.config.handlersDir` / `instance.config.seedsDir`.
+ * Both suites are intentional: config write-back (public API) vs. loader
+ * call arguments (internal wiring).
+ *
  * @see Task 2.3.2: Test default directory paths
  * @see Task 2.3.3: Test explicit directory override
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createOrchestrator } from '../orchestrator.js';
 import { resolveOptions } from '../types.js';
 import { createMockLogger, createMockViteServer } from './test-utils.js';
@@ -78,10 +84,12 @@ const inventorySpec = JSON.stringify({
 // =============================================================================
 
 describe('directory resolution: loadHandlers/loadSeeds call paths', () => {
-  it('should load handlers from auto-derived directory when id is omitted', async () => {
+  beforeEach(() => {
     mockedLoadHandlers.mockClear();
     mockedLoadSeeds.mockClear();
+  });
 
+  it('should load handlers and seeds from auto-derived directory when id is omitted', async () => {
     const options = resolveOptions({
       specs: [
         {
@@ -98,34 +106,13 @@ describe('directory resolution: loadHandlers/loadSeeds call paths', () => {
 
     await createOrchestrator(options, createMockViteServer(), process.cwd());
 
-    // loadHandlers should be called with the auto-derived path, not spec-0
+    // Both loaders should be called with the auto-derived path, not spec-0
     expect(mockedLoadHandlers).toHaveBeenCalledWith(
       './mocks/petstore-api/handlers',
       expect.anything(),
       expect.anything(),
       expect.anything(),
     );
-  });
-
-  it('should load seeds from auto-derived directory when id is omitted', async () => {
-    mockedLoadHandlers.mockClear();
-    mockedLoadSeeds.mockClear();
-
-    const options = resolveOptions({
-      specs: [
-        {
-          spec: petstoreSpec,
-          proxyPath: '/pets/v1',
-        },
-      ],
-      port: 4999,
-      cors: false,
-      devtools: false,
-      logger: createMockLogger(),
-    });
-
-    await createOrchestrator(options, createMockViteServer(), process.cwd());
-
     expect(mockedLoadSeeds).toHaveBeenCalledWith(
       './mocks/petstore-api/seeds',
       expect.anything(),
@@ -135,9 +122,6 @@ describe('directory resolution: loadHandlers/loadSeeds call paths', () => {
   });
 
   it('should load from explicit directories when provided', async () => {
-    mockedLoadHandlers.mockClear();
-    mockedLoadSeeds.mockClear();
-
     const options = resolveOptions({
       specs: [
         {
@@ -171,9 +155,6 @@ describe('directory resolution: loadHandlers/loadSeeds call paths', () => {
   });
 
   it('should load from correct directories for multiple specs with omitted ids', async () => {
-    mockedLoadHandlers.mockClear();
-    mockedLoadSeeds.mockClear();
-
     const options = resolveOptions({
       specs: [
         { spec: petstoreSpec, proxyPath: '/pets/v1' },
@@ -217,9 +198,6 @@ describe('directory resolution: loadHandlers/loadSeeds call paths', () => {
   });
 
   it('should load from slugified explicit id directory', async () => {
-    mockedLoadHandlers.mockClear();
-    mockedLoadSeeds.mockClear();
-
     const options = resolveOptions({
       specs: [
         {

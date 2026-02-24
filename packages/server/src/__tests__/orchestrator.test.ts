@@ -704,9 +704,13 @@ describe('createOrchestrator', () => {
   // --------------------------------------------------------------------------
 
   describe('default directory resolution', () => {
+    // Black-box: verifies config write-back via instance.config (public API).
+    // Complementary white-box tests in directory-resolution.test.ts verify
+    // that loadHandlers/loadSeeds are called with the same paths.
+    //
     // 2.3.2: Omitting handlersDir/seedsDir → verify correct defaults
 
-    it('should resolve default handlersDir as ./mocks/{specId}/handlers', async () => {
+    it('should resolve default handlersDir and seedsDir as ./mocks/{specId}/{type}', async () => {
       const { result } = await createTestOrchestrator({
         specs: [
           { spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' },
@@ -715,18 +719,8 @@ describe('createOrchestrator', () => {
       });
 
       expect(result.instances[0].config.handlersDir).toBe('./mocks/petstore/handlers');
-      expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory/handlers');
-    });
-
-    it('should resolve default seedsDir as ./mocks/{specId}/seeds', async () => {
-      const { result } = await createTestOrchestrator({
-        specs: [
-          { spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' },
-          { spec: inventorySpec, id: 'inventory', proxyPath: '/inventory/v1' },
-        ],
-      });
-
       expect(result.instances[0].config.seedsDir).toBe('./mocks/petstore/seeds');
+      expect(result.instances[1].config.handlersDir).toBe('./mocks/inventory/handlers');
       expect(result.instances[1].config.seedsDir).toBe('./mocks/inventory/seeds');
     });
 
@@ -767,7 +761,7 @@ describe('createOrchestrator', () => {
 
     // 2.3.3: Explicit handlersDir/seedsDir → verify override
 
-    it('should use explicit handlersDir when provided', async () => {
+    it('should use explicit handlersDir and seedsDir when provided', async () => {
       const { result } = await createTestOrchestrator({
         specs: [
           {
@@ -775,39 +769,21 @@ describe('createOrchestrator', () => {
             id: 'petstore',
             proxyPath: '/pets/v1',
             handlersDir: './custom/handlers',
-          },
-          {
-            spec: inventorySpec,
-            id: 'inventory',
-            proxyPath: '/inventory/v1',
-            handlersDir: './other/inventory-handlers',
-          },
-        ],
-      });
-
-      expect(result.instances[0].config.handlersDir).toBe('./custom/handlers');
-      expect(result.instances[1].config.handlersDir).toBe('./other/inventory-handlers');
-    });
-
-    it('should use explicit seedsDir when provided', async () => {
-      const { result } = await createTestOrchestrator({
-        specs: [
-          {
-            spec: petstoreSpec,
-            id: 'petstore',
-            proxyPath: '/pets/v1',
             seedsDir: './custom/seeds',
           },
           {
             spec: inventorySpec,
             id: 'inventory',
             proxyPath: '/inventory/v1',
+            handlersDir: './other/inventory-handlers',
             seedsDir: './other/inventory-seeds',
           },
         ],
       });
 
+      expect(result.instances[0].config.handlersDir).toBe('./custom/handlers');
       expect(result.instances[0].config.seedsDir).toBe('./custom/seeds');
+      expect(result.instances[1].config.handlersDir).toBe('./other/inventory-handlers');
       expect(result.instances[1].config.seedsDir).toBe('./other/inventory-seeds');
     });
 
