@@ -201,13 +201,15 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     const instance = resolveSpec(c.req.param('specId'));
     if (!instance) return c.json({ error: `Unknown spec: ${c.req.param('specId')}` }, 404);
 
-    const limit = Number(c.req.query('limit')) || 100;
-    const entries = instance.server.getTimeline().slice(-limit);
+    const parsed = Number(c.req.query('limit'));
+    const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 1000) : 100;
+    const timeline = instance.server.getTimeline();
+    const entries = timeline.slice(-limit);
     return c.json({
       specId: instance.id,
       entries,
       count: entries.length,
-      total: instance.server.getTimeline().length,
+      total: timeline.length,
     });
   });
 }

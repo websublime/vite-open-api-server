@@ -83,8 +83,7 @@ export function createMultiSpecWebSocketHub(
       // biome-ignore lint/suspicious/noExplicitAny: enriching ServerEvent with specId at runtime
       const enriched = { type: event.type, data: { ...(event as any).data, specId: instance.id } };
       // biome-ignore lint/suspicious/noExplicitAny: enriched event compatible with ServerEvent
-      hub.sendTo(client, enriched as any);
-      return true;
+      return hub.sendTo(client, enriched as any);
     };
   }
 
