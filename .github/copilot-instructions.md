@@ -124,5 +124,5 @@ This project uses a structured AI-assisted development workflow with three speci
 - ✅ Always use `--json` flag for programmatic use
 - ✅ Run `bd sync` at end of sessions
 - ✅ Run `bd <cmd> --help` to discover available flags
-- ❌ Do NOT create markdown TODO lists
+- ❌ Do NOT create markdown files with TODO lists
 - ❌ Do NOT commit `.beads/beads.db` (JSONL only)
