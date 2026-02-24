@@ -24,6 +24,13 @@ import type { SpecInstance } from './orchestrator.js';
 const PACKAGE_VERSION = packageJson.version;
 
 /**
+ * Command types that exist only in multi-spec mode and are NOT in
+ * the core hub's CLIENT_COMMAND_TYPES. These need special handling
+ * because the core hub rejects unknown command types.
+ */
+const MULTI_SPEC_ONLY_COMMANDS = new Set(['get:specs']);
+
+/**
  * Create a multi-spec aware WebSocket hub.
  *
  * Strategy:
@@ -90,6 +97,27 @@ export function createMultiSpecWebSocketHub(
   });
 
   hub.setCommandHandler(commandHandler);
+
+  // --- Override handleMessage to accept multi-spec-only commands ---
+  // The core hub's handleMessage validates command types against CLIENT_COMMAND_TYPES,
+  // which doesn't include multi-spec commands like 'get:specs'. We intercept these
+  // before the core validation and route them directly to the command handler.
+  const originalHandleMessage = hub.handleMessage.bind(hub);
+  hub.handleMessage = (client: WebSocketClient, message: string | unknown) => {
+    try {
+      const parsed = typeof message === 'string' ? JSON.parse(message) : message;
+      if (parsed && typeof parsed === 'object' && 'type' in parsed) {
+        const cmd = parsed as { type: string };
+        if (MULTI_SPEC_ONLY_COMMANDS.has(cmd.type)) {
+          commandHandler(client, cmd as never);
+          return;
+        }
+      }
+    } catch {
+      // Fall through to core handleMessage which handles parse errors
+    }
+    originalHandleMessage(client, message);
+  };
 
   return hub;
 }
