@@ -1011,21 +1011,12 @@ describe('createOrchestrator', () => {
   });
 
   // --------------------------------------------------------------------------
-  // Multi-spec internal API warning (Finding #8)
+  // Multi-spec internal API (replaces Finding #8 — warning no longer needed)
   // --------------------------------------------------------------------------
 
-  describe('internal API warning', () => {
-    it('should warn about first-spec-only internal API when >1 spec', async () => {
+  describe('multi-spec internal API', () => {
+    it('should not warn about first-spec-only internal API (multi-spec is fully supported)', async () => {
       const { logger } = await createTestOrchestrator();
-
-      const warnCalls = logger.warn.mock.calls.flat().join(' ');
-      expect(warnCalls).toContain("Only first spec's internal API");
-    });
-
-    it('should not warn about internal API for a single spec', async () => {
-      const { logger } = await createTestOrchestrator({
-        specs: [{ spec: petstoreSpec, id: 'petstore', proxyPath: '/pets/v1' }],
-      });
 
       const warnCalls = logger.warn.mock.calls.flat().join(' ');
       expect(warnCalls).not.toContain("Only first spec's internal API");
