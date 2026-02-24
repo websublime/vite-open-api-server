@@ -14,30 +14,23 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   createOpenApiServer,
-  createWebSocketHub,
   executeSeeds,
   type Logger,
   mountDevToolsRoutes,
-  mountInternalApi,
   type OpenApiServer,
   type SpecInfo,
-  type WebSocketClient,
   type WebSocketHub,
 } from '@websublime/vite-plugin-open-api-core';
 import { type Context, Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ViteDevServer } from 'vite';
-import packageJson from '../package.json' with { type: 'json' };
 import { loadHandlers } from './handlers.js';
+import { mountMultiSpecInternalApi } from './multi-internal-api.js';
+import { createMultiSpecWebSocketHub } from './multi-ws.js';
 import { deriveProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
 import { loadSeeds } from './seeds.js';
 import { deriveSpecId, slugify, validateUniqueIds } from './spec-id.js';
 import type { ResolvedOptions, ResolvedSpecConfig } from './types.js';
-
-/**
- * Package version from package.json, used in the WebSocket `connected` event.
- */
-const PACKAGE_VERSION = packageJson.version;
 
 // =============================================================================
 // Constants
@@ -110,14 +103,11 @@ export interface OrchestratorResult {
   /**
    * Shared WebSocket hub for the orchestrator.
    *
-   * Created with `autoConnect: false` so the orchestrator controls
-   * the `connected` event (enhanced with `specs` metadata).
-   *
-   * In multi-spec mode (Epic 3, Task 3.1), this hub will be replaced by
-   * `createMultiSpecWebSocketHub()` which also wires broadcast interception
-   * and multi-spec command routing.
-   *
-   * @experimental Will be replaced by `createMultiSpecWebSocketHub()` in Epic 3.
+   * Created via `createMultiSpecWebSocketHub()` with:
+   * - `autoConnect: false` to suppress default connected events
+   * - Enhanced `addClient()` that sends specs metadata
+   * - Broadcast interception that adds `specId` to all events
+   * - Multi-spec command handler for spec-scoped routing
    */
   wsHub: WebSocketHub;
 
@@ -297,43 +287,6 @@ function mountDevToolsSpa(mainApp: Hono, logger: Logger): void {
 interface WebSocketRouteResult {
   // biome-ignore lint/suspicious/noExplicitAny: @hono/node-ws types expect node http.Server but we store generically
   injectWebSocket: ((server: any) => void) | null;
-}
-
-/**
- * Create the orchestrator's shared WebSocket hub with enhanced `connected` event.
- *
- * Uses `autoConnect: false` to suppress the core hub's default connected event,
- * then overrides `addClient` to send the multi-spec `connected` event instead
- * (with `specs` metadata and package version).
- *
- * **Note**: This override will be replaced by `createMultiSpecWebSocketHub()` in
- * Epic 3 (Task 3.1), which provides a proper factory with typed events.
- */
-function createOrchestratorHub(specsInfo: SpecInfo[]): WebSocketHub {
-  const wsHub = createWebSocketHub({ autoConnect: false });
-
-  // Guard: ensure addClient is writable before overriding. The core hub
-  // returns a plain object literal (writable by default), but this guard
-  // protects against future refactors that might seal/freeze the object.
-  const descriptor = Object.getOwnPropertyDescriptor(wsHub, 'addClient');
-  if (descriptor && !descriptor.writable && !descriptor.configurable) {
-    throw new Error(
-      '[vite-plugin-open-api-server] Cannot override wsHub.addClient: property is non-writable and non-configurable. ' +
-        'The core WebSocketHub implementation may have changed. This will be resolved by createMultiSpecWebSocketHub() in Epic 3.',
-    );
-  }
-
-  const originalAddClient = wsHub.addClient.bind(wsHub);
-  wsHub.addClient = (ws: WebSocketClient) => {
-    originalAddClient(ws);
-    wsHub.sendTo(ws, {
-      type: 'connected',
-      // biome-ignore lint/suspicious/noExplicitAny: MultiSpecServerEvent connected data extends ServerEvent connected data with specs[]
-      data: { serverVersion: PACKAGE_VERSION, specs: specsInfo } as any,
-    });
-  };
-
-  return wsHub;
 }
 
 /**
@@ -536,36 +489,16 @@ export async function createOrchestrator(
     mountDevToolsSpa(mainApp, logger);
   }
 
-  // --- Internal API — first spec only (multi-spec: Epic 3, Task 3.x) ---
-  if (instances.length > 1) {
-    logger.warn?.(
-      "[vite-plugin-open-api-server] Only first spec's internal API mounted on /_api; multi-spec support planned in Epic 3 (Task 3.x).",
-    );
-    // Add a warning header so DevTools / callers know the data is scoped to one spec
-    mainApp.use('/_api/*', async (c, next) => {
-      await next();
-      c.header('X-Multi-Spec-Warning', `Only showing data for spec "${instances[0].id}"`);
-    });
-  }
+  // --- Internal API (multi-spec: aggregated + per-spec routes) ---
   if (instances.length > 0) {
-    const firstInstance = instances[0];
-    mountInternalApi(mainApp, {
-      store: firstInstance.server.store,
-      registry: firstInstance.server.registry,
-      simulationManager: firstInstance.server.simulationManager,
-      wsHub: firstInstance.server.wsHub,
-      timeline: firstInstance.server.getTimeline(),
-      timelineLimit: options.timelineLimit,
-      clearTimeline: () => firstInstance.server.truncateTimeline(),
-      document: firstInstance.server.document,
-    });
+    mountMultiSpecInternalApi(mainApp, instances);
   }
 
   // --- Spec metadata (computed early for the connected event) ---
   const specsInfo = instances.map((inst) => inst.info);
 
-  // --- Shared WebSocket Hub (with enhanced connected event) ---
-  const wsHub = createOrchestratorHub(specsInfo);
+  // --- Shared WebSocket Hub (multi-spec aware: broadcast interception + command routing) ---
+  const wsHub = createMultiSpecWebSocketHub(instances, specsInfo);
 
   // --- WebSocket Route (/_ws) ---
   const { injectWebSocket } = await mountWebSocketRoute(mainApp, wsHub, logger);
