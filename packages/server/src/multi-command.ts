@@ -66,6 +66,14 @@ function sendError(
 /**
  * Resolve a spec instance from a specId, sending an error if not found.
  * Returns the instance or undefined if invalid.
+ *
+ * Dual-use contract:
+ * - Falsy specId → returns undefined without error. Aggregated handlers
+ *   (handleGetRegistry, handleGetTimeline, handleClearTimeline) rely on this
+ *   to iterate all specs when no specId is provided.
+ * - Truthy specId not in map → sends an error to the client and returns undefined.
+ * - Spec-scoped handlers (handleSpecScoped) perform their own specId-required
+ *   validation before calling this function.
  */
 function resolveInstance(
   specId: string | undefined,
@@ -114,8 +122,8 @@ function handleGetRegistry(
       data: {
         specId: id,
         endpoints: Array.from(instance.server.registry.endpoints.entries()).map(([key, entry]) => ({
-          key,
           ...entry,
+          key,
         })),
         stats: { ...instance.server.registry.stats },
       },
