@@ -187,18 +187,18 @@ async function processSpec(
   // ---- Step 2: Derive spec ID and resolve directories ----
   // Now that the document is parsed, we can derive the final spec ID
   // and compute the correct default directory paths.
+  // deriveSpecId() always returns a slugified string, so no need to re-slugify.
   const id = deriveSpecId(specConfig.id, server.document);
-  const specNamespace = slugify(id);
-  const handlersDir = specConfig.handlersDir || `./mocks/${specNamespace}/handlers`;
-  const seedsDir = specConfig.seedsDir || `./mocks/${specNamespace}/seeds`;
+  const handlersDir = specConfig.handlersDir || `./mocks/${id}/handlers`;
+  const seedsDir = specConfig.seedsDir || `./mocks/${id}/seeds`;
 
   // ---- Step 3: Load handlers and seeds from the correct directories ----
   const handlersResult = await loadHandlers(handlersDir, vite, cwd, logger);
   const seedsResult = await loadSeeds(seedsDir, vite, cwd, logger);
 
-  // Register loaded handlers on the server
+  // Register loaded handlers on the server (silent: suppress broadcast/log during initial setup)
   if (handlersResult.handlers.size > 0) {
-    server.updateHandlers(handlersResult.handlers);
+    server.updateHandlers(handlersResult.handlers, { silent: true });
   }
 
   // Execute seed functions to populate the store

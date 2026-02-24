@@ -6,6 +6,10 @@
  * Why: Ensures multi-spec orchestration where two specs both define "User" schema
  *       does not cause cross-contamination (PRD FR-007)
  *
+ * Scope: These are unit tests for the Store primitive. The integration-level
+ * contract (that the orchestrator creates a separate store per spec) is tested
+ * in orchestrator.test.ts ("should create isolated stores per spec").
+ *
  * @see Task 2.2.1: Test independent CRUD for same-named schemas
  * @see Task 2.2.2: Test store clear isolation
  * @see Task 2.2.3: Test per-spec idFields configuration
