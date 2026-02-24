@@ -307,7 +307,9 @@ bd show <task-id> --json
 ```bash
 # Add needs-review label for PR review
 bd label add <task-id> needs-review
-
+# Add comments
+bd comments add [issue-id] [text] [flags]
+#Sync bdd
 bd sync
 ```
 
