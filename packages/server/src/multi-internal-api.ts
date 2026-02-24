@@ -204,7 +204,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     const parsed = Number(c.req.query('limit'));
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 1000) : 100;
     const timeline = instance.server.getTimeline();
-    const entries = timeline.slice(-limit);
+    const entries = limit === 0 ? [] : timeline.slice(-limit);
     return c.json({
       specId: instance.id,
       entries,

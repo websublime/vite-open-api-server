@@ -128,11 +128,12 @@ function handleGetTimeline(
   instanceMap: Map<string, SpecInstance>,
 ): void {
   const specId = cmd.data?.specId;
-  const limit = (cmd.data?.limit as number) ?? 100;
+  const rawLimit = Number(cmd.data?.limit);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.floor(rawLimit), 0), 1000) : 100;
 
   const sendTimeline = (instance: SpecInstance, id: string) => {
     const timeline = instance.server.getTimeline();
-    const entries = timeline.slice(-limit);
+    const entries = limit === 0 ? [] : timeline.slice(-limit);
     const timelineEvent = {
       type: 'timeline',
       data: {
