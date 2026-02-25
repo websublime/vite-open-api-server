@@ -247,6 +247,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
       entries,
       count: entries.length,
       total: timeline.length,
+      limit,
     });
   });
 
