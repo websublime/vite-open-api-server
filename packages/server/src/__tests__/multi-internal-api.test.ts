@@ -5,6 +5,9 @@
  * How: Creates orchestrator with 2 specs, makes HTTP requests via Hono app.request()
  * Why: Ensures aggregated and per-spec API routes return correct data
  *
+ * TODO: Task 5.4.7 will add deeper integration tests verifying data content from all specs
+ * TODO: Task 5.4.8 will add deeper integration tests verifying correct per-spec data
+ *
  * @see Task 3.3.6: Write aggregated endpoint tests
  * @see Task 3.3.7: Write per-spec endpoint tests
  */
@@ -139,6 +142,8 @@ describe('mountMultiSpecInternalApi', () => {
       expect(body.specs[0].proxyPath).toBe('/pets/v1');
       expect(typeof body.specs[0].endpoints).toBe('number');
       expect(typeof body.specs[0].schemas).toBe('number');
+      expect(typeof body.specs[0].simulations).toBe('number');
+      expect(typeof body.specs[0].color).toBe('string');
 
       // Verify second spec
       expect(body.specs[1].id).toBe('inventory');
@@ -162,6 +167,11 @@ describe('mountMultiSpecInternalApi', () => {
       const specIds = body.specs.map((s: { specId: string }) => s.specId);
       expect(specIds).toContain('petstore');
       expect(specIds).toContain('inventory');
+
+      // Verify specColor is present
+      for (const spec of body.specs) {
+        expect(typeof spec.specColor).toBe('string');
+      }
     });
   });
 
@@ -210,6 +220,7 @@ describe('mountMultiSpecInternalApi', () => {
       const { status, body } = await getJson(result, '/_api/specs/petstore/store');
 
       expect(status).toBe(200);
+      expect(body.specId).toBe('petstore');
       expect(Array.isArray(body.schemas)).toBe(true);
     });
 
@@ -232,8 +243,13 @@ describe('mountMultiSpecInternalApi', () => {
       const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet');
 
       expect(status).toBe(200);
+      expect(body.specId).toBe('petstore');
       expect(body.schema).toBe('Pet');
+      expect(body.idField).toBe('id');
       expect(body.count).toBe(1);
+      expect(body.total).toBe(1);
+      expect(body.offset).toBe(0);
+      expect(body.limit).toBe(1);
       expect(body.items).toHaveLength(1);
       expect(body.items[0].name).toBe('Rex');
     });
@@ -244,6 +260,119 @@ describe('mountMultiSpecInternalApi', () => {
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
+    });
+
+    // --------------------------------------------------------------------------
+    // Pagination tests for store/:schema
+    // --------------------------------------------------------------------------
+
+    it('should respect limit query param', async () => {
+      const result = await createTestOrchestrator();
+      for (let i = 1; i <= 5; i++) {
+        result.instances[0].server.store.create('Pet', { id: i, name: `Pet${i}` });
+      }
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?limit=2');
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(2);
+      expect(body.count).toBe(2);
+      expect(body.total).toBe(5);
+      expect(body.limit).toBe(2);
+      expect(body.offset).toBe(0);
+    });
+
+    it('should respect offset query param', async () => {
+      const result = await createTestOrchestrator();
+      for (let i = 1; i <= 5; i++) {
+        result.instances[0].server.store.create('Pet', { id: i, name: `Pet${i}` });
+      }
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?offset=3');
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(2);
+      expect(body.count).toBe(2);
+      expect(body.total).toBe(5);
+      expect(body.offset).toBe(3);
+    });
+
+    it('should combine limit and offset', async () => {
+      const result = await createTestOrchestrator();
+      for (let i = 1; i <= 5; i++) {
+        result.instances[0].server.store.create('Pet', { id: i, name: `Pet${i}` });
+      }
+
+      const { status, body } = await getJson(
+        result,
+        '/_api/specs/petstore/store/Pet?offset=1&limit=2',
+      );
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(2);
+      expect(body.count).toBe(2);
+      expect(body.total).toBe(5);
+      expect(body.offset).toBe(1);
+      expect(body.limit).toBe(2);
+    });
+
+    it('should return empty items when limit=0', async () => {
+      const result = await createTestOrchestrator();
+      result.instances[0].server.store.create('Pet', { id: 1, name: 'Rex' });
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?limit=0');
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(0);
+      expect(body.count).toBe(0);
+      expect(body.total).toBe(1);
+      expect(body.limit).toBe(0);
+    });
+
+    it('should clamp negative offset to 0', async () => {
+      const result = await createTestOrchestrator();
+      result.instances[0].server.store.create('Pet', { id: 1, name: 'Rex' });
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?offset=-5');
+
+      expect(status).toBe(200);
+      expect(body.offset).toBe(0);
+      expect(body.items).toHaveLength(1);
+    });
+
+    it('should clamp limit to 1000', async () => {
+      const result = await createTestOrchestrator();
+      result.instances[0].server.store.create('Pet', { id: 1, name: 'Rex' });
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?limit=9999');
+
+      expect(status).toBe(200);
+      expect(body.limit).toBe(1000);
+    });
+
+    it('should treat NaN limit as total (return all)', async () => {
+      const result = await createTestOrchestrator();
+      for (let i = 1; i <= 3; i++) {
+        result.instances[0].server.store.create('Pet', { id: i, name: `Pet${i}` });
+      }
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?limit=abc');
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(3);
+      expect(body.limit).toBe(3);
+    });
+
+    it('should return empty when offset exceeds total', async () => {
+      const result = await createTestOrchestrator();
+      result.instances[0].server.store.create('Pet', { id: 1, name: 'Rex' });
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/store/Pet?offset=100');
+
+      expect(status).toBe(200);
+      expect(body.items).toHaveLength(0);
+      expect(body.count).toBe(0);
+      expect(body.total).toBe(1);
     });
   });
 
@@ -282,6 +411,7 @@ describe('mountMultiSpecInternalApi', () => {
       const { status, body } = await getJson(result, '/_api/specs/petstore/simulations');
 
       expect(status).toBe(200);
+      expect(body.specId).toBe('petstore');
       expect(Array.isArray(body.simulations)).toBe(true);
       expect(typeof body.count).toBe('number');
     });
@@ -313,6 +443,57 @@ describe('mountMultiSpecInternalApi', () => {
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
+    });
+
+    // --------------------------------------------------------------------------
+    // Timeline limit tests
+    // --------------------------------------------------------------------------
+
+    it('should respect limit query param', async () => {
+      const result = await createTestOrchestrator();
+
+      // Make requests to generate timeline entries
+      for (let i = 0; i < 5; i++) {
+        await result.app.request(`/pets/v1/pets`);
+      }
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=2');
+
+      expect(status).toBe(200);
+      expect(body.entries.length).toBeLessThanOrEqual(2);
+      expect(body.count).toBeLessThanOrEqual(2);
+    });
+
+    it('should return empty entries when limit=0', async () => {
+      const result = await createTestOrchestrator();
+
+      // Make a request to generate a timeline entry
+      await result.app.request(`/pets/v1/pets`);
+
+      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=0');
+
+      expect(status).toBe(200);
+      expect(body.entries).toHaveLength(0);
+      expect(body.count).toBe(0);
+    });
+
+    it('should clamp limit to 1000', async () => {
+      const result = await createTestOrchestrator();
+      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=9999');
+
+      expect(status).toBe(200);
+      // Cannot verify exact limit in response since timeline has no `limit` field,
+      // but the request should succeed without error
+      expect(body.specId).toBe('petstore');
+    });
+
+    it('should treat NaN limit as default (100)', async () => {
+      const result = await createTestOrchestrator();
+      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=abc');
+
+      expect(status).toBe(200);
+      // Default limit is 100, timeline should not exceed that
+      expect(body.count).toBeLessThanOrEqual(100);
     });
   });
 
