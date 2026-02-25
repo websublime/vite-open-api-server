@@ -14,9 +14,12 @@
  * @module multi-internal-api
  */
 
-import type { Hono } from 'hono';
+import { Hono } from 'hono';
 import packageJson from '../package.json' with { type: 'json' };
 import type { SpecInstance } from './orchestrator.js';
+
+/** Hono environment with per-spec middleware variables */
+type SpecEnv = { Variables: { specInstance: SpecInstance } };
 
 /**
  * Package version from package.json
@@ -115,15 +118,17 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
   });
 
   // ========================================================================
-  // Per-Spec Middleware
+  // Per-Spec Routes (typed sub-app with middleware)
   // ========================================================================
+
+  const specApi = new Hono<SpecEnv>();
 
   /**
    * Middleware: resolve spec instance from :specId param.
    * Returns 404 for unknown specId. Sets resolved instance on context
    * for downstream route handlers.
    */
-  app.use('/_api/specs/:specId/*', async (c, next) => {
+  specApi.use('/:specId/*', async (c, next) => {
     const specId = c.req.param('specId');
     const instance = instanceMap.get(specId);
     if (!instance) {
@@ -133,16 +138,12 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     await next();
   });
 
-  // ========================================================================
-  // Per-Spec Routes
-  // ========================================================================
-
   /**
    * GET /_api/specs/:specId/registry
    * Registry for one spec
    */
-  app.get('/_api/specs/:specId/registry', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/registry', (c) => {
+    const instance = c.get('specInstance');
 
     return c.json({
       specId: instance.id,
@@ -158,8 +159,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * GET /_api/specs/:specId/store
    * List schemas for one spec
    */
-  app.get('/_api/specs/:specId/store', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/store', (c) => {
+    const instance = c.get('specInstance');
 
     const schemas = instance.server.store.getSchemas().map((schema) => ({
       name: schema,
@@ -176,8 +177,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Default limit = total (return all items) because store data is typically small
    * and DevTools needs the full dataset for display. Capped at 1000 per request.
    */
-  app.get('/_api/specs/:specId/store/:schema', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/store/:schema', (c) => {
+    const instance = c.get('specInstance');
 
     const schema = c.req.param('schema');
     const allItems = instance.server.store.list(schema);
@@ -208,8 +209,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * GET /_api/specs/:specId/document
    * OpenAPI document for one spec
    */
-  app.get('/_api/specs/:specId/document', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/document', (c) => {
+    const instance = c.get('specInstance');
     return c.json(instance.server.document);
   });
 
@@ -217,8 +218,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * GET /_api/specs/:specId/simulations
    * Simulations for one spec
    */
-  app.get('/_api/specs/:specId/simulations', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/simulations', (c) => {
+    const instance = c.get('specInstance');
 
     return c.json({
       specId: instance.id,
@@ -234,8 +235,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Default limit = 100 (most recent entries) because timeline can grow
    * unbounded during a dev session. Capped at 1000 per request.
    */
-  app.get('/_api/specs/:specId/timeline', (c) => {
-    const instance = c.get('specInstance') as SpecInstance;
+  specApi.get('/:specId/timeline', (c) => {
+    const instance = c.get('specInstance');
 
     const parsed = Number(c.req.query('limit'));
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 1000) : 100;
@@ -248,4 +249,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
       total: timeline.length,
     });
   });
+
+  // Mount per-spec sub-app under /_api/specs
+  app.route('/_api/specs', specApi);
 }
