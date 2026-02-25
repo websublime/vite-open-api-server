@@ -5,6 +5,12 @@
  * How: Aggregated routes across all specs + per-spec routes via :specId param
  * Why: Enables DevTools and external tools to query/manage individual spec instances
  *
+ * TODO: Task 5.4.7/5.4.8 will add integration tests for these routes
+ * TODO: Export response types when DevTools client (Epic 4) consumes them
+ * TODO: Write routes (POST/DELETE store, POST/DELETE simulations, DELETE timeline)
+ *       are deferred — mutations use WebSocket commands (task 3.2.4). Add HTTP write
+ *       routes if needed by external tooling.
+ *
  * @module multi-internal-api
  */
 
@@ -25,7 +31,7 @@ const PACKAGE_VERSION = packageJson.version;
  *   GET /_api/registry                     - Aggregated registry across all specs
  *   GET /_api/health                       - Aggregated health check
  *
- * Per-spec routes:
+ * Per-spec routes (resolved via middleware):
  *   GET /_api/specs/:specId/registry       - Registry for one spec
  *   GET /_api/specs/:specId/store          - List schemas for one spec
  *   GET /_api/specs/:specId/store/:schema  - Store data for one spec
@@ -38,15 +44,6 @@ const PACKAGE_VERSION = packageJson.version;
  */
 export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]): void {
   const instanceMap = new Map(instances.map((i) => [i.id, i]));
-
-  /**
-   * Resolve a spec instance from the :specId param, returning a 404 response
-   * if the spec is unknown. Returns undefined when instance is not found
-   * (caller should return the 404 response).
-   */
-  function resolveSpec(specId: string): SpecInstance | undefined {
-    return instanceMap.get(specId);
-  }
 
   // ========================================================================
   // Aggregated Routes
@@ -118,6 +115,25 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
   });
 
   // ========================================================================
+  // Per-Spec Middleware
+  // ========================================================================
+
+  /**
+   * Middleware: resolve spec instance from :specId param.
+   * Returns 404 for unknown specId. Sets resolved instance on context
+   * for downstream route handlers.
+   */
+  app.use('/_api/specs/:specId/*', async (c, next) => {
+    const specId = c.req.param('specId');
+    const instance = instanceMap.get(specId);
+    if (!instance) {
+      return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    }
+    c.set('specInstance', instance);
+    await next();
+  });
+
+  // ========================================================================
   // Per-Spec Routes
   // ========================================================================
 
@@ -126,9 +142,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Registry for one spec
    */
   app.get('/_api/specs/:specId/registry', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    const instance = c.get('specInstance') as SpecInstance;
 
     return c.json({
       specId: instance.id,
@@ -145,26 +159,25 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * List schemas for one spec
    */
   app.get('/_api/specs/:specId/store', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    const instance = c.get('specInstance') as SpecInstance;
 
     const schemas = instance.server.store.getSchemas().map((schema) => ({
       name: schema,
       count: instance.server.store.getCount(schema),
       idField: instance.server.store.getIdField(schema),
     }));
-    return c.json({ schemas });
+    return c.json({ specId: instance.id, schemas });
   });
 
   /**
    * GET /_api/specs/:specId/store/:schema
    * Store data for one spec. Supports optional `limit` and `offset` query params.
+   *
+   * Default limit = total (return all items) because store data is typically small
+   * and DevTools needs the full dataset for display. Capped at 1000 per request.
    */
   app.get('/_api/specs/:specId/store/:schema', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    const instance = c.get('specInstance') as SpecInstance;
 
     const schema = c.req.param('schema');
     const allItems = instance.server.store.list(schema);
@@ -179,7 +192,16 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
       : total;
 
     const items = limit === 0 ? [] : allItems.slice(offset, offset + limit);
-    return c.json({ schema, items, count: items.length, total, offset, limit });
+    return c.json({
+      specId: instance.id,
+      schema,
+      idField: instance.server.store.getIdField(schema),
+      items,
+      count: items.length,
+      total,
+      offset,
+      limit,
+    });
   });
 
   /**
@@ -187,10 +209,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * OpenAPI document for one spec
    */
   app.get('/_api/specs/:specId/document', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
-
+    const instance = c.get('specInstance') as SpecInstance;
     return c.json(instance.server.document);
   });
 
@@ -199,11 +218,10 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * Simulations for one spec
    */
   app.get('/_api/specs/:specId/simulations', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    const instance = c.get('specInstance') as SpecInstance;
 
     return c.json({
+      specId: instance.id,
       simulations: instance.server.simulationManager.list(),
       count: instance.server.simulationManager.count(),
     });
@@ -211,12 +229,13 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
 
   /**
    * GET /_api/specs/:specId/timeline
-   * Timeline for one spec
+   * Timeline for one spec.
+   *
+   * Default limit = 100 (most recent entries) because timeline can grow
+   * unbounded during a dev session. Capped at 1000 per request.
    */
   app.get('/_api/specs/:specId/timeline', (c) => {
-    const specId = c.req.param('specId');
-    const instance = resolveSpec(specId);
-    if (!instance) return c.json({ error: `Unknown spec: ${specId}` }, 404);
+    const instance = c.get('specInstance') as SpecInstance;
 
     const parsed = Number(c.req.query('limit'));
     const limit = Number.isFinite(parsed) ? Math.min(Math.max(Math.floor(parsed), 0), 1000) : 100;
