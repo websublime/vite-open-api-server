@@ -174,8 +174,8 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
    * GET /_api/specs/:specId/store/:schema
    * Store data for one spec. Supports optional `limit` and `offset` query params.
    *
-   * Default limit = total (return all items) because store data is typically small
-   * and DevTools needs the full dataset for display. Capped at 1000 per request.
+   * Default limit = min(total, 1000). Store data is typically small so most
+   * requests return all items. Capped at 1000 per request in all cases.
    */
   specApi.get('/:specId/store/:schema', (c) => {
     const instance = c.get('specInstance');
@@ -190,7 +190,7 @@ export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]):
     const rawLimit = Number(c.req.query('limit'));
     const limit = Number.isFinite(rawLimit)
       ? Math.min(Math.max(Math.floor(rawLimit), 0), 1000)
-      : total;
+      : Math.min(total, 1000);
 
     const items = limit === 0 ? [] : allItems.slice(offset, offset + limit);
     return c.json({

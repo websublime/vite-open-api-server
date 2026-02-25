@@ -350,7 +350,7 @@ describe('mountMultiSpecInternalApi', () => {
       expect(body.limit).toBe(1000);
     });
 
-    it('should treat NaN limit as total (return all)', async () => {
+    it('should treat NaN limit as total capped at 1000', async () => {
       const result = await createTestOrchestrator();
       for (let i = 1; i <= 3; i++) {
         result.instances[0].server.store.create('Pet', { id: i, name: `Pet${i}` });
