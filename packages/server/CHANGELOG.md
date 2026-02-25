@@ -1,3 +1,487 @@
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
 ## [0.24.0-next.8] - 2026-02-24
 
 ### Bug Fixes
