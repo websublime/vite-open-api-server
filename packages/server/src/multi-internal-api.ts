@@ -46,6 +46,15 @@ const PACKAGE_VERSION = packageJson.version;
  * @param instances - All resolved spec instances
  */
 export function mountMultiSpecInternalApi(app: Hono, instances: SpecInstance[]): void {
+  const seen = new Set<string>();
+  for (const inst of instances) {
+    if (seen.has(inst.id)) {
+      throw new Error(
+        `[vite-plugin-open-api-server] Duplicate specId "${inst.id}" in instances array`,
+      );
+    }
+    seen.add(inst.id);
+  }
   const instanceMap = new Map(instances.map((i) => [i.id, i]));
 
   // ========================================================================

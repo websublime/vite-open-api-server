@@ -453,6 +453,7 @@ describe('mountMultiSpecInternalApi', () => {
       const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=2');
 
       expect(status).toBe(200);
+      expect(body.limit).toBe(2);
       expect(body.entries.length).toBeLessThanOrEqual(2);
       expect(body.count).toBeLessThanOrEqual(2);
     });
