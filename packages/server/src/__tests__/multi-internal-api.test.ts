@@ -12,7 +12,7 @@
  * @see Task 3.3.7: Write per-spec endpoint tests
  */
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 import { createOrchestrator, type OrchestratorResult } from '../orchestrator.js';
 import { resolveOptions } from '../types.js';
@@ -122,14 +122,21 @@ async function getJson(result: OrchestratorResult, path: string) {
 // =============================================================================
 
 describe('mountMultiSpecInternalApi', () => {
+  // Shared read-only orchestrator for tests that only query data (no mutations).
+  // Mutation tests (store writes, timeline generation) keep their own per-test instances.
+  let shared: OrchestratorResult;
+
+  beforeAll(async () => {
+    shared = await createTestOrchestrator();
+  });
+
   // --------------------------------------------------------------------------
   // Task 3.3.6: Aggregated endpoint tests
   // --------------------------------------------------------------------------
 
   describe('GET /_api/specs', () => {
     it('should list all specs with metadata', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs');
+      const { status, body } = await getJson(shared, '/_api/specs');
 
       expect(status).toBe(200);
       expect(body.count).toBe(2);
@@ -155,8 +162,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/registry', () => {
     it('should return aggregated registry from all specs', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/registry');
+      const { status, body } = await getJson(shared, '/_api/registry');
 
       expect(status).toBe(200);
       expect(body.totalSpecs).toBe(2);
@@ -177,8 +183,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/health', () => {
     it('should return aggregated health with version', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/health');
+      const { status, body } = await getJson(shared, '/_api/health');
 
       expect(status).toBe(200);
       expect(body.status).toBe('ok');
@@ -196,8 +201,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/specs/:specId/registry', () => {
     it('should return registry for a known spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/registry');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/registry');
 
       expect(status).toBe(200);
       expect(body.specId).toBe('petstore');
@@ -206,8 +210,7 @@ describe('mountMultiSpecInternalApi', () => {
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/registry');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/registry');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -216,8 +219,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/specs/:specId/store', () => {
     it('should return schemas for a known spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/store');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/store');
 
       expect(status).toBe(200);
       expect(body.specId).toBe('petstore');
@@ -225,8 +227,7 @@ describe('mountMultiSpecInternalApi', () => {
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/store');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/store');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -255,8 +256,7 @@ describe('mountMultiSpecInternalApi', () => {
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/store/Pet');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/store/Pet');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -378,8 +378,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/specs/:specId/document', () => {
     it('should return the OpenAPI document for a known spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/document');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/document');
 
       expect(status).toBe(200);
       expect(body.openapi).toBe('3.1.0');
@@ -387,18 +386,15 @@ describe('mountMultiSpecInternalApi', () => {
     });
 
     it('should return correct document for each spec', async () => {
-      const result = await createTestOrchestrator();
-
-      const petstore = await getJson(result, '/_api/specs/petstore/document');
-      const inventory = await getJson(result, '/_api/specs/inventory/document');
+      const petstore = await getJson(shared, '/_api/specs/petstore/document');
+      const inventory = await getJson(shared, '/_api/specs/inventory/document');
 
       expect(petstore.body.info.title).toBe('Petstore API');
       expect(inventory.body.info.title).toBe('Inventory API');
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/document');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/document');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -407,8 +403,7 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/specs/:specId/simulations', () => {
     it('should return simulations for a known spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/simulations');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/simulations');
 
       expect(status).toBe(200);
       expect(body.specId).toBe('petstore');
@@ -417,8 +412,7 @@ describe('mountMultiSpecInternalApi', () => {
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/simulations');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/simulations');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -427,19 +421,18 @@ describe('mountMultiSpecInternalApi', () => {
 
   describe('GET /_api/specs/:specId/timeline', () => {
     it('should return timeline for a known spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/timeline');
 
       expect(status).toBe(200);
       expect(body.specId).toBe('petstore');
       expect(Array.isArray(body.entries)).toBe(true);
       expect(typeof body.count).toBe('number');
       expect(typeof body.total).toBe('number');
+      expect(typeof body.limit).toBe('number');
     });
 
     it('should return 404 for unknown spec', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/nonexistent/timeline');
+      const { status, body } = await getJson(shared, '/_api/specs/nonexistent/timeline');
 
       expect(status).toBe(404);
       expect(body.error).toContain('Unknown spec');
@@ -475,24 +468,22 @@ describe('mountMultiSpecInternalApi', () => {
       expect(status).toBe(200);
       expect(body.entries).toHaveLength(0);
       expect(body.count).toBe(0);
+      expect(body.limit).toBe(0);
     });
 
     it('should clamp limit to 1000', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=9999');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/timeline?limit=9999');
 
       expect(status).toBe(200);
-      // Cannot verify exact limit in response since timeline has no `limit` field,
-      // but the request should succeed without error
       expect(body.specId).toBe('petstore');
+      expect(body.limit).toBe(1000);
     });
 
     it('should treat NaN limit as default (100)', async () => {
-      const result = await createTestOrchestrator();
-      const { status, body } = await getJson(result, '/_api/specs/petstore/timeline?limit=abc');
+      const { status, body } = await getJson(shared, '/_api/specs/petstore/timeline?limit=abc');
 
       expect(status).toBe(200);
-      // Default limit is 100, timeline should not exceed that
+      expect(body.limit).toBe(100);
       expect(body.count).toBeLessThanOrEqual(100);
     });
   });
