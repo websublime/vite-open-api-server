@@ -9,6 +9,30 @@
  */
 
 /**
+ * Spec metadata for DevTools and WebSocket protocol
+ *
+ * Represents a single OpenAPI spec instance in a multi-spec setup.
+ * Used by the orchestrator to describe available specs in the
+ * `connected` event and DevTools spec selector.
+ */
+export interface SpecInfo {
+  /** Unique spec identifier (explicit or auto-derived from info.title) */
+  id: string;
+  /** Human-readable spec title from OpenAPI info.title */
+  title: string;
+  /** Spec version from OpenAPI info.version */
+  version: string;
+  /** Proxy path for this spec (e.g., /api/pets/v1) */
+  proxyPath: string;
+  /** Deterministic color for UI display */
+  color: string;
+  /** Number of endpoints in this spec */
+  endpointCount: number;
+  /** Number of schemas in this spec */
+  schemaCount: number;
+}
+
+/**
  * Request log entry for timeline
  * Note: query allows string[] to match HandlerRequest.query for multi-value params
  */
@@ -111,8 +135,10 @@ export type ServerEvent =
  * Used both for TypeScript type inference and runtime validation.
  *
  * @remarks
- * When adding new commands, add them here first. The ClientCommand type
- * and runtime validation will automatically include them.
+ * When adding new single-spec commands, add them here first. The ClientCommand
+ * type and runtime validation will automatically include them.
+ * Multi-spec commands (e.g., `get:specs`) are defined separately in
+ * `MultiSpecClientCommand` and handled by the orchestrator, not by the core hub.
  */
 export const CLIENT_COMMAND_TYPES = [
   'get:registry',
@@ -154,6 +180,79 @@ export type ClientCommand =
   | { type: 'clear:simulation'; data: { path: string } }
   | { type: 'clear:timeline' }
   | { type: 'reseed' };
+
+// =============================================================================
+// Multi-Spec Protocol Types
+// =============================================================================
+
+/**
+ * Server event with spec context
+ *
+ * These are used by the orchestrator's multi-spec WebSocket wrapper.
+ * The core protocol.ts remains unchanged — the wrapper adds specId at the
+ * orchestrator level before broadcasting.
+ *
+ * **Note**: The `connected` event (with `specs: SpecInfo[]`) is emitted by
+ * the orchestrator's shared WebSocket hub when a client connects (see
+ * `packages/server/src/orchestrator.ts`). Broadcast interception and
+ * multi-spec command routing will be added in Epic 3 (Task 3.1).
+ */
+export type MultiSpecServerEvent =
+  | { type: 'connected'; data: { serverVersion: string; specs: SpecInfo[] } }
+  | { type: 'request'; data: RequestLogEntry & { specId: string } }
+  | { type: 'response'; data: ResponseLogEntry & { specId: string } }
+  | {
+      type: 'store:updated';
+      data: { specId: string; schema: string; action: string; count?: number };
+    }
+  | { type: 'handler:reloaded'; data: { specId: string; file: string } }
+  | { type: 'handlers:updated'; data: { specId: string; count: number } }
+  | { type: 'seed:reloaded'; data: { specId: string; file: string } }
+  | { type: 'seeds:updated'; data: { specId: string; count: number } }
+  | { type: 'simulation:active'; data: { specId: string; simulations: SimulationState[] } }
+  | { type: 'simulation:added'; data: { specId: string; path: string } }
+  | { type: 'simulation:removed'; data: { specId: string; path: string } }
+  | { type: 'simulations:cleared'; data: { specId: string; count: number } }
+  | { type: 'registry'; data: { specId: string; registry: unknown } }
+  | { type: 'timeline'; data: { specId: string; entries: unknown[]; count: number; total: number } }
+  | { type: 'store'; data: { specId: string; schema: string; items: unknown[]; count: number } }
+  | { type: 'store:set'; data: { specId: string; schema: string; success: boolean; count: number } }
+  | { type: 'store:cleared'; data: { specId: string; schema: string; success: boolean } }
+  | { type: 'simulation:set'; data: { specId: string; path: string; success: boolean } }
+  | { type: 'simulation:cleared'; data: { specId: string; path: string; success: boolean } }
+  | { type: 'reseeded'; data: { specId: string; success: boolean; schemas: string[] } }
+  | { type: 'timeline:cleared'; data: { specId: string; count: number } }
+  | { type: 'error'; data: { specId?: string; command: string; message: string } };
+
+/**
+ * Client commands with spec context
+ *
+ * Commands sent by DevTools clients in a multi-spec setup.
+ * Some commands are global (no specId required), others are spec-scoped.
+ *
+ * Note: These commands are handled by the multi-spec orchestrator's WebSocket
+ * wrapper in the server package, NOT by the core hub's `CLIENT_COMMAND_TYPES`
+ * validation. The `get:specs` command in particular is orchestrator-only and
+ * is not included in `CLIENT_COMMAND_TYPES`.
+ */
+export type MultiSpecClientCommand =
+  // Global commands (no specId required)
+  | { type: 'get:specs' }
+  | { type: 'get:registry'; data?: { specId?: string } }
+  | { type: 'get:timeline'; data?: { specId?: string; limit?: number } }
+  | { type: 'clear:timeline'; data?: { specId?: string } }
+
+  // Spec-scoped commands (specId required)
+  | { type: 'get:store'; data: { specId: string; schema: string } }
+  | { type: 'set:store'; data: { specId: string; schema: string; items: unknown[] } }
+  | { type: 'clear:store'; data: { specId: string; schema: string } }
+  | { type: 'set:simulation'; data: { specId: string } & SimulationConfig }
+  | { type: 'clear:simulation'; data: { specId: string; path: string } }
+  | { type: 'reseed'; data: { specId: string } };
+
+// =============================================================================
+// Helper Types
+// =============================================================================
 
 /**
  * Extract the data type for a specific server event type

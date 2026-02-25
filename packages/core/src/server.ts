@@ -131,14 +131,45 @@ export interface OpenApiServer {
   /**
    * Update handlers at runtime (for hot reload)
    * @param handlers - New handlers map
+   * @param options - Optional settings; `silent` suppresses broadcast and log (use during initial setup)
    */
-  updateHandlers(handlers: Map<string, HandlerFn>): void;
+  updateHandlers(handlers: Map<string, HandlerFn>, options?: { silent?: boolean }): void;
 
   /**
    * Update seed data at runtime (for hot reload)
    * @param seeds - New seeds map
    */
   updateSeeds(seeds: Map<string, unknown[]>): void;
+
+  /**
+   * Get the request/response timeline for this server instance
+   *
+   * Returns the internal timeline array. The orchestrator uses this
+   * to serve per-spec timeline data via the aggregated internal API
+   * and multi-spec WebSocket commands.
+   *
+   * @returns Timeline entries array (most recent last)
+   */
+  getTimeline(): readonly TimelineEntry[];
+
+  /**
+   * Clear the timeline for this server instance
+   *
+   * Used by the orchestrator for spec-scoped `clear:timeline` commands.
+   *
+   * @returns Number of entries cleared
+   */
+  clearTimeline(): number;
+
+  /**
+   * Truncate the timeline without broadcasting a WebSocket event.
+   *
+   * Used by the orchestrator when passing clearTimeline to mountInternalApi,
+   * which broadcasts its own `timeline:cleared` event after calling this.
+   *
+   * @returns Number of entries removed
+   */
+  truncateTimeline(): number;
 
   /**
    * Get the configured port
@@ -238,11 +269,19 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     }
   }
 
-  // Current handlers (mutable for hot reload)
+  // Current handlers (mutable for hot reload).
+  // IMPORTANT: Route closures in buildRoutes capture this Map by reference.
+  // updateHandlers() mutates it in-place (clear + re-populate) so that existing
+  // route closures see the updated entries. Never reassign this variable — doing
+  // so would break the reference chain and silently stop handler dispatch.
   const currentHandlers = handlers;
   let currentSeeds = seeds;
 
-  // Build routes from OpenAPI document
+  // Build routes from OpenAPI document.
+  // IMPORTANT: buildRoutes must receive the exact same Map instances stored in
+  // currentHandlers/currentSeeds. Route closures capture these by reference;
+  // updateHandlers()/updateSeeds() mutate them in-place. Never copy or spread
+  // these Maps here — the reference equality is load-bearing.
   const {
     app: apiRouter,
     registry,
@@ -283,6 +322,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       cors({
         origin: corsOrigin,
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+        // Note: X-Spec-Id is intentionally NOT included here. It is an
+        // orchestrator-level header added by the server package's CORS config.
+        // Consumers using createOpenApiServer() directly don't need it.
         allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
         exposeHeaders: ['Content-Length', 'X-Request-Id'],
         maxAge: 86400,
@@ -304,6 +346,11 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     wsHub,
     timeline,
     timelineLimit,
+    clearTimeline: () => {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
+    },
     document,
   });
 
@@ -458,9 +505,10 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
       }
     },
 
-    updateHandlers(newHandlers: Map<string, HandlerFn>): void {
-      // Mutate the existing Map in-place so route closures see the updates
-      // (reassigning currentHandlers would break closures that captured the original Map)
+    updateHandlers(newHandlers: Map<string, HandlerFn>, options?: { silent?: boolean }): void {
+      // Mutate the existing Map in-place so route closures see the updates.
+      // IMPORTANT: buildRoutes captures this Map by reference — never replace it.
+      // See Finding #2 in the code review for the full closure chain explanation.
       currentHandlers.clear();
       for (const [key, value] of newHandlers) {
         currentHandlers.set(key, value);
@@ -472,12 +520,38 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
         entry.hasHandler = handlerOperationIds.has(entry.operationId);
       }
 
+      // Skip broadcast and log during initial setup (silent mode) to avoid
+      // spurious "handlers:updated" events before any clients are connected.
+      if (!options?.silent) {
+        wsHub.broadcast({
+          type: 'handlers:updated',
+          data: { count: newHandlers.size },
+        });
+
+        logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
+      }
+    },
+
+    getTimeline(): readonly TimelineEntry[] {
+      return timeline;
+    },
+
+    clearTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
+
       wsHub.broadcast({
-        type: 'handlers:updated',
-        data: { count: newHandlers.size },
+        type: 'timeline:cleared',
+        data: { count },
       });
 
-      logger.info(`[vite-plugin-open-api-core] Handlers updated: ${newHandlers.size} handlers`);
+      return count;
+    },
+
+    truncateTimeline(): number {
+      const count = timeline.length;
+      timeline.length = 0;
+      return count;
     },
 
     /**

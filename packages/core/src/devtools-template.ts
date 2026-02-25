@@ -2,7 +2,7 @@
  * DevTools HTML Template
  *
  * What: Generates the HTML template for the DevTools SPA placeholder
- * How: Template function that injects the server port into the HTML
+ * How: Template function that produces a static HTML page (no external dependencies)
  * Why: Separates HTML generation from routing logic for better maintainability
  *
  * @module devtools-template
@@ -11,9 +11,10 @@
 /**
  * Generate the DevTools HTML page
  *
- * This generates a minimal HTML page that will eventually serve the full
- * DevTools SPA. Currently serves a placeholder with links to the API endpoints.
- * The WebSocket URL is dynamically constructed from window.location at runtime.
+ * This generates a static HTML page that serves as a placeholder when the
+ * built DevTools SPA is not available. It does not load any external
+ * resources (no CDN imports) to avoid supply-chain risk and work in
+ * air-gapped environments.
  *
  * @returns Complete HTML document as string
  */
@@ -33,89 +34,83 @@ export function generateDevToolsHtml(): string {
         background: #0f172a;
         color: #e2e8f0;
       }
-      #app {
-        min-height: 100vh;
-      }
-      .loading {
+      .container {
         display: flex;
         align-items: center;
         justify-content: center;
         min-height: 100vh;
         flex-direction: column;
-        gap: 1rem;
+        gap: 1.5rem;
+        padding: 2rem;
+        text-align: center;
       }
-      .warning {
+      .icon {
+        width: 64px;
+        height: 64px;
+        opacity: 0.6;
+      }
+      h1 {
+        color: #4f46e5;
+        margin: 0;
+        font-size: 1.5rem;
+      }
+      p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        max-width: 480px;
+      }
+      code {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.8125rem;
+      }
+      a {
+        color: #4f46e5;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .links {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      .build-hint {
         color: #ef4444;
         font-size: 0.75rem;
-        margin-top: 0.5rem;
         padding: 0.5rem 1rem;
         background: rgba(239, 68, 68, 0.1);
         border: 1px solid rgba(239, 68, 68, 0.3);
         border-radius: 0.25rem;
-        max-width: 600px;
-        text-align: center;
-      }
-      .spinner {
-        width: 48px;
-        height: 48px;
-        border: 3px solid rgba(79, 70, 229, 0.2);
-        border-radius: 50%;
-        border-top-color: #4f46e5;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
       }
     </style>
   </head>
   <body>
-    <div id="app">
-      <div class="loading">
-        <div class="spinner"></div>
-        <p>Loading OpenAPI DevTools...</p>
-        <p class="warning">⚠️ Development placeholder - This uses CDN imports. For production, serve the full built DevTools SPA.</p>
+    <div class="container">
+      <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </svg>
+      <h1>OpenAPI DevTools</h1>
+      <p class="build-hint">
+        The DevTools SPA is not built yet. Run <code>pnpm build</code> to enable the full DevTools UI.
+      </p>
+      <p>In the meantime, you can access the API endpoints directly:</p>
+      <!-- These hrefs are hard-coded and do not reference API_PROXY_PATH from
+           packages/server/src/multi-proxy.ts. If API_PROXY_PATH changes, update
+           these links or replace with runtime/template substitution. -->
+      <div class="links">
+        <a href="/_api/registry">Registry</a>
+        <a href="/_api/timeline">Timeline</a>
+        <a href="/_api/store">Store</a>
+        <a href="/_api/health">Health</a>
+        <a href="/_api/document">Document</a>
       </div>
     </div>
-    <script type="module">
-      // Import Vue and other dependencies from CDN
-      // NOTE: These CDN version pins are intentionally aligned with packages/devtools-client/package.json
-      // and must be updated in tandem. When upgrading Vue, Pinia, or Vue Router in devtools-client,
-      // update these URLs to match the same versions to ensure compatibility.
-      import { createApp } from 'https://unpkg.com/vue@3.5.17/dist/vue.esm-browser.prod.js';
-      import { createPinia } from 'https://unpkg.com/pinia@3.0.3/dist/pinia.esm-browser.js';
-      import { createRouter, createWebHistory } from 'https://unpkg.com/vue-router@4.5.1/dist/vue-router.esm-browser.js';
-
-      // Note: This is a minimal bootstrap for development
-      // In production, we would serve the full built SPA with all dependencies bundled
-
-      const app = createApp({
-        template: \`
-          <div style="padding: 2rem; text-align: center;">
-            <h1 style="color: #4f46e5; margin-bottom: 1rem;">OpenAPI DevTools</h1>
-            <p style="margin-bottom: 2rem;">The full DevTools SPA will be served here.</p>
-            <p style="color: #94a3b8; font-size: 0.875rem;">
-              For now, access the DevTools pages directly:<br/>
-              <a href="/_api/registry" style="color: #4f46e5; text-decoration: none;">Registry</a> |
-              <a href="/_api/timeline" style="color: #4f46e5; text-decoration: none;">Timeline</a> |
-              <a href="/_api/store" style="color: #4f46e5; text-decoration: none;">Store</a>
-            </p>
-            <p style="color: #94a3b8; font-size: 0.875rem; margin-top: 2rem;">
-              WebSocket: <code style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem;">\${window.location.protocol === 'https:' ? 'wss' : 'ws'}://\${window.location.host}/_ws</code>
-            </p>
-          </div>
-        \`
-      });
-
-      const pinia = createPinia();
-      const router = createRouter({
-        history: createWebHistory('/_devtools/'),
-        routes: []
-      });
-
-      app.use(pinia);
-      app.use(router);
-      app.mount('#app');
-    </script>
   </body>
 </html>`;
 }

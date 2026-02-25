@@ -14,7 +14,7 @@
       "!.changesets",
       "!*.md",
       "!pnpm-lock.yaml",
-      "!package.json"
+      "!**/package.json"
     ],
     "ignoreUnknown": false
   },

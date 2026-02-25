@@ -518,6 +518,86 @@ describe('createOpenApiServer', () => {
     });
   });
 
+  describe('getTimeline', () => {
+    it('should return empty timeline initially', async () => {
+      const server = await createOpenApiServer({
+        spec: singleEndpointDocument,
+      });
+
+      const timeline = server.getTimeline();
+      expect(timeline).toBeInstanceOf(Array);
+      expect(timeline).toHaveLength(0);
+    });
+
+    it('should return timeline entries after requests', async () => {
+      const server = await createOpenApiServer({
+        spec: singleEndpointDocument,
+      });
+
+      await server.app.request('/pets');
+
+      const timeline = server.getTimeline();
+      expect(timeline.length).toBeGreaterThan(0);
+      expect(timeline[0]).toHaveProperty('id');
+      expect(timeline[0]).toHaveProperty('timestamp');
+      expect(timeline[0]).toHaveProperty('type');
+      expect(timeline[0]).toHaveProperty('data');
+    });
+
+    it('should contain both request and response entries', async () => {
+      const server = await createOpenApiServer({
+        spec: singleEndpointDocument,
+      });
+
+      await server.app.request('/pets');
+
+      const timeline = server.getTimeline();
+      const types = timeline.map((e) => e.type);
+      expect(types).toContain('request');
+      expect(types).toContain('response');
+    });
+  });
+
+  describe('clearTimeline', () => {
+    it('should clear timeline and return count', async () => {
+      const server = await createOpenApiServer({
+        spec: singleEndpointDocument,
+      });
+
+      await server.app.request('/pets');
+
+      const timelineBefore = server.getTimeline();
+      const initialCount = timelineBefore.length;
+      expect(initialCount).toBeGreaterThan(0);
+
+      const clearedCount = server.clearTimeline();
+      expect(clearedCount).toBe(initialCount);
+      expect(server.getTimeline()).toHaveLength(0);
+    });
+
+    it('should return 0 when clearing empty timeline', async () => {
+      const server = await createOpenApiServer({
+        spec: minimalDocument,
+      });
+
+      const clearedCount = server.clearTimeline();
+      expect(clearedCount).toBe(0);
+    });
+
+    it('should allow new entries after clearing', async () => {
+      const server = await createOpenApiServer({
+        spec: singleEndpointDocument,
+      });
+
+      await server.app.request('/pets');
+      server.clearTimeline();
+      expect(server.getTimeline()).toHaveLength(0);
+
+      await server.app.request('/pets');
+      expect(server.getTimeline().length).toBeGreaterThan(0);
+    });
+  });
+
   describe('custom handlers', () => {
     it('should use custom handler when provided', async () => {
       const handlers = new Map<string, HandlerFn>([
@@ -673,7 +753,6 @@ describe('createOpenApiServer', () => {
 
       const html = await response.text();
       expect(html).toContain('OpenAPI DevTools');
-      expect(html).toContain('<div id="app">');
     });
 
     it('should redirect /_devtools/* paths to /_devtools/', async () => {

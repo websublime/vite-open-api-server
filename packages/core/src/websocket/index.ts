@@ -24,6 +24,8 @@ export {
   type ClientCommand,
   type ClientCommandData,
   type ClientCommandType,
+  type MultiSpecClientCommand,
+  type MultiSpecServerEvent,
   type RequestLogEntry,
   type ResponseLogEntry,
   type ServerEvent,
@@ -31,4 +33,5 @@ export {
   type SimulationBase,
   type SimulationConfig,
   type SimulationState,
+  type SpecInfo,
 } from './protocol.js';

@@ -15,7 +15,8 @@ import type {
 } from '@websublime/vite-plugin-open-api-core';
 import type { ViteDevServer } from 'vite';
 import type { Mock } from 'vitest';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
+import { ValidationError, type ValidationErrorCode } from '../types.js';
 
 /**
  * Creates a mock ViteDevServer with ssrLoadModule support
@@ -172,4 +173,57 @@ export function createMockWebSocketHub(): MockWebSocketHub {
       clearMock.mockClear();
     },
   };
+}
+
+/**
+ * Create a minimal OpenAPI 3.1 document for testing.
+ *
+ * Canonical factory shared across test files. Supports optional
+ * title and serverUrl to cover both spec-id and proxy-path test scenarios.
+ *
+ * @param options - Optional overrides for title and serverUrl
+ * @returns Minimal OpenAPI 3.1 document
+ */
+export function makeDocument(options?: {
+  title?: string;
+  serverUrl?: string;
+}): import('@scalar/openapi-types').OpenAPIV3_1.Document {
+  const doc: import('@scalar/openapi-types').OpenAPIV3_1.Document = {
+    openapi: '3.1.0',
+    info: {
+      title: options?.title ?? '',
+      version: '1.0.0',
+    },
+    paths: {},
+  };
+  if (options?.serverUrl !== undefined) {
+    doc.servers = [{ url: options.serverUrl }];
+  }
+  return doc;
+}
+
+/**
+ * Assert that `fn` throws a ValidationError with the expected code.
+ * Calls `fn` exactly once.
+ *
+ * @param fn - Function expected to throw ValidationError
+ * @param expectedCode - Expected ValidationErrorCode
+ *
+ * @example
+ * ```typescript
+ * expectValidationError(
+ *   () => deriveSpecId('', makeDocument('')),
+ *   'SPEC_ID_MISSING',
+ * );
+ * ```
+ */
+export function expectValidationError(fn: () => unknown, expectedCode: ValidationErrorCode): void {
+  let caught: unknown;
+  try {
+    fn();
+  } catch (error) {
+    caught = error;
+  }
+  expect(caught).toBeInstanceOf(ValidationError);
+  expect((caught as ValidationError).code).toBe(expectedCode);
 }

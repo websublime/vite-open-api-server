@@ -42,13 +42,13 @@ Switch to the task branch and analyze changes locally:
 git checkout <branch-name>
 
 # Get the diff against main
-git diff main..HEAD
+git diff next..HEAD
 
 # See changed files
-git diff main..HEAD --stat
+git diff next..HEAD --stat
 
 # Review commit history
-git log main..HEAD --oneline
+git log next..HEAD --oneline
 ```
 
 ### Step 4: Run Quality Checks

@@ -21,7 +21,10 @@ export default defineConfig({
   external: [
     // Peer dependencies - consumers provide
     'vite',
-    // Dependencies - consumers install
+    'hono',
+    '@hono/node-server',
+    '@hono/node-ws',
+    // Dependencies - bundled or consumer-installed
     '@websublime/vite-plugin-open-api-core',
     'chokidar',
     'picocolors',

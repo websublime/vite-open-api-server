@@ -1,3 +1,2222 @@
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.9] - 2026-02-25
+
+### Features
+
+- implement multi-spec WebSocket hub, command handler, and internal API (7e17215)
+
+
+### Bug Fixes
+
+- add duplicate specId guard and strengthen timeline test (091c686)
+- validate and sanitize timeline limit in WS and HTTP handlers (cc048f0)
+- use typed Hono sub-app for per-spec middleware variables (29ba36b)
+- add limit field to timeline response and improve test efficiency (b12d89c)
+- cap default store limit to 1000 when query param is missing (040e0b9)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 3 (66c478f)
+- apply code review findings for Epic 3 (round 3) (8627a3c)
+- apply code review findings for Epic 3 (round 4) (97fbbbb)
+- apply code review findings for Epic 3 (round 5) (093d17f)
+
+
+### Tests
+
+- add Epic 3 tests and fix get:specs command routing (23bff10)
+
+
+### Other Changes
+
+- sync changeset for feature/epic-3-websocket-internal-api (19a6639)
+- sync changeset for feature/epic-3-websocket-internal-api (7ba17b7)
+- sync changeset for feature/epic-3-websocket-internal-api (64c76e9)
+- sync changeset for feature/epic-3-websocket-internal-api (f766ea2)
+- sync changeset for feature/epic-3-websocket-internal-api (c250b80)
+- sync changeset for feature/epic-3-websocket-internal-api (0fc35a6)
+- sync changeset for feature/epic-3-websocket-internal-api (4ef0d00)
+- sync changeset for feature/epic-3-websocket-internal-api (7e801db)
+- sync changeset for feature/epic-3-websocket-internal-api (a8dc88d)
+- sync changeset for feature/epic-3-websocket-internal-api (6c1b83a)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.8] - 2026-02-24
+
+### Bug Fixes
+
+- re-derive default directories after spec ID resolution (15a33df)
+- load handlers/seeds from final directory paths (0fee417)
+
+
+### Code Refactoring
+
+- apply code review findings for Epic 2 (ad9c68d)
+
+
+### Tests
+
+- add store isolation tests for multi-spec scenarios (22462b7)
+- add default directory resolution and override tests (01da7c1)
+
+
+### Other Changes
+
+- update developer workflow and copilot instructions (48eceee)
+- add changeset for Epic 2 store isolation and directory resolution (0cedc49)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (34704ee)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (9056ad5)
+- sync changeset for feature/vite-ezf-store-isolation-and-defaults (649afb7)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.7] - 2026-02-23
+
+### Features
+
+- extract per-spec hot reload into hot-reload.ts (ab44398)
+
+
+### Bug Fixes
+
+- address PR review round 2 findings (10fa877)
+- address PR review round 3 findings (215db55)
+- address PR review round 4 findings (d6decf0)
+- add debounce cancellation and improve path filtering (680627e)
+- address PR review round 5 findings (518b43d)
+- address PR review round 6 findings (9574aa9)
+- address PR review round 7 findings (5c47242)
+
+
+### Tests
+
+- add per-spec reload isolation tests (18bc8ca)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (5331e7c)
+- add changeset for per-spec file watchers feature (a9c295c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (e2e587b)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (fa696b6)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (2a11872)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (796629c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (3fd668c)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a77f1fe)
+- sync changeset for feature/vite-yrp-1-per-spec-file-watchers (a7107aa)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.6] - 2026-02-19
+
+### Features
+
+- mount /_ws WebSocket route and wire connected broadcast (b8440e2)
+
+
+### Bug Fixes
+
+- address code review findings for vite-eb9/vite-vh2 (fcc263a)
+- address PR review round 2 findings (791eab9)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (52d2ebe)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (0730ed5)
+- update coder skill command (0e90ba3)
+- sync changeset for feature/vite-eb9-ws-route-orchestrator (75809b1)
+- changeset update (e1ef500)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.5] - 2026-02-19
+
+### Features
+
+- rewrite plugin entry point for multi-spec orchestrator (151032e)
+
+
+### Bug Fixes
+
+- harden resource cleanup and improve test resilience (8cb0333)
+- address PR review round 2 findings (0292cdc)
+- address PR review round 3 findings (bcdc4db)
+- address PR review round 4 findings (920aa36)
+- address PR review round 5 findings (ff3585e)
+
+
+### Tests
+
+- add integration tests for multi-spec plugin (a89a68e)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (a9182f0)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (b5c6c22)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (9911e20)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (ea2da8a)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (1304042)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (369aae3)
+- sync changeset for feature/vite-qq9.7-plugin-entry-rewrite (40f00fa)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.4] - 2026-02-18
+
+### Features
+
+- add multi-path proxy configuration for multi-spec support (fad30a6)
+
+
+### Bug Fixes
+
+- detect Vite startsWith proxy prefix collisions (9bd537d)
+- address PR review comments (53ba344)
+- replace regex rewrite with startsWith/slice and add early-return tests (ee08e77)
+- address code review findings (1 critical, 4 major, 3 minor) (4227d7b)
+- add inline comment explaining shared service proxy precedence (ebdf0ff)
+- use segment-boundary guard in rewrite to prevent prefix collisions (ff82f49)
+- treat '?' as valid segment boundary in rewrite (b6a2955)
+
+
+### Code Refactoring
+
+- add proxyOf() helper to fix TS2532/TS2322 in tests (5bf5071)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (89e3a3d)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (b2ac4c8)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (56ebaea)
+- add @vitest/coverage-v8 devDependency (06907a1)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (42dc48b)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (d007b2a)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (cad89f7)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (822ccb0)
+- sync changeset for feature/vite-qq9.6-multi-path-proxy (4efff1c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.3] - 2026-02-18
+
+### Features
+
+- implement multi-spec orchestrator (125d446)
+
+
+### Bug Fixes
+
+- address PR review comments (7a7faa5)
+- add Vitest resolve aliases for workspace packages (4b43b61)
+- address PR review findings (eed669c)
+- address PR review findings (6557578)
+- address PR inline comments (1639cd2)
+- address second round of PR comments (22d6b50)
+- address code review findings (1 critical, 9 major, 8 minor) (aaaf52f)
+- address final code review findings (8bac4ee)
+
+
+### Tests
+
+- add integration tests and refactor for lint compliance (c58f9a8)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.5-orchestrator (23052a0)
+- sync changeset for feature/vite-qq9.5-orchestrator (ac9624b)
+- sync changeset for feature/vite-qq9.5-orchestrator (859ed50)
+- sync changeset for feature/vite-qq9.5-orchestrator (cfaa8d3)
+- sync changeset for feature/vite-qq9.5-orchestrator (7fb88e2)
+- sync changeset for feature/vite-qq9.5-orchestrator (80e6d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (ef38d83)
+- sync changeset for feature/vite-qq9.5-orchestrator (057461c)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.2] - 2026-02-18
+
+### Features
+
+- add proxy path auto-detection with validation (9f4a6a3)
+
+
+### Bug Fixes
+
+- address coder review findings for proxy-path (c831756)
+- address PR review findings (2f037ec)
+- address second round of PR review findings (8fe89e2)
+- trim whitespace-only proxyPath in validateUniqueProxyPaths (532f03c)
+- address third round of review findings (b86ea75)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (78281f0)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (83c3dc1)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (616395c)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (1e6b11a)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (65f0090)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (9b5f298)
+- sync changeset for feature/vite-qq9.4-proxy-path-auto-detection (e33c6e5)
+
+
+
+## [0.24.0-next.1] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
+## [0.24.0-next.1] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
+## [0.24.0-next.1] - 2026-02-13
+
+### Features
+
+- implement spec ID derivation (10a0c94)
+
+
+### Bug Fixes
+
+- address coder review findings for spec-id (b5f0b14)
+- address code review findings for spec-id (f6754a9)
+- update pnpm-lock.yaml for devDependencies move (e2880db)
+- guard against empty slug from non-ASCII-only titles (f523c7c)
+- replace manual try/catch with expectValidationError in duplicate test (f91ae5a)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (1e6a574)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (e409fd4)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (a81f1b3)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (85e873e)
+- sync changeset for feature/vite-qq9.3-spec-id-derivation (7bbbe29)
+
+
+
+## [0.24.0-next.0] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+- add autoConnect option to WebSocketHubOptions (c7405dd)
+- add MultiSpecServerEvent and MultiSpecClientCommand types (b6f231e)
+- define and export SpecInfo interface (e3a5927)
+- add getTimeline() and clearTimeline() to OpenApiServer (48cbda0)
+
+
+### Bug Fixes
+
+- address coder review findings for types, banner, and tests (eb6b058)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address code review findings for core package extensions (13343a2)
+
+
+### Documentation
+
+- update agent/contributor docs for next branch strategy (e6b9993)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Continuous Integration
+
+- add next branch support for pre-release workflow (fb40789)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- bump @websublime/vite-plugin-open-api-core to 0.14.0-next.0 (f717863)
+- fix formatting in core exports and protocol types (bab5bf8)
+- add changeset for core package minor extensions (fbb4f22)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (e83671e)
+- update changeset for code review fixes (f37cec1)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (9639b34)
+- beads gitignore update (f2a89db)
+- update beads gitignore (doctor --fix) (4b4bf32)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
+## [0.24.0-next.0] - 2026-02-12
+
+### Features
+
+- rewrite plugin configuration types for multi-spec support (4ddc0c6)
+- add autoConnect option to WebSocketHubOptions (c7405dd)
+- add MultiSpecServerEvent and MultiSpecClientCommand types (b6f231e)
+- define and export SpecInfo interface (e3a5927)
+- add getTimeline() and clearTimeline() to OpenApiServer (48cbda0)
+
+
+### Bug Fixes
+
+- address coder review findings for types, banner, and tests (eb6b058)
+- address PR review comments for types, banner, and tests (f38dfa0)
+- use glob pattern to exclude all package.json files from biome (467655e)
+- address code review findings for core package extensions (13343a2)
+
+
+### Documentation
+
+- update agent/contributor docs for next branch strategy (e6b9993)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Continuous Integration
+
+- add next branch support for pre-release workflow (fb40789)
+
+
+### Other Changes
+
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (88fd727)
+- add changeset for feature/vite-qq9.2-plugin-configuration-types (35e5ecc)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (76e72c6)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (2b3e201)
+- sync changeset for feature/vite-qq9.2-plugin-configuration-types (5ed4681)
+- bump @websublime/vite-plugin-open-api-core to 0.14.0-next.0 (f717863)
+- fix formatting in core exports and protocol types (bab5bf8)
+- add changeset for core package minor extensions (fbb4f22)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (e83671e)
+- update changeset for code review fixes (f37cec1)
+- sync changeset for feature/vite-qq9.1-core-package-minor-extensions (9639b34)
+- beads gitignore update (f2a89db)
+- update beads gitignore (doctor --fix) (4b4bf32)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
 ## [0.23.1] - 2026-02-11
 
 ### Documentation

@@ -18,7 +18,46 @@ export { openApiServer } from './plugin.js';
 // Type Exports
 // =============================================================================
 
-export type { OpenApiServerOptions, ResolvedOptions } from './types.js';
+export type {
+  OpenApiServerOptions,
+  ProxyPathSource,
+  ResolvedOptions,
+  ResolvedSpecConfig,
+  SpecConfig,
+  ValidationErrorCode,
+} from './types.js';
+export { resolveOptions, ValidationError, validateSpecs } from './types.js';
+
+// =============================================================================
+// Spec ID Derivation (for advanced use cases)
+// =============================================================================
+
+export { deriveSpecId, slugify, validateUniqueIds } from './spec-id.js';
+
+// =============================================================================
+// Proxy Path Derivation (for advanced use cases)
+// =============================================================================
+
+export type { DeriveProxyPathResult } from './proxy-path.js';
+export { deriveProxyPath, normalizeProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
+
+// =============================================================================
+// Orchestrator (multi-spec)
+// =============================================================================
+
+export type { OrchestratorResult, SpecInstance } from './orchestrator.js';
+export { createOrchestrator, SPEC_COLORS } from './orchestrator.js';
+
+// =============================================================================
+// Multi-Proxy Configuration
+// =============================================================================
+
+export {
+  API_PROXY_PATH,
+  configureMultiProxy,
+  DEVTOOLS_PROXY_PATH,
+  WS_PROXY_PATH,
+} from './multi-proxy.js';
 
 // =============================================================================
 // Handler Loading (for advanced use cases)
@@ -38,8 +77,14 @@ export { getSeedFiles, loadSeeds } from './seeds.js';
 // Hot Reload (for advanced use cases)
 // =============================================================================
 
-export type { FileWatcher, FileWatcherOptions } from './hot-reload.js';
-export { createFileWatcher, debounce } from './hot-reload.js';
+export type { DebouncedFunction, FileWatcher, FileWatcherOptions } from './hot-reload.js';
+export {
+  createFileWatcher,
+  createPerSpecFileWatchers,
+  debounce,
+  reloadSpecHandlers,
+  reloadSpecSeeds,
+} from './hot-reload.js';
 
 // =============================================================================
 // DevTools Integration

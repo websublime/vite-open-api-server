@@ -3,12 +3,16 @@
 # What: Automates versioning, changelog generation, git tagging, and npm publishing
 # How: Uses workspace-tools to process changesets and pnpm to publish packages
 # Why: Ensures consistent releases with proper versioning and changelog updates
+#
+# Branches:
+#   - main: Publishes stable releases (latest tag on npm)
+#   - next: Publishes pre-release versions (next tag on npm, e.g., 1.0.0-next.0)
 
 name: Release
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
   workflow_dispatch:
 
 concurrency:
@@ -69,8 +73,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          workspace bump --execute --git-commit --git-tag --force
-          git push origin main --follow-tags
+          BRANCH="${{ github.ref_name }}"
+
+          if [ "$BRANCH" = "next" ]; then
+            # Pre-release: generates versions like 1.0.0-next.0, 1.0.0-next.1, etc.
+            workspace bump --prerelease next --execute --git-commit --git-tag --force
+          else
+            # Stable release: promotes pre-release to stable or applies normal bump
+            workspace bump --execute --git-commit --git-tag --force
+          fi
+
+          git push origin "$BRANCH" --follow-tags
 
       - name: Publish to npm
         if: steps.changesets.outputs.count > 0
@@ -92,7 +105,12 @@ jobs:
           # Debug: Verify npm authentication
           npm whoami || echo "npm whoami failed - token may be invalid"
 
-          # Publish packages in topological order (dependencies first)
-          # This ensures @websublime/vite-plugin-open-api-core is published before
-          # @websublime/vite-plugin-open-api-server which depends on it
-          pnpm -r --filter='./packages/*' publish --access public --no-git-checks
+          BRANCH="${{ github.ref_name }}"
+
+          if [ "$BRANCH" = "next" ]; then
+            # Publish with 'next' dist-tag so npm install without @next still gets stable
+            pnpm -r --filter='./packages/*' publish --access public --no-git-checks --tag next
+          else
+            # Publish as 'latest' (default)
+            pnpm -r --filter='./packages/*' publish --access public --no-git-checks
+          fi
