@@ -1,3 +1,28 @@
+## [0.13.2] - 2026-02-27
+
+### Bug Fixes
+
+- inject x-schema-id on component schemas for seed matching (2691c95)
+- default handlersDir and seedsDir to null instead of fallback paths (f85ab5b)
+- address PR review findings (017b4a5)
+
+
+### Documentation
+
+- update README defaults for handlersDir and seedsDir (8cd965c)
+- update all doc references to V2 documents (PRD, Tech Spec, Plan) (2efaf7c)
+- add PRD V2, Technical Specification V2, and PLAN V2 for v1.0.0 multi-spec support (16d04cc)
+
+
+### Other Changes
+
+- sync changeset for fix/schema-and-dirs (2e80fb8)
+- sync changeset for fix/schema-and-dirs (d27f82c)
+- add changeset for schema-id and dirs fixes (cc0cc16)
+- fix package.json formatting and biome config (c3523f4)
+
+
+
 ## [0.13.1] - 2026-02-11
 
 ### Documentation
