@@ -67,9 +67,9 @@ openApiServer({
   port: 4000,                        // Server port (default: 4000)
   proxyPath: '/api/v3',              // Vite proxy path (default: '/api')
 
-  // Customization
-  handlersDir: './mocks/handlers',   // Custom handlers directory
-  seedsDir: './mocks/seeds',         // Seed data directory
+  // Customization (optional — no crawling when omitted)
+  handlersDir: './mocks/handlers',   // Custom handlers directory (default: null)
+  seedsDir: './mocks/seeds',         // Seed data directory (default: null)
   idFields: {                        // ID field per schema
     User: 'username',
     Order: 'orderId',
@@ -97,8 +97,8 @@ openApiServer({
 | `spec` | `string` | *(required)* | Path to OpenAPI spec file (YAML/JSON) or URL |
 | `port` | `number` | `4000` | Mock server port |
 | `proxyPath` | `string` | `'/api'` | Vite proxy path prefix |
-| `handlersDir` | `string` | `'./mocks/handlers'` | Custom handlers directory |
-| `seedsDir` | `string` | `'./mocks/seeds'` | Seed data directory |
+| `handlersDir` | `string` | `null` | Custom handlers directory (no crawling when null) |
+| `seedsDir` | `string` | `null` | Seed data directory (no crawling when null) |
 | `idFields` | `Record<string, string>` | `{}` | ID field per schema (default field: `'id'`) |
 | `enabled` | `boolean` | `true` | Enable/disable the plugin |
 | `devtools` | `boolean` | `true` | Enable Vue DevTools integration |
@@ -204,7 +204,7 @@ export default defineHandlers({
 ### Handler File Convention
 
 - **Pattern**: `*.handlers.{ts,js,mjs}`
-- **Location**: `handlersDir` directory (default: `./mocks/handlers`), scanned recursively
+- **Location**: `handlersDir` directory (no crawling when not configured), scanned recursively
 - **Keys**: Each key in the `defineHandlers()` object must match an `operationId` from your OpenAPI spec
 - **Async**: Handlers can be `async` functions
 - **Duplicates**: If multiple files define the same `operationId`, the last loaded file wins (warning logged)
@@ -308,7 +308,7 @@ export default defineSeeds({
 ### Seed File Convention
 
 - **Pattern**: `*.seeds.{ts,js,mjs}`
-- **Location**: `seedsDir` directory (default: `./mocks/seeds`), scanned recursively
+- **Location**: `seedsDir` directory (no crawling when not configured), scanned recursively
 - **Execution order**: Schemas within a file execute in definition order; multiple files are processed in glob discovery order
 - **Duplicates**: If multiple files define the same schema name, the last loaded file wins (warning logged)
 
