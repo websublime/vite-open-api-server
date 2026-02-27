@@ -1,0 +1,29 @@
+{
+  "changeset": {
+    "branch": "fix/seeds-update",
+    "bump": "patch",
+    "environments": [
+      "production"
+    ],
+    "packages": [
+      "@websublime/vite-plugin-open-api-core",
+      "@websublime/vite-plugin-open-api-server"
+    ],
+    "changes": [
+      "fec1e4137aebdddb2f818efa3561942fa297e276",
+      "fad3fceb455d9ef0f3fd4a78bdc050d610109fed",
+      "50c4869137a5607335e9e88f4f9ce2fe06199779"
+    ],
+    "created_at": "2026-02-27T15:09:48.356553Z",
+    "updated_at": "2026-02-27T15:10:01.074199Z"
+  },
+  "release_info": {
+    "applied_at": "2026-02-27T15:33:16.745846834Z",
+    "applied_by": "workspace-cli",
+    "git_commit": "0a554dce0c78583215ff5218b9e4f16ab7ba4d1a",
+    "versions": {
+      "@websublime/vite-plugin-open-api-core": "0.13.3",
+      "@websublime/vite-plugin-open-api-server": "0.23.3"
+    }
+  }
+}

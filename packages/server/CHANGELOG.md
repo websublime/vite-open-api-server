@@ -1,3 +1,19 @@
+## [0.23.3] - 2026-02-27
+
+### Bug Fixes
+
+- prevent same-reference corruption in updateSeeds and fix detached JSDoc (0a554dc)
+- sync seeds map with route builder after executeSeeds (fd0d770)
+
+
+### Other Changes
+
+- fix package.json formatting (008720e)
+- add changeset for fix/seeds-update (9a80a1a)
+- sync changeset for fix/seeds-update (42e0109)
+
+
+
 ## [0.23.2] - 2026-02-27
 
 ### Bug Fixes
