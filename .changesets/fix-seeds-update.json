@@ -1,0 +1,14 @@
+{
+  "branch": "fix/seeds-update",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-27T15:09:48.356553Z",
+  "updated_at": "2026-02-27T15:09:48.356922Z"
+}
