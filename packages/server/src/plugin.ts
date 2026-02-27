@@ -67,12 +67,6 @@ const VIRTUAL_DEVTOOLS_TAB_ID = 'virtual:open-api-devtools-tab';
 const RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID = `\0${VIRTUAL_DEVTOOLS_TAB_ID}`;
 
 /**
- * Build a seed data map from the store for the route builder
- *
- * The route builder needs a Map<string, unknown[]> to know which schemas
- * have seed data. This reads the current store contents and builds that map.
- */
-/**
  * Resolve the DevTools SPA directory path
  *
  * @returns Absolute path to the SPA directory, or undefined if not found
@@ -91,6 +85,12 @@ function resolveDevtoolsSpaDir(logger?: Logger): string | undefined {
   return undefined;
 }
 
+/**
+ * Build a seed data map from the store for the route builder
+ *
+ * The route builder needs a Map<string, unknown[]> to know which schemas
+ * have seed data. This reads the current store contents and builds that map.
+ */
 function buildSeedDataMap(server: OpenApiServer): Map<string, unknown[]> {
   const seedDataMap = new Map<string, unknown[]>();
   for (const schema of server.store.getSchemas()) {
