@@ -276,9 +276,9 @@ function extractResponseSchemaName(operation: OpenAPIV3_1.OperationObject): stri
  * @returns Schema name or undefined
  */
 function extractSchemaName(schema: OpenAPIV3_1.SchemaObject): string | undefined {
-  // Check for title property (common in dereferenced schemas)
-  if (schema.title) {
-    return schema.title;
+  // Check for x-schema-id (injected by processor after dereferencing)
+  if ('x-schema-id' in schema && typeof schema['x-schema-id'] === 'string') {
+    return schema['x-schema-id'];
   }
 
   // If it's an array, get the items schema
@@ -287,9 +287,9 @@ function extractSchemaName(schema: OpenAPIV3_1.SchemaObject): string | undefined
     return extractSchemaName(itemsSchema);
   }
 
-  // Check for x-schema-name extension
-  if ('x-schema-name' in schema && typeof schema['x-schema-name'] === 'string') {
-    return schema['x-schema-name'];
+  // Fallback: check title property
+  if (schema.title) {
+    return schema.title;
   }
 
   return undefined;
