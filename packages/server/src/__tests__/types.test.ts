@@ -45,8 +45,8 @@ describe('resolveOptions', () => {
       expect(result.spec).toBe('./api.yaml');
       expect(result.port).toBe(4000);
       expect(result.proxyPath).toBe('/api');
-      expect(result.handlersDir).toBe('./mocks/handlers');
-      expect(result.seedsDir).toBe('./mocks/seeds');
+      expect(result.handlersDir).toBeNull();
+      expect(result.seedsDir).toBeNull();
       expect(result.enabled).toBe(true);
       expect(result.idFields).toEqual({});
       expect(result.timelineLimit).toBe(500);

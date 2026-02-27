@@ -175,10 +175,14 @@ try {
 
       try {
         // Load handlers from handlers directory (using Vite's ssrLoadModule for TS support)
-        const handlersResult = await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd);
+        const handlersResult = resolvedOptions.handlersDir
+          ? await loadHandlers(resolvedOptions.handlersDir, viteServer, cwd)
+          : { handlers: new Map(), fileCount: 0, files: [] };
 
         // Load seeds from seeds directory (using Vite's ssrLoadModule for TS support)
-        const seedsResult = await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd);
+        const seedsResult = resolvedOptions.seedsDir
+          ? await loadSeeds(resolvedOptions.seedsDir, viteServer, cwd)
+          : { seeds: new Map(), fileCount: 0, files: [] };
 
         // Resolve DevTools SPA directory (shipped inside this package's dist/)
         let devtoolsSpaDir: string | undefined;
@@ -334,8 +338,8 @@ try {
     const debouncedSeedReload = debounce(reloadSeeds, 100);
 
     fileWatcher = await createFileWatcher({
-      handlersDir: resolvedOptions.handlersDir,
-      seedsDir: resolvedOptions.seedsDir,
+      handlersDir: resolvedOptions.handlersDir ?? undefined,
+      seedsDir: resolvedOptions.seedsDir ?? undefined,
       cwd,
       onHandlerChange: debouncedHandlerReload,
       onSeedChange: debouncedSeedReload,
@@ -346,7 +350,7 @@ try {
    * Reload handlers when files change
    */
   async function reloadHandlers(): Promise<void> {
-    if (!server || !vite) return;
+    if (!server || !vite || !resolvedOptions.handlersDir) return;
 
     try {
       const handlersResult = await loadHandlers(resolvedOptions.handlersDir, vite, cwd);
@@ -372,7 +376,7 @@ try {
    * For development tooling, this tradeoff is acceptable.
    */
   async function reloadSeeds(): Promise<void> {
-    if (!server || !vite) return;
+    if (!server || !vite || !resolvedOptions.seedsDir) return;
 
     try {
       // Load seeds first (before clearing) to minimize the window where store is empty
