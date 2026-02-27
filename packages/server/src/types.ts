@@ -23,8 +23,8 @@ import type { Logger } from '@websublime/vite-plugin-open-api-core';
  *       spec: './openapi/petstore.yaml',
  *       port: 4000,
  *       proxyPath: '/api',
- *       handlersDir: './mocks/handlers',
- *       seedsDir: './mocks/seeds',
+ *       handlersDir: './mocks/handlers', // optional
+ *       seedsDir: './mocks/seeds',       // optional
  *     }),
  *   ],
  * });
@@ -72,8 +72,9 @@ export interface OpenApiServerOptions {
    * and handler functions as values. Use `defineHandlers()` for
    * type-safe handler definitions.
    *
+   * When not provided, no handler crawling is performed.
+   *
    * @example './mocks/handlers'
-   * @default './mocks/handlers'
    */
   handlersDir?: string;
 
@@ -84,8 +85,9 @@ export interface OpenApiServerOptions {
    * and seed functions as values. Use `defineSeeds()` for
    * type-safe seed definitions.
    *
+   * When not provided, no seed crawling is performed.
+   *
    * @example './mocks/seeds'
-   * @default './mocks/seeds'
    */
   seedsDir?: string;
 
@@ -172,8 +174,8 @@ export interface ResolvedOptions {
   spec: string;
   port: number;
   proxyPath: string;
-  handlersDir: string;
-  seedsDir: string;
+  handlersDir: string | null;
+  seedsDir: string | null;
   enabled: boolean;
   idFields: Record<string, string>;
   timelineLimit: number;
@@ -202,8 +204,8 @@ export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
     spec: options.spec,
     port: options.port ?? 4000,
     proxyPath: options.proxyPath ?? '/api',
-    handlersDir: options.handlersDir ?? './mocks/handlers',
-    seedsDir: options.seedsDir ?? './mocks/seeds',
+    handlersDir: options.handlersDir ?? null,
+    seedsDir: options.seedsDir ?? null,
     enabled: options.enabled ?? true,
     idFields: options.idFields ?? {},
     timelineLimit: options.timelineLimit ?? 500,
