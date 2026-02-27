@@ -179,6 +179,21 @@ export interface OpenApiServer {
  * @param config - Server configuration
  * @returns Configured server instance
  */
+/**
+ * Populate the store with seed data, logging any per-item failures
+ */
+function populateStoreWithSeeds(seeds: Map<string, unknown[]>, store: Store, logger: Logger): void {
+  for (const [schemaName, items] of seeds) {
+    for (const item of items) {
+      try {
+        store.create(schemaName, item);
+      } catch (error) {
+        logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
+      }
+    }
+  }
+}
+
 export async function createOpenApiServer(config: OpenApiServerConfig): Promise<OpenApiServer> {
   const {
     spec,
@@ -199,16 +214,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   const store = createStore({ idFields });
 
   // Populate store with seed data
-  for (const [schemaName, items] of seeds) {
-    for (const item of items) {
-      try {
-        store.create(schemaName, item);
-      } catch (error) {
-        // Log but don't fail - duplicate IDs in seeds are common
-        logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
-      }
-    }
-  }
+  populateStoreWithSeeds(seeds, store, logger);
 
   // Create WebSocket hub for real-time updates
   const wsHub = createWebSocketHub();
@@ -238,9 +244,9 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     }
   }
 
-  // Current handlers (mutable for hot reload)
+  // Current handlers and seeds (mutable for hot reload, mutated in-place)
   const currentHandlers = handlers;
-  let currentSeeds = seeds;
+  const currentSeeds = seeds;
 
   // Build routes from OpenAPI document
   const {
@@ -491,20 +497,17 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
      * @param newSeeds - New seeds map (schema name -> array of items)
      */
     updateSeeds(newSeeds: Map<string, unknown[]>): void {
-      currentSeeds = newSeeds;
+      // Mutate the existing Map in-place so route closures see the updates
+      // (reassigning currentSeeds would break closures that captured the original Map)
+      currentSeeds.clear();
+      for (const [key, value] of newSeeds) {
+        currentSeeds.set(key, value);
+      }
 
       // Re-populate store with new seeds
       // Note: clearAll() removes ALL schemas, not just the ones being updated
       store.clearAll();
-      for (const [schemaName, items] of newSeeds) {
-        for (const item of items) {
-          try {
-            store.create(schemaName, item);
-          } catch (error) {
-            logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
-          }
-        }
-      }
+      populateStoreWithSeeds(newSeeds, store, logger);
 
       // Update registry with new seed info
       const seedSchemaNames = new Set(newSeeds.keys());
