@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import {
   createOpenApiServer,
   executeSeeds,
+  type Logger,
   type OpenApiServer,
 } from '@websublime/vite-plugin-open-api-core';
 import type { Plugin, ViteDevServer } from 'vite';
@@ -64,6 +65,39 @@ import { type OpenApiServerOptions, resolveOptions } from './types.js';
  */
 const VIRTUAL_DEVTOOLS_TAB_ID = 'virtual:open-api-devtools-tab';
 const RESOLVED_VIRTUAL_DEVTOOLS_TAB_ID = `\0${VIRTUAL_DEVTOOLS_TAB_ID}`;
+
+/**
+ * Build a seed data map from the store for the route builder
+ *
+ * The route builder needs a Map<string, unknown[]> to know which schemas
+ * have seed data. This reads the current store contents and builds that map.
+ */
+/**
+ * Resolve the DevTools SPA directory path
+ *
+ * @returns Absolute path to the SPA directory, or undefined if not found
+ */
+function resolveDevtoolsSpaDir(logger?: Logger): string | undefined {
+  const pluginDir = dirname(fileURLToPath(import.meta.url));
+  const spaDir = join(pluginDir, 'devtools-spa');
+  if (existsSync(spaDir)) {
+    return spaDir;
+  }
+  logger?.warn?.(
+    '[vite-plugin-open-api-server] DevTools SPA not found at',
+    spaDir,
+    '- serving placeholder. Run "pnpm build" to include the SPA.',
+  );
+  return undefined;
+}
+
+function buildSeedDataMap(server: OpenApiServer): Map<string, unknown[]> {
+  const seedDataMap = new Map<string, unknown[]>();
+  for (const schema of server.store.getSchemas()) {
+    seedDataMap.set(schema, server.store.list(schema));
+  }
+  return seedDataMap;
+}
 
 export function openApiServer(options: OpenApiServerOptions): Plugin {
   const resolvedOptions = resolveOptions(options);
@@ -185,20 +219,9 @@ try {
           : { seeds: new Map(), fileCount: 0, files: [] };
 
         // Resolve DevTools SPA directory (shipped inside this package's dist/)
-        let devtoolsSpaDir: string | undefined;
-        if (resolvedOptions.devtools) {
-          const pluginDir = dirname(fileURLToPath(import.meta.url));
-          const spaDir = join(pluginDir, 'devtools-spa');
-          if (existsSync(spaDir)) {
-            devtoolsSpaDir = spaDir;
-          } else {
-            resolvedOptions.logger?.warn?.(
-              '[vite-plugin-open-api-server] DevTools SPA not found at',
-              spaDir,
-              '- serving placeholder. Run "pnpm build" to include the SPA.',
-            );
-          }
-        }
+        const devtoolsSpaDir = resolvedOptions.devtools
+          ? resolveDevtoolsSpaDir(resolvedOptions.logger)
+          : undefined;
 
         // Create the OpenAPI mock server
         server = await createOpenApiServer({
@@ -216,9 +239,11 @@ try {
           logger: resolvedOptions.logger,
         });
 
-        // Execute seeds to populate the store
+        // Execute seeds to populate the store, then sync the route builder's seed map
         if (seedsResult.seeds.size > 0) {
           await executeSeeds(seedsResult.seeds, server.store, server.document);
+
+          server.updateSeeds(buildSeedDataMap(server));
         }
 
         // Start the mock server
@@ -393,11 +418,9 @@ try {
         server.store.clearAll();
       }
 
-      // Notify via WebSocket
-      server.wsHub.broadcast({
-        type: 'seeds:updated',
-        data: { count: seedsResult.seeds.size },
-      });
+      // Sync the route builder's seed map with the new store data
+      // (updateSeeds mutates the map in-place so route closures see the updates)
+      server.updateSeeds(buildSeedDataMap(server));
 
       printReloadNotification('seeds', seedsResult.seeds.size, resolvedOptions);
     } catch (error) {
