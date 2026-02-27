@@ -1,0 +1,14 @@
+{
+  "branch": "fix/schema-and-dirs",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-02-27T12:58:50.571375Z",
+  "updated_at": "2026-02-27T12:58:50.571698Z"
+}
