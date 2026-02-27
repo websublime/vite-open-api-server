@@ -497,10 +497,13 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
      * @param newSeeds - New seeds map (schema name -> array of items)
      */
     updateSeeds(newSeeds: Map<string, unknown[]>): void {
+      // Capture entries before clearing to avoid corruption when newSeeds === currentSeeds
+      const entries = Array.from(newSeeds.entries());
+
       // Mutate the existing Map in-place so route closures see the updates
       // (reassigning currentSeeds would break closures that captured the original Map)
       currentSeeds.clear();
-      for (const [key, value] of newSeeds) {
+      for (const [key, value] of entries) {
         currentSeeds.set(key, value);
       }
 
