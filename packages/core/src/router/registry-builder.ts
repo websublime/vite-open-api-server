@@ -276,7 +276,7 @@ function extractResponseSchemaName(operation: OpenAPIV3_1.OperationObject): stri
  * @returns Schema name or undefined
  */
 function extractSchemaName(schema: OpenAPIV3_1.SchemaObject): string | undefined {
-  // Check for x-schema-id (injected by processor after dereferencing)
+  // Check for x-schema-id (injected by processor before dereferencing)
   if ('x-schema-id' in schema && typeof schema['x-schema-id'] === 'string') {
     return schema['x-schema-id'];
   }

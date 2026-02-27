@@ -288,7 +288,7 @@ function injectSchemaIds(document: OpenAPIV3_1.Document): void {
     if (!schema || typeof schema !== 'object') continue;
 
     // Only inject if not already set (respect user-defined values)
-    if (!schema['x-schema-id']) {
+    if (!('x-schema-id' in schema)) {
       schema['x-schema-id'] = name;
     }
   }

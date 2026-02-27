@@ -74,9 +74,29 @@ describe('resolveOptions', () => {
       expect(result.handlersDir).toBe('./src/mocks/handlers');
     });
 
+    it('should normalize empty handlersDir to null', () => {
+      const result = resolveOptions({ spec: './api.yaml', handlersDir: '' });
+      expect(result.handlersDir).toBeNull();
+    });
+
+    it('should normalize whitespace-only handlersDir to null', () => {
+      const result = resolveOptions({ spec: './api.yaml', handlersDir: '   ' });
+      expect(result.handlersDir).toBeNull();
+    });
+
     it('should accept custom seedsDir', () => {
       const result = resolveOptions({ spec: './api.yaml', seedsDir: './src/mocks/seeds' });
       expect(result.seedsDir).toBe('./src/mocks/seeds');
+    });
+
+    it('should normalize empty seedsDir to null', () => {
+      const result = resolveOptions({ spec: './api.yaml', seedsDir: '' });
+      expect(result.seedsDir).toBeNull();
+    });
+
+    it('should normalize whitespace-only seedsDir to null', () => {
+      const result = resolveOptions({ spec: './api.yaml', seedsDir: '   ' });
+      expect(result.seedsDir).toBeNull();
     });
 
     it('should accept enabled: false', () => {
