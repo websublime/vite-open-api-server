@@ -167,6 +167,89 @@ describe('processOpenApiDocument', () => {
       expect(responseSchema?.properties?.id?.type).toBe('integer');
       expect(responseSchema?.properties?.name?.type).toBe('string');
     });
+
+    it('should inject x-schema-id on component schemas after dereferencing', async () => {
+      const input = {
+        openapi: '3.0.0',
+        info: { title: 'Schema ID API', version: '1.0.0' },
+        paths: {
+          '/carts': {
+            get: {
+              responses: {
+                '200': {
+                  description: 'OK',
+                  content: {
+                    'application/json': {
+                      schema: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/Cart' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        components: {
+          schemas: {
+            Cart: {
+              type: 'object',
+              properties: {
+                id: { type: 'string' },
+                total: { type: 'number' },
+              },
+            },
+            CartEntry: {
+              type: 'object',
+              properties: {
+                entryNumber: { type: 'integer' },
+              },
+            },
+          },
+        },
+      };
+
+      const result = await processOpenApiDocument(input);
+
+      // Component schemas should have x-schema-id injected
+      const cartSchema = result.components?.schemas?.Cart as Record<string, unknown>;
+      expect(cartSchema?.['x-schema-id']).toBe('Cart');
+
+      const cartEntrySchema = result.components?.schemas?.CartEntry as Record<string, unknown>;
+      expect(cartEntrySchema?.['x-schema-id']).toBe('CartEntry');
+
+      // Dereferenced inline schema should also have x-schema-id (shared reference)
+      const responseItems = (
+        result.paths?.['/carts']?.get?.responses?.['200']?.content?.['application/json']
+          ?.schema as Record<string, unknown>
+      )?.items as Record<string, unknown>;
+      expect(responseItems?.['x-schema-id']).toBe('Cart');
+    });
+
+    it('should not overwrite user-defined x-schema-id', async () => {
+      const input = {
+        openapi: '3.0.0',
+        info: { title: 'Custom ID API', version: '1.0.0' },
+        paths: {},
+        components: {
+          schemas: {
+            MySchema: {
+              type: 'object',
+              'x-schema-id': 'CustomName',
+              properties: {
+                id: { type: 'string' },
+              },
+            },
+          },
+        },
+      };
+
+      const result = await processOpenApiDocument(input);
+
+      const schema = result.components?.schemas?.MySchema as Record<string, unknown>;
+      expect(schema?.['x-schema-id']).toBe('CustomName');
+    });
   });
 
   describe('file input', () => {
@@ -200,16 +283,23 @@ describe('processOpenApiDocument', () => {
       expect(result.info?.title).toBe('API with References');
 
       // Check that Pet schema was dereferenced
-      const petSchema = result.components?.schemas?.Pet;
+      const petSchema = result.components?.schemas?.Pet as Record<string, unknown>;
       expect(petSchema).toBeDefined();
       expect(petSchema?.type).toBe('object');
-      expect(petSchema?.properties?.name?.type).toBe('string');
+
+      // Check x-schema-id injection
+      expect(petSchema?.['x-schema-id']).toBe('Pet');
+
+      const categorySchema = result.components?.schemas?.Category as Record<string, unknown>;
+      expect(categorySchema?.['x-schema-id']).toBe('Category');
+
+      const petSchemaTyped = petSchema as { properties?: Record<string, Record<string, unknown>> };
+      expect(petSchemaTyped?.properties?.name?.type).toBe('string');
 
       // Check that the Category reference within Pet was dereferenced
-      const categoryInPet = petSchema?.properties?.category;
+      const categoryInPet = petSchemaTyped?.properties?.category;
       expect(categoryInPet).toBeDefined();
       expect(categoryInPet?.type).toBe('object');
-      expect(categoryInPet?.properties?.name?.type).toBe('string');
     });
   });
 

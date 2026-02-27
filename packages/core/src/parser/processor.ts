@@ -265,6 +265,36 @@ function validateDocument(document: OpenAPIV3_1.Document): void {
 }
 
 // ============================================================================
+// Post-Processing Functions
+// ============================================================================
+
+/**
+ * Inject x-schema-id on all component schemas before dereferencing
+ *
+ * By injecting x-schema-id before the dereference step, the identifier
+ * is carried into every location where the schema gets inlined via $ref.
+ * This enables schema identification throughout route building and seed matching.
+ *
+ * @param document - Upgraded OpenAPI 3.1 document (mutated in place)
+ */
+function injectSchemaIds(document: OpenAPIV3_1.Document): void {
+  const schemas = (document as Record<string, unknown>).components as
+    | Record<string, unknown>
+    | undefined;
+  const schemaMap = schemas?.schemas as Record<string, Record<string, unknown>> | undefined;
+  if (!schemaMap) return;
+
+  for (const [name, schema] of Object.entries(schemaMap)) {
+    if (!schema || typeof schema !== 'object') continue;
+
+    // Only inject if not already set (respect user-defined values)
+    if (!schema['x-schema-id']) {
+      schema['x-schema-id'] = name;
+    }
+  }
+}
+
+// ============================================================================
 // Main Processor Function
 // ============================================================================
 
@@ -319,9 +349,10 @@ export async function processOpenApiDocument(
   // (isEmptyInput returns true for null/undefined and throws for '[]')
   const validInput = input as string | Record<string, unknown>;
 
-  // Execute pipeline: bundle -> upgrade -> dereference -> validate
+  // Execute pipeline: bundle -> upgrade -> inject ids -> dereference -> validate
   const bundled = await bundleDocument(validInput);
   const upgraded = upgradeDocument(bundled);
+  injectSchemaIds(upgraded);
   const dereferenced = await dereferenceDocument(upgraded);
 
   validateDocument(dereferenced);
