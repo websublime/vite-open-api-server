@@ -269,13 +269,14 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     }
   }
 
-  // Current handlers (mutable for hot reload).
-  // IMPORTANT: Route closures in buildRoutes capture this Map by reference.
-  // updateHandlers() mutates it in-place (clear + re-populate) so that existing
-  // route closures see the updated entries. Never reassign this variable — doing
-  // so would break the reference chain and silently stop handler dispatch.
+  // Current handlers and seeds (mutable for hot reload).
+  // IMPORTANT: Route closures in buildRoutes capture these Maps by reference.
+  // updateHandlers()/updateSeeds() mutate them in-place (clear + re-populate) so
+  // that existing route closures see the updated entries. Never reassign these
+  // variables — doing so would break the reference chain and silently stop
+  // handler/seed dispatch.
   const currentHandlers = handlers;
-  let currentSeeds = seeds;
+  const currentSeeds = seeds;
 
   // Build routes from OpenAPI document.
   // IMPORTANT: buildRoutes must receive the exact same Map instances stored in
@@ -557,15 +558,30 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
     /**
      * Update seed data at runtime (for hot reload)
      *
+     * Repopulates the store with the new seed data and syncs the route
+     * builder's seed map so that the seed response priority path sees
+     * the updated entries.
+     *
      * @remarks
-     * **Warning**: This method clears ALL data in the store before repopulating
-     * with the new seeds. Any manually added data (including data in schemas
-     * not present in the new seeds) will be permanently lost.
+     * **Mutation contract**: Route closures capture `currentSeeds` by
+     * reference at build time. This method mutates the Map in-place
+     * (`.clear()` + `.set()`) so closures see the updates. Never replace
+     * the Map — that breaks the reference chain.
+     *
+     * **Warning**: This method clears ALL data in the store before
+     * repopulating with the new seeds. Any manually added data (including
+     * data in schemas not present in the new seeds) will be permanently lost.
      *
      * @param newSeeds - New seeds map (schema name -> array of items)
      */
     updateSeeds(newSeeds: Map<string, unknown[]>): void {
-      currentSeeds = newSeeds;
+      // Mutate the existing Map in-place so route closures see the updates.
+      // IMPORTANT: buildRoutes captures this Map by reference — never replace it.
+      // This mirrors the pattern used by updateHandlers().
+      currentSeeds.clear();
+      for (const [key, value] of newSeeds) {
+        currentSeeds.set(key, value);
+      }
 
       // Re-populate store with new seeds
       // Note: clearAll() removes ALL schemas, not just the ones being updated

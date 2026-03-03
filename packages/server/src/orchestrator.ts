@@ -19,6 +19,7 @@ import {
   mountDevToolsRoutes,
   type OpenApiServer,
   type SpecInfo,
+  type Store,
   type WebSocketHub,
 } from '@websublime/vite-plugin-open-api-core';
 import { type Context, Hono } from 'hono';
@@ -143,6 +144,29 @@ interface ProcessedSpec {
 }
 
 /**
+ * Build a seed data Map from the store's current contents.
+ *
+ * After `executeSeeds()` populates the store, this function reads back
+ * the materialized data so it can be passed to `server.updateSeeds()`.
+ * The route builder's seed map needs static `Map<string, unknown[]>`
+ * data (not seed functions), which is exactly what the store contains
+ * after execution.
+ *
+ * @param store - Store populated by executeSeeds()
+ * @returns Map of schema name to array of items
+ */
+function buildSeedMapFromStore(store: Store): Map<string, unknown[]> {
+  const seedMap = new Map<string, unknown[]>();
+  for (const schemaName of store.getSchemas()) {
+    const items = store.list(schemaName);
+    if (items.length > 0) {
+      seedMap.set(schemaName, items);
+    }
+  }
+  return seedMap;
+}
+
+/**
  * Process a single spec configuration into a resolved SpecInstance.
  *
  * Loads handlers and seeds, creates the core OpenApiServer, derives the
@@ -191,9 +215,16 @@ async function processSpec(
     server.updateHandlers(handlersResult.handlers, { silent: true });
   }
 
-  // Execute seed functions to populate the store
+  // Execute seed functions to populate the store, then sync route builder
   if (seedsResult.seeds.size > 0) {
     await executeSeeds(seedsResult.seeds, server.store, server.document);
+
+    // Sync the route builder's seed map from the now-populated store.
+    // executeSeeds() only writes to the store — the route builder's seed map
+    // (used for the seed response priority path) is a separate reference that
+    // must be updated explicitly via updateSeeds().
+    const seedMap = buildSeedMapFromStore(server.store);
+    server.updateSeeds(seedMap);
   }
 
   // Derive proxy path (from explicit config or servers[0].url)
