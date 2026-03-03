@@ -35,10 +35,14 @@ vi.mock('../handlers.js', () => ({
   getHandlerFiles: vi.fn(),
 }));
 
-vi.mock('../seeds.js', () => ({
-  loadSeeds: vi.fn(),
-  getSeedFiles: vi.fn(),
-}));
+vi.mock('../seeds.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../seeds.js')>();
+  return {
+    ...actual,
+    loadSeeds: vi.fn(),
+    getSeedFiles: vi.fn(),
+  };
+});
 
 // Mock executeSeeds from core (called by reloadSpecSeeds)
 vi.mock('@websublime/vite-plugin-open-api-core', async (importOriginal) => {
