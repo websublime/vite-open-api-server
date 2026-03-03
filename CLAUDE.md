@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# vite-open-api-server
 
 **Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads)
 for issue tracking. Use `bd` commands instead of markdown TODOs.
@@ -8,110 +6,75 @@ See AGENTS.md for workflow details.
 
 ## Project Overview
 
-The `@websublime/vite-plugin-open-api-server` is a Vite plugin that provides a local OpenAPI server for frontend development. It automatically creates API endpoints based on OpenAPI specifications, enabling frontend developers to work independently of backend services during local development.
-
-### Key Capabilities
-
-- Parse and process OpenAPI 2.0/3.x specifications (bundle, upgrade to 3.1, dereference)
-- Custom Hono-based HTTP server with automatic route generation
-- In-memory data store with CRUD operations per schema
-- Custom request handlers for endpoint customization
-- Seed data system for populating store with test data
-- Automatic fake data generation with Faker.js
-- Hot reload for handlers and seeds
-- Vue DevTools integration via iframe SPA
-- Real-time WebSocket communication for DevTools
-- Error/delay simulation for testing edge cases
+A Vite plugin monorepo that provides an OpenAPI mock server with DevTools integration, WebSocket support, and multi-spec orchestration. It parses OpenAPI specifications to generate mock API responses, provides a Vue-based DevTools UI for debugging, and supports hot-reloading of specs during development.
 
 ## Repository Structure
 
 ```
 vite-open-api-server/
 ├── packages/
-│   ├── core/                         # Core server logic (Hono, store, generator)
-│   ├── devtools-client/              # Vue SPA for DevTools
-│   ├── vite-plugin/                  # Vite plugin wrapper
-│   └── playground/                   # Demo application
-├── history/                          # Planning and architecture docs
+│   ├── core/                          # Core server logic (Hono, store, generator, OpenAPI parsing)
+│   ├── devtools-client/               # Vue SPA for DevTools UI (Pinia, Vue Router, Open Props)
+│   ├── server/                        # Vite plugin wrapper (file watching, proxy, server lifecycle)
+│   └── playground/                    # Demo application (petstore-app)
+├── history/                           # Planning and architecture docs
 │   ├── PRODUCT-REQUIREMENTS-DOC-V2.md # Product Requirements Document (v1.0.0)
 │   ├── TECHNICAL-SPECIFICATION-V2.md  # Technical Specification (v1.0.0)
 │   ├── PLAN-V2.md                     # Development Plan (v1.0.0)
 │   ├── PRODUCT-REQUIREMENTS-DOC.md    # [Legacy] PRD (v0.x)
 │   ├── TECHNICAL-SPECIFICATION.md     # [Legacy] Tech Spec (v0.x)
 │   └── PLAN.md                        # [Legacy] Plan (v0.x)
-├── .github/workflows/                # CI/CD workflows
-└── biome.json, tsconfig.json, etc.   # Configuration files
+├── scripts/                           # Build and utility scripts
+├── .github/workflows/                 # CI/CD workflows (ci.yml, release.yml)
+├── biome.json                         # Biome linter/formatter config
+├── tsconfig.json                      # Root TypeScript config
+├── vitest.config.ts                   # Root Vitest config
+├── pnpm-workspace.yaml                # pnpm workspace config
+└── repo.config.toml                   # Repository configuration
 ```
 
-## Technology Stack
+## Tech Stack
 
-| Technology | Purpose |
-|------------|---------|
-| **pnpm** | Package manager with workspace support |
-| **TypeScript 5.x** | Language (strict mode enabled) |
-| **Vite 5+** | Development server and build tool |
-| **Hono** | HTTP server framework |
-| **@scalar/openapi-parser** | OpenAPI parsing and dereferencing |
-| **@scalar/json-magic** | External reference bundling |
-| **@scalar/openapi-upgrader** | OpenAPI version upgrade (2.0/3.0 → 3.1) |
-| **@faker-js/faker** | Fake data generation |
-| **Vue 3** | DevTools client framework |
-| **Pinia** | State management for DevTools |
-| **tsup** | Library bundler |
-| **Vitest** | Testing framework |
-| **Biome** | Linting and formatting |
+- **Languages**: TypeScript, Vue 3 (SFC)
+- **Runtime**: Node.js (^20.19.0 || >=22.12.0)
+- **Build Tools**: Vite 7, tsup, pnpm (monorepo)
+- **Server Framework**: Hono (with @hono/node-server, @hono/node-ws)
+- **OpenAPI**: @scalar/openapi-parser, @scalar/openapi-types
+- **Data Generation**: @faker-js/faker
+- **Frontend**: Vue 3, Pinia, Vue Router, Open Props, Lucide icons
+- **Testing**: Vitest, jsdom
+- **Linting/Formatting**: Biome
+- **CI/CD**: GitHub Actions
+- **Package Management**: pnpm workspaces
 
-**Note on Dependencies:**
-- `@types/node` is pinned to `^20.x` to match the minimum Node.js engine version (`^20.19.0`) despite supporting Node 22+. This ensures type compatibility across all supported Node.js versions and prevents type errors when developers use the minimum supported version.
+## Key Packages
 
-## Development Commands
+| Package | npm | Description |
+|---------|-----|-------------|
+| `@websublime/vite-plugin-open-api-core` | core | Hono server, store, route builder, OpenAPI processing |
+| `@websublime/vite-plugin-open-api-server` | server | Vite plugin, file watcher, proxy, DevTools integration |
+| `@websublime/vite-plugin-open-api-devtools` | devtools-client | Vue SPA for debugging routes, models, timeline |
+| `petstore-app` | playground | Demo app for development and testing |
 
-```bash
-pnpm install        # Install dependencies
-pnpm dev            # Watch mode for packages
-pnpm build          # Build all packages
-pnpm test           # Run tests
-pnpm lint           # Check with Biome
-pnpm typecheck      # TypeScript validation
-pnpm playground     # Run playground app
-```
+## Supervisors
 
-## Beads Version Compatibility (bd)
+- node-backend-supervisor
+- vue-supervisor
 
-Tested with **beads CLI 0.47.1**. Version info maintained in `.claude/skills/beads-compat/references/version-info.md`.
+## Your Identity
 
-- Changelog: https://github.com/steveyegge/beads/blob/main/CHANGELOG.md
-- Run `/beads-compat` to check installed version
-- beads.el versioning mirrors beads CLI version (e.g., beads.el 0.44.0 = tested with beads 0.44.0)
+**You are an orchestrator, delegator, and constructive skeptic architect co-pilot.**
 
-**Testing the daemon connection**:
-```bash
-bd daemon --status
-```
-
-**CLI fallback** (when daemon unavailable):
-```bash
-bd list --json
-bd ready --json
-bd create "Title" --json
-```
-
-## Issue Tracking
-
-This project uses **bd (beads)** for issue tracking. Do NOT use markdown TODOs.
-
-```bash
-bd ready              # Find available work
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
-```
+- **Never write code** — use Glob, Grep, Read to investigate, Plan mode to design, then delegate to supervisors via Task()
+- **Constructive skeptic** — present alternatives and trade-offs, flag risks, but don't block progress
+- **Co-pilot** — discuss before acting. Summarize your proposed plan. Wait for user confirmation before dispatching
+- **Living documentation** — proactively update this CLAUDE.md to reflect project state, learnings, and architecture
 
 ## Commit Strategy
 
 **Atomic commits as you go** - Create logical commits during development, not after:
 
-1. **Tests must pass** - Never commit breaking changes. Run `pnpm run test` before every commit.
+1. **Tests must pass** - Never commit breaking changes. Run tests before every commit.
 2. **Fix code, not tests** - If tests fail, fix the implementation first. Only modify tests if they are genuinely wrong.
 3. **Commit at logical points**:
    - When a beads task is complete
@@ -133,21 +96,3 @@ For visual changes (new UI, modified display):
    ```markdown
    <!-- TODO: Add screenshot for X (see bdel-xxx) -->
    ```
-
-## Branch Strategy
-
-Active development for v1.0.0 happens on the `next` branch:
-- **`next`**: v1.0.0 multi-spec development. PRs and feature branches target here.
-- **`main`**: Stable 0.x releases. Only hotfixes and patches.
-
-Pre-release versions (e.g., `1.0.0-next.0`) are published to npm with the `next` dist-tag.
-Users installing without `@next` continue to get stable 0.x versions.
-
-When v1.0.0 is complete, `next` merges into `main` for the stable release.
-
-## Session Completion
-
-Work is NOT complete until `git push` succeeds:
-```bash
-git pull --rebase && bd sync && git push
-```
