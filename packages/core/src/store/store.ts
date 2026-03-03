@@ -264,6 +264,12 @@ export function createStore(options?: StoreOptions): Store {
         throw new StoreError('ID field must be a non-empty string');
       }
 
+      // Idempotent: re-registering the same field is a no-op
+      const currentField = idFields.get(schema) ?? DEFAULT_ID_FIELD;
+      if (currentField === field) {
+        return;
+      }
+
       // Prevent changing ID field when schema already has data
       const schemaData = data.get(schema);
       if (schemaData && schemaData.size > 0) {

@@ -382,6 +382,35 @@ describe('createStore', () => {
       expect(() => store.setIdField('Pet', 'petId')).toThrow(/already contains/);
     });
 
+    it('should not throw when re-registering the same field with existing records', () => {
+      store.setIdField('Vehicles', 'vehicleId');
+      store.create('Vehicles', { vehicleId: 1, make: 'Toyota' });
+      store.create('Vehicles', { vehicleId: 2, make: 'Honda' });
+
+      // Same field re-registration must be a no-op
+      expect(() => store.setIdField('Vehicles', 'vehicleId')).not.toThrow();
+      expect(store.getIdField('Vehicles')).toBe('vehicleId');
+      expect(store.getCount('Vehicles')).toBe(2);
+    });
+
+    it('should still throw when changing to a different field with existing records', () => {
+      store.setIdField('Vehicles', 'vehicleId');
+      store.create('Vehicles', { vehicleId: 1, make: 'Toyota' });
+
+      expect(() => store.setIdField('Vehicles', 'vin')).toThrow(StoreError);
+      expect(() => store.setIdField('Vehicles', 'vin')).toThrow(/already contains/);
+    });
+
+    it('should not throw when setting implicit default field "id" with existing records', () => {
+      // No explicit setIdField — schema uses implicit DEFAULT_ID_FIELD ('id')
+      store.create('Pet', { id: 1, name: 'Buddy' });
+
+      // Explicitly registering 'id' should be a no-op since it matches the default
+      expect(() => store.setIdField('Pet', 'id')).not.toThrow();
+      expect(store.getIdField('Pet')).toBe('id');
+      expect(store.getCount('Pet')).toBe(1);
+    });
+
     it('should allow setting ID field after clearing schema data', () => {
       store.create('Pet', { id: 1, name: 'Buddy' });
       store.clear('Pet');
