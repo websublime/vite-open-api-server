@@ -1,7 +1,7 @@
 /**
- * Seed Loading
+ * Seed Loading and Utilities
  *
- * What: Loads seed files from a directory using glob patterns
+ * What: Loads seed files from a directory and provides seed data utilities
  * How: Uses Vite's ssrLoadModule to transform and load TypeScript files
  * Why: Enables users to define seed data for schemas in TypeScript
  *
@@ -9,7 +9,12 @@
  */
 
 import path from 'node:path';
-import type { AnySeedFn, Logger, SeedDefinition } from '@websublime/vite-plugin-open-api-core';
+import type {
+  AnySeedFn,
+  Logger,
+  SeedDefinition,
+  Store,
+} from '@websublime/vite-plugin-open-api-core';
 import fg from 'fast-glob';
 import type { ViteDevServer } from 'vite';
 import { directoryExists } from './utils.js';
@@ -190,4 +195,27 @@ export async function getSeedFiles(
   });
 
   return files;
+}
+
+/**
+ * Build a seed data Map from the store's current contents.
+ *
+ * After `executeSeeds()` populates the store, this function reads back
+ * the materialized data so it can be passed to `server.updateSeeds()`.
+ * The route builder's seed map needs static `Map<string, unknown[]>`
+ * data (not seed functions), which is exactly what the store contains
+ * after execution.
+ *
+ * @param store - Store populated by executeSeeds()
+ * @returns Map of schema name to array of items
+ */
+export function buildSeedMapFromStore(store: Store): Map<string, unknown[]> {
+  const seedMap = new Map<string, unknown[]>();
+  for (const schemaName of store.getSchemas()) {
+    const items = store.list(schemaName);
+    if (items.length > 0) {
+      seedMap.set(schemaName, items);
+    }
+  }
+  return seedMap;
 }

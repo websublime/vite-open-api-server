@@ -19,7 +19,6 @@ import {
   mountDevToolsRoutes,
   type OpenApiServer,
   type SpecInfo,
-  type Store,
   type WebSocketHub,
 } from '@websublime/vite-plugin-open-api-core';
 import { type Context, Hono } from 'hono';
@@ -29,7 +28,7 @@ import { loadHandlers } from './handlers.js';
 import { mountMultiSpecInternalApi } from './multi-internal-api.js';
 import { createMultiSpecWebSocketHub } from './multi-ws.js';
 import { deriveProxyPath, validateUniqueProxyPaths } from './proxy-path.js';
-import { loadSeeds } from './seeds.js';
+import { buildSeedMapFromStore, loadSeeds } from './seeds.js';
 import { deriveSpecId, slugify, validateUniqueIds } from './spec-id.js';
 import type { ResolvedOptions, ResolvedSpecConfig } from './types.js';
 
@@ -141,29 +140,6 @@ interface ProcessedSpec {
     handlersDir: string;
     seedsDir: string;
   };
-}
-
-/**
- * Build a seed data Map from the store's current contents.
- *
- * After `executeSeeds()` populates the store, this function reads back
- * the materialized data so it can be passed to `server.updateSeeds()`.
- * The route builder's seed map needs static `Map<string, unknown[]>`
- * data (not seed functions), which is exactly what the store contains
- * after execution.
- *
- * @param store - Store populated by executeSeeds()
- * @returns Map of schema name to array of items
- */
-function buildSeedMapFromStore(store: Store): Map<string, unknown[]> {
-  const seedMap = new Map<string, unknown[]>();
-  for (const schemaName of store.getSchemas()) {
-    const items = store.list(schemaName);
-    if (items.length > 0) {
-      seedMap.set(schemaName, items);
-    }
-  }
-  return seedMap;
 }
 
 /**

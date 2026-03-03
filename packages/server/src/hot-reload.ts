@@ -11,13 +11,13 @@
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { executeSeeds, type Logger, type Store } from '@websublime/vite-plugin-open-api-core';
+import { executeSeeds, type Logger } from '@websublime/vite-plugin-open-api-core';
 import type { FSWatcher } from 'chokidar';
 import type { ViteDevServer } from 'vite';
 import { printError, printReloadNotification } from './banner.js';
 import { loadHandlers } from './handlers.js';
 import type { SpecInstance } from './orchestrator.js';
-import { loadSeeds } from './seeds.js';
+import { buildSeedMapFromStore, loadSeeds } from './seeds.js';
 import type { ResolvedOptions } from './types.js';
 
 // Segment-boundary patterns: match "node_modules" or "dist" as a directory
@@ -455,26 +455,6 @@ export async function reloadSpecHandlers(
   } catch (error) {
     printError(`Failed to reload handlers for spec "${instance.id}"`, error, options);
   }
-}
-
-/**
- * Build a seed data Map from the store's current contents.
- *
- * After `executeSeeds()` populates the store, this reads back the
- * materialized data so it can be passed to `server.updateSeeds()`.
- *
- * @param store - Store populated by executeSeeds()
- * @returns Map of schema name to array of items
- */
-function buildSeedMapFromStore(store: Store): Map<string, unknown[]> {
-  const seedMap = new Map<string, unknown[]>();
-  for (const schemaName of store.getSchemas()) {
-    const items = store.list(schemaName);
-    if (items.length > 0) {
-      seedMap.set(schemaName, items);
-    }
-  }
-  return seedMap;
 }
 
 /**
