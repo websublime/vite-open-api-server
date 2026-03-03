@@ -11,7 +11,7 @@
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { executeSeeds, type Logger } from '@websublime/vite-plugin-open-api-core';
+import { executeSeeds, type Logger, type Store } from '@websublime/vite-plugin-open-api-core';
 import type { FSWatcher } from 'chokidar';
 import type { ViteDevServer } from 'vite';
 import { printError, printReloadNotification } from './banner.js';
@@ -458,10 +458,31 @@ export async function reloadSpecHandlers(
 }
 
 /**
+ * Build a seed data Map from the store's current contents.
+ *
+ * After `executeSeeds()` populates the store, this reads back the
+ * materialized data so it can be passed to `server.updateSeeds()`.
+ *
+ * @param store - Store populated by executeSeeds()
+ * @returns Map of schema name to array of items
+ */
+function buildSeedMapFromStore(store: Store): Map<string, unknown[]> {
+  const seedMap = new Map<string, unknown[]>();
+  for (const schemaName of store.getSchemas()) {
+    const items = store.list(schemaName);
+    if (items.length > 0) {
+      seedMap.set(schemaName, items);
+    }
+  }
+  return seedMap;
+}
+
+/**
  * Reload seeds for a specific spec instance
  *
- * Loads fresh seeds from disk, clears the spec's store, and re-executes
- * seeds. Broadcasts a WebSocket event and logs the result.
+ * Loads fresh seeds from disk, clears the spec's store, re-executes
+ * seeds, and syncs the route builder's seed map via `updateSeeds()`.
+ * Broadcasts a WebSocket event and logs the result.
  *
  * Note: This operation is not fully atomic — there's a brief window between
  * clearing the store and repopulating it where requests may see empty data.
@@ -480,41 +501,35 @@ export async function reloadSpecSeeds(
 ): Promise<void> {
   try {
     // Load seeds first (before clearing) to minimize the window where store is empty.
-    // NOTE: We bypass instance.server.updateSeeds() because it expects static data
-    // (Map<string, unknown[]>), while loadSeeds() returns seed functions (Map<string, AnySeedFn>)
-    // that must be materialized via executeSeeds(). The explicit broadcast below is necessary
-    // because we're not going through updateSeeds()'s built-in broadcast.
-    // TODO: Epic 3 (Task 3.1) will wire the broadcast wrapper to add specId automatically.
-    // TODO: Epic 3 (Task 3.2) should also update registry hasSeed flags after seed reload,
-    //       which are currently skipped because updateSeeds() is bypassed.
     const logger = options.logger ?? console;
     const seedsResult = await loadSeeds(instance.config.seedsDir, vite, cwd, logger);
 
-    let broadcastCount = seedsResult.seeds.size;
     instance.server.store.clearAll();
 
     if (seedsResult.seeds.size > 0) {
       try {
         await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
       } catch (execError) {
-        // Store was already cleared — warn that it's now empty due to seed execution failure
-        broadcastCount = 0;
+        // Store was already cleared — warn that it's now empty due to seed execution failure.
+        // Sync an empty seed map so the route builder doesn't serve stale data.
+        instance.server.updateSeeds(new Map());
         printError(
           `Seeds loaded but executeSeeds failed for spec "${instance.id}"; store is now empty`,
           execError,
           options,
         );
+        return;
       }
     }
 
-    // Single broadcast for both success and failure paths
-    instance.server.wsHub.broadcast({
-      type: 'seeds:updated',
-      data: { count: broadcastCount },
-    });
+    // Sync the route builder's seed map from the now-populated store.
+    // updateSeeds() handles: in-place map mutation, registry hasSeed flags,
+    // WebSocket broadcast, and logging.
+    const seedMap = buildSeedMapFromStore(instance.server.store);
+    instance.server.updateSeeds(seedMap);
 
-    if (broadcastCount > 0) {
-      printReloadNotification('seeds', broadcastCount, options);
+    if (seedMap.size > 0) {
+      printReloadNotification('seeds', seedMap.size, options);
     }
   } catch (error) {
     printError(`Failed to reload seeds for spec "${instance.id}"`, error, options);

@@ -352,7 +352,7 @@ describe('Per-Spec Reload Isolation', () => {
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
     });
 
-    it('should only broadcast to the targeted spec wsHub', async () => {
+    it('should call updateSeeds on the targeted spec only', async () => {
       mockedLoadSeeds.mockResolvedValue({
         seeds: new Map(),
         fileCount: 0,
@@ -361,31 +361,37 @@ describe('Per-Spec Reload Isolation', () => {
 
       await reloadSpecSeeds(specA, mockVite, cwd, options);
 
-      // Spec A wsHub should have broadcast called
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledTimes(1);
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'seeds:updated',
-        data: { count: 0 },
-      });
+      // Spec A should have updateSeeds called (which handles broadcast internally)
+      expect(specA.server.updateSeeds).toHaveBeenCalledTimes(1);
+      expect(specA.server.updateSeeds).toHaveBeenCalledWith(new Map());
 
-      // Spec B wsHub should NOT have broadcast called
-      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+      // Spec B should NOT have updateSeeds called
+      expect(specB.server.updateSeeds).not.toHaveBeenCalled();
     });
 
-    it('should print reload notification with seeds.size (not fileCount)', async () => {
+    it('should print reload notification with seed schema count from store', async () => {
       const newSeeds = new Map<string, unknown[]>([['Pet', [{ id: 1, name: 'Rex' }]]]);
 
       // fileCount deliberately differs from seeds.size to ensure
-      // the implementation uses seeds.size for the notification
+      // the implementation uses the store's schema count for the notification
       mockedLoadSeeds.mockResolvedValue({
         seeds: newSeeds,
         fileCount: 3,
         files: ['pets.seeds.ts', 'owners.seeds.ts', 'admin.seeds.ts'],
       });
 
+      // After executeSeeds, the store should have the seeded schemas
+      const mockStore = specA.server.store as unknown as MockStore;
+      mockedExecuteSeeds.mockImplementation(async () => {
+        // Simulate store being populated by executeSeeds
+        mockStore.getSchemas.mockReturnValue(['Pet']);
+        mockStore.list.mockReturnValue([{ id: 1, name: 'Rex' }]);
+        return { schemaCount: 1, totalItems: 1, itemsPerSchema: { Pet: 1 }, skippedSchemas: [], warnings: [] };
+      });
+
       await reloadSpecSeeds(specA, mockVite, cwd, options);
 
-      // Should report seeds.size (1), not fileCount (3)
+      // Should report seed map size (1), not fileCount (3)
       expect(mockedPrintReloadNotification).toHaveBeenCalledWith('seeds', 1, options);
     });
 
@@ -398,6 +404,8 @@ describe('Per-Spec Reload Isolation', () => {
 
       await reloadSpecSeeds(specA, mockVite, cwd, options);
 
+      // updateSeeds should still be called (with empty map) to clear stale seed data
+      expect(specA.server.updateSeeds).toHaveBeenCalledWith(new Map());
       expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
     });
 
@@ -435,11 +443,11 @@ describe('Per-Spec Reload Isolation', () => {
 
       // Verify spec B is completely untouched
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
-      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+      expect(specB.server.updateSeeds).not.toHaveBeenCalled();
       expect(specB.server.updateHandlers).not.toHaveBeenCalled();
     });
 
-    it('should clear store even when no seeds are loaded', async () => {
+    it('should clear store and sync empty seeds when no seeds are loaded', async () => {
       mockedLoadSeeds.mockResolvedValue({
         seeds: new Map(),
         fileCount: 0,
@@ -450,6 +458,9 @@ describe('Per-Spec Reload Isolation', () => {
 
       // Store should still be cleared (empty seeds = clear all data)
       expect(specA.server.store.clearAll).toHaveBeenCalledTimes(1);
+
+      // updateSeeds should be called with empty map to clear stale seed data in route builder
+      expect(specA.server.updateSeeds).toHaveBeenCalledWith(new Map());
     });
 
     it('should handle errors without affecting other specs', async () => {
@@ -467,12 +478,12 @@ describe('Per-Spec Reload Isolation', () => {
       // No reload notification on error
       expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
 
-      // No broadcast on seed-load failure (store was never modified)
-      expect(specA.server.wsHub.broadcast).not.toHaveBeenCalled();
+      // No updateSeeds on seed-load failure (store was never modified)
+      expect(specA.server.updateSeeds).not.toHaveBeenCalled();
 
       // Even with an error, spec B should be untouched
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
-      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+      expect(specB.server.updateSeeds).not.toHaveBeenCalled();
     });
 
     it('should reload two specs independently', async () => {
@@ -482,6 +493,14 @@ describe('Per-Spec Reload Isolation', () => {
         ['Category', [{ id: 1, name: 'Tools' }]],
       ]);
 
+      // Configure spec A mock store to return data after executeSeeds
+      const mockStoreA = specA.server.store as unknown as MockStore;
+      mockedExecuteSeeds.mockImplementationOnce(async () => {
+        mockStoreA.getSchemas.mockReturnValue(['Pet']);
+        mockStoreA.list.mockReturnValue([{ id: 1, name: 'Rex' }]);
+        return { schemaCount: 1, totalItems: 1, itemsPerSchema: { Pet: 1 }, skippedSchemas: [], warnings: [] };
+      });
+
       // Reload spec A
       mockedLoadSeeds.mockResolvedValueOnce({
         seeds: specASeeds,
@@ -489,6 +508,18 @@ describe('Per-Spec Reload Isolation', () => {
         files: ['pets.seeds.ts'],
       });
       await reloadSpecSeeds(specA, mockVite, cwd, options);
+
+      // Configure spec B mock store to return data after executeSeeds
+      const mockStoreB = specB.server.store as unknown as MockStore;
+      mockedExecuteSeeds.mockImplementationOnce(async () => {
+        mockStoreB.getSchemas.mockReturnValue(['Item', 'Category']);
+        mockStoreB.list.mockImplementation((schema: string) => {
+          if (schema === 'Item') return [{ id: 1, sku: 'A001' }];
+          if (schema === 'Category') return [{ id: 1, name: 'Tools' }];
+          return [];
+        });
+        return { schemaCount: 2, totalItems: 2, itemsPerSchema: { Item: 1, Category: 1 }, skippedSchemas: [], warnings: [] };
+      });
 
       // Reload spec B
       mockedLoadSeeds.mockResolvedValueOnce({
@@ -502,15 +533,16 @@ describe('Per-Spec Reload Isolation', () => {
       expect(specA.server.store.clearAll).toHaveBeenCalledTimes(1);
       expect(specB.server.store.clearAll).toHaveBeenCalledTimes(1);
 
-      // Each spec broadcast independently
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'seeds:updated',
-        data: { count: 1 },
-      });
-      expect(specB.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'seeds:updated',
-        data: { count: 2 },
-      });
+      // Each spec updateSeeds called independently with data from store
+      expect(specA.server.updateSeeds).toHaveBeenCalledWith(
+        new Map([['Pet', [{ id: 1, name: 'Rex' }]]]),
+      );
+      expect(specB.server.updateSeeds).toHaveBeenCalledWith(
+        new Map([
+          ['Item', [{ id: 1, sku: 'A001' }]],
+          ['Category', [{ id: 1, name: 'Tools' }]],
+        ]),
+      );
     });
   });
 
@@ -576,11 +608,8 @@ describe('Per-Spec Reload Isolation', () => {
         options,
       );
 
-      // Should broadcast with count 0 to reflect the cleared state
-      expect(specA.server.wsHub.broadcast).toHaveBeenCalledWith({
-        type: 'seeds:updated',
-        data: { count: 0 },
-      });
+      // updateSeeds should be called with empty map to clear stale seed data
+      expect(specA.server.updateSeeds).toHaveBeenCalledWith(new Map());
 
       // No reload notification on executeSeeds failure
       expect(mockedPrintReloadNotification).not.toHaveBeenCalled();
@@ -598,7 +627,7 @@ describe('Per-Spec Reload Isolation', () => {
 
       // Spec B should be completely untouched
       expect(specB.server.store.clearAll).not.toHaveBeenCalled();
-      expect(specB.server.wsHub.broadcast).not.toHaveBeenCalled();
+      expect(specB.server.updateSeeds).not.toHaveBeenCalled();
     });
   });
 });
