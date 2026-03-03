@@ -1,3 +1,171 @@
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
+## [0.14.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- make setIdField() idempotent when field is unchanged (639c7f6)
+
+
+### Other Changes
+
+- sync changeset for fix/vite-yb1-setidfield-idempotent (46da833)
+- add changeset for setIdField idempotency fix (f317b1e)
+
+
+
 ## [0.14.0-next.11] - 2026-03-03
 
 ### Features
