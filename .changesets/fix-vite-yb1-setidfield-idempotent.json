@@ -1,0 +1,13 @@
+{
+  "branch": "fix/vite-yb1-setidfield-idempotent",
+  "bump": "patch",
+  "environments": [
+    "production"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core"
+  ],
+  "changes": [],
+  "created_at": "2026-03-03T12:08:32.800131Z",
+  "updated_at": "2026-03-03T12:08:32.800946Z"
+}
