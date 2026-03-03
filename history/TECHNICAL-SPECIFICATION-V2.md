@@ -3,8 +3,8 @@
 ## vite-plugin-open-api-server v1.0.0
 
 **Version:** 1.0.0  
-**Date:** February 2026  
-**Status:** Draft  
+**Date:** March 2026
+**Status:** APPROVED
 **Based on:** PRODUCT-REQUIREMENTS-DOC-V2.md
 
 ---
@@ -44,8 +44,8 @@ The v1.0.0 release introduces multi-spec orchestration while preserving the exis
 
 | Component | Technology | Version | Rationale |
 |-----------|------------|---------|-----------|
-| **Runtime** | Node.js | >=20.19.0 | LTS support (updated from 18) |
-| **Build Tool** | Vite | >=5.0.0 | Target ecosystem |
+| **Runtime** | Node.js | >=22.12.0 | Node 22.12+ provides stable ESM support; required by Vite 7 |
+| **Build Tool** | Vite | ^7.0.0 | Rolldown-based internal bundler; target ecosystem |
 | **HTTP Server** | Hono | ^4.x | Lightweight, fast, native WebSocket |
 | **OpenAPI Bundler** | @scalar/json-magic | latest | External ref resolution |
 | **OpenAPI Upgrader** | @scalar/openapi-upgrader | latest | OAS 2.0/3.0 → 3.1 |
@@ -56,6 +56,7 @@ The v1.0.0 release introduces multi-spec orchestration while preserving the exis
 | **CSS** | OpenProps | latest | Design system |
 | **Icons** | Lucide | latest | Tree-shakeable |
 | **State** | Pinia | ^2.x | Vue 3 standard |
+| **DevTools API** | @vue/devtools-api | ^8.0.6 | Vue DevTools customTabs integration (optional) |
 | **Build (libs)** | tsup | latest | Fast, simple |
 
 ### 1.4 Key Decisions (from PRD V2)
@@ -202,8 +203,8 @@ packages/
 │   ├── src/
 │   │   ├── index.ts           # Public exports (add SpecInfo type)
 │   │   ├── server.ts          # createOpenApiServer() — MINOR (add getTimeline/clearTimeline)
-│   │   ├── parser/            # UNCHANGED
-│   │   ├── router/            # UNCHANGED
+│   │   ├── parser/            # UPDATED (injectSchemaIds step added to processor)
+│   │   ├── router/            # UPDATED (extractSchemaName checks x-schema-id)
 │   │   ├── store/             # UNCHANGED
 │   │   ├── generator/         # UNCHANGED
 │   │   ├── handlers/          # UNCHANGED
@@ -288,8 +289,12 @@ packages/
 │  server         │ ─────────────────────┐
 │                 │                      │
 │  peerDeps:      │                      │
-│  - vite >=5     │                      ▼
+│  - vite ^7                           ▼
 │  - vue >=3.4    │            ┌─────────────────┐
+│  optionalPeers: │            │                 │
+│  - @vue/         │            │                 │
+│    devtools-api  │            │                 │
+│    ^8.0.6        │            │                 │
 └─────────────────┘            │     core        │
          │                     │                 │
          │ depends on          │  deps:          │
@@ -313,7 +318,7 @@ packages/
 
 ### 4.1 Changes Summary
 
-The core package requires **minimal changes**. The `createOpenApiServer()` factory remains unchanged — it continues to process a single spec and return a single server instance. The orchestrator in the server package creates N core instances.
+The core package requires **minimal changes**. The `createOpenApiServer()` factory remains unchanged — it continues to process a single spec and return a single server instance. The orchestrator in the server package creates N core instances. The document processing pipeline gains one new step (`injectSchemaIds()`) and the `extractSchemaName()` heuristic is updated to check `x-schema-id` first (see Section 4.2).
 
 **New exports:**
 
@@ -345,13 +350,13 @@ export interface OpenApiServer {
   /**
    * Get the request/response timeline for this server instance
    *
-   * Returns the internal timeline array. The orchestrator uses this
-   * to serve per-spec timeline data via the aggregated internal API
-   * and multi-spec WebSocket commands.
+   * Returns a read-only view of the internal timeline array.
+   * The orchestrator uses this to serve per-spec timeline data
+   * via the aggregated internal API and multi-spec WebSocket commands.
    *
-   * @returns Timeline entries array (most recent last)
+   * @returns Read-only timeline entries array (most recent last)
    */
-  getTimeline(): TimelineEntry[];
+  getTimeline(): readonly TimelineEntry[];
 
   /**
    * Clear the timeline for this server instance
@@ -361,6 +366,17 @@ export interface OpenApiServer {
    * @returns Number of entries cleared
    */
   clearTimeline(): number;
+
+  /**
+   * Truncate the timeline to the configured limit
+   *
+   * Removes excess entries beyond the `timelineLimit` threshold.
+   * Used internally after each request/response cycle to enforce
+   * memory bounds on the timeline array.
+   *
+   * @returns Number of entries removed
+   */
+  truncateTimeline(): number;
 }
 ```
 
@@ -368,7 +384,7 @@ Implementation in `createOpenApiServer()` return object:
 
 ```typescript
 // Add to the returned server object:
-getTimeline(): TimelineEntry[] {
+getTimeline(): readonly TimelineEntry[] {
   return timeline;
 },
 
@@ -377,11 +393,106 @@ clearTimeline(): number {
   timeline.length = 0;
   return count;
 },
+
+truncateTimeline(): number {
+  if (timeline.length <= timelineLimit) return 0;
+  const removed = timeline.length - timelineLimit;
+  timeline.splice(0, removed);
+  return removed;
+},
 ```
 
 This is a backward-compatible addition — existing consumers are not affected.
 
-### 4.2 WebSocket Protocol Extensions
+### 4.2 OpenAPI Document Processing Pipeline
+
+**File:** `packages/core/src/parser/processor.ts`
+
+The processing pipeline runs once per spec instance and follows four steps. The pipeline is unchanged from v0.x except for the addition of the **Inject Schema IDs** step (step 3), which runs after upgrade and before dereference.
+
+**Pipeline:**
+
+```
+Input → Bundle → Upgrade → Inject Schema IDs → Dereference → Output
+```
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────┐
+│   Input         │───>│   Bundle        │───>│   Upgrade       │───>│  Inject Schema IDs  │───>│  Dereference    │
+│ (string/object) │    │ (resolve refs)  │    │ (to OAS 3.1)    │    │ (x-schema-id ext.)  │    │ (inline $refs)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────────┘    └─────────────────┘
+```
+
+| Step | Tool | Purpose |
+|------|------|---------|
+| 1. Bundle | `@scalar/json-magic` | Resolve external `$ref` references (files, URLs) |
+| 2. Upgrade | `@scalar/openapi-upgrader` | Convert OAS 2.0/3.0 to OAS 3.1 |
+| 3. Inject Schema IDs | `injectSchemaIds()` (new) | Inject `x-schema-id` into `components.schemas` |
+| 4. Dereference | `@scalar/openapi-parser` | Inline all `$ref` pointers |
+
+**Step 3 — `injectSchemaIds()`:**
+
+This step iterates over `components.schemas` and injects an `x-schema-id` extension property into each schema entry. The value is the schema's component key name. This is necessary because the dereference step (step 4) inlines all `$ref` pointers, which causes schema names (the component keys) to be lost.
+
+The `x-schema-id` extension propagates through all inlined references after dereferencing, preserving schema identity for downstream consumers such as `extractSchemaName()` and seed data matching.
+
+```typescript
+/**
+ * Inject x-schema-id extension into every schema in components.schemas
+ *
+ * This step runs AFTER upgrade (to OAS 3.1) and BEFORE dereference.
+ * It preserves schema identity through the dereference process by
+ * embedding the component key name directly into each schema object.
+ *
+ * @param document - The upgraded (but not yet dereferenced) OpenAPI document
+ * @returns The same document with x-schema-id injected into each schema
+ *
+ * @see PRD FR-004: OpenAPI Document Processing
+ */
+function injectSchemaIds(
+  document: OpenAPIV3_1.Document,
+): OpenAPIV3_1.Document {
+  const schemas = document.components?.schemas;
+  if (!schemas) return document;
+
+  for (const [key, schema] of Object.entries(schemas)) {
+    if (schema && typeof schema === 'object' && !('$ref' in schema)) {
+      (schema as Record<string, unknown>)['x-schema-id'] = key;
+    }
+  }
+
+  return document;
+}
+```
+
+**Impact on `extractSchemaName()`:**
+
+The `extractSchemaName()` function in `packages/core/src/router/registry-builder.ts` is updated to check for the `x-schema-id` extension property as its primary heuristic, before falling back to `title` or other methods:
+
+```typescript
+function extractSchemaName(schema: OpenAPIV3_1.SchemaObject): string | undefined {
+  // 1. Check for x-schema-id extension (injected during processing)
+  if ('x-schema-id' in schema && typeof schema['x-schema-id'] === 'string') {
+    return schema['x-schema-id'];
+  }
+
+  // 2. Check for title property
+  if (schema.title) {
+    return schema.title;
+  }
+
+  // 3. For arrays, recurse into items
+  if (schema.type === 'array' && schema.items) {
+    return extractSchemaName(schema.items as OpenAPIV3_1.SchemaObject);
+  }
+
+  return undefined;
+}
+```
+
+This ensures reliable schema identification even after `$ref` dereferencing has removed the original component key names.
+
+### 4.3 WebSocket Protocol Extensions
 
 **File:** `packages/core/src/websocket/protocol.ts`
 
@@ -437,16 +548,16 @@ export type MultiSpecClientCommand =
   | { type: 'reseed'; data: { specId: string } };
 ```
 
-### 4.3 Existing Modules — No Changes
+### 4.4 Existing Modules — No Changes
 
 The following core modules require **no modifications**:
 
 | Module | Reason |
 |--------|--------|
-| `parser/processor.ts` | Processes one spec at a time. Called N times by orchestrator. |
+| `parser/processor.ts` | Processes one spec at a time. Called N times by orchestrator. **Updated**: `injectSchemaIds()` step added between upgrade and dereference (see Section 4.2). |
 | `store/store.ts` | One store per spec instance. Factory unchanged. |
 | `router/route-builder.ts` | Builds routes for one spec. Called N times. |
-| `router/registry-builder.ts` | Builds registry for one spec. Called N times. |
+| `router/registry-builder.ts` | Builds registry for one spec. Called N times. **Updated**: `extractSchemaName()` now checks `x-schema-id` extension first (see Section 4.2). |
 | `generator/schema-generator.ts` | Generates data per schema. Unchanged. |
 | `handlers/executor.ts` | Executes handlers per request. Unchanged. |
 | `handlers/context.ts` | Handler context types. Unchanged. |
@@ -458,7 +569,7 @@ The following core modules require **no modifications**:
 | `websocket/command-handler.ts` | Per-spec handler. Orchestrator routes commands. |
 | `internal-api.ts` | Per-spec routes. Orchestrator aggregates. |
 | `devtools-server.ts` | Serves SPA. Unchanged. |
-| `server.ts` | `createOpenApiServer()` factory. **Minor addition**: `getTimeline()` and `clearTimeline()` added to `OpenApiServer` interface. |
+| `server.ts` | `createOpenApiServer()` factory. **Minor addition**: `getTimeline()` (returns `readonly TimelineEntry[]`), `clearTimeline()`, and `truncateTimeline()` added to `OpenApiServer` interface. |
 
 ---
 
@@ -507,15 +618,23 @@ export interface SpecConfig {
 
   /**
    * Directory containing handler files for this spec
-   * @default './mocks/{specId}/handlers'
+   *
+   * When null (the default), no handler file crawling occurs.
+   * Empty or whitespace-only strings are normalized to null.
+   *
+   * @default null
    */
-  handlersDir?: string;
+  handlersDir?: string | null;
 
   /**
    * Directory containing seed files for this spec
-   * @default './mocks/{specId}/seeds'
+   *
+   * When null (the default), no seed file crawling occurs.
+   * Empty or whitespace-only strings are normalized to null.
+   *
+   * @default null
    */
-  seedsDir?: string;
+  seedsDir?: string | null;
 
   /**
    * ID field configuration per schema for this spec
@@ -588,10 +707,11 @@ export interface OpenApiServerOptions {
  */
 export interface ResolvedSpecConfig {
   spec: string;
-  id: string;             // guaranteed to be set after resolution
-  proxyPath: string;      // guaranteed to be set after resolution
-  handlersDir: string;
-  seedsDir: string;
+  id: string;                         // guaranteed to be set after resolution
+  proxyPath: string;                  // guaranteed to be set after resolution
+  proxyPathSource: 'explicit' | 'auto'; // how proxyPath was determined
+  handlersDir: string | null;         // null = disabled (no file crawling)
+  seedsDir: string | null;            // null = disabled (no file crawling)
   idFields: Record<string, string>;
 }
 
@@ -609,6 +729,17 @@ export interface ResolvedOptions {
   corsOrigin: string | string[];
   silent: boolean;
   logger?: Logger;
+}
+
+/**
+ * Normalize a directory path: null, undefined, or whitespace-only → null
+ *
+ * @see PRD FR-008 / FR-009: handlersDir and seedsDir default to null
+ */
+function normalizeDir(dir: string | null | undefined): string | null {
+  if (dir == null) return null;
+  const trimmed = dir.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 /**
@@ -636,8 +767,11 @@ export function resolveOptions(options: OpenApiServerOptions): ResolvedOptions {
       spec: s.spec,
       id: s.id ?? '',             // resolved later from info.title
       proxyPath: s.proxyPath ?? '',  // resolved later from servers[0].url
-      handlersDir: s.handlersDir ?? '',  // resolved later from specId
-      seedsDir: s.seedsDir ?? '',        // resolved later from specId
+      // Preliminary — overwritten by deriveProxyPath() during orchestration
+      proxyPathSource: (s.proxyPath?.trim() ? 'explicit' : 'auto') as 'explicit' | 'auto',
+      // null = disabled (no file crawling). Empty/whitespace strings normalize to null.
+      handlersDir: normalizeDir(s.handlersDir),
+      seedsDir: normalizeDir(s.seedsDir),
       idFields: s.idFields ?? {},
     })),
     port: options.port ?? 4000,
@@ -694,6 +828,8 @@ export function deriveSpecId(
  * Slugify a string for use as a spec identifier
  *
  * Rules:
+ * - Unicode normalization (NFD) to decompose accented characters
+ * - Remove combining marks (diacritics)
  * - Lowercase
  * - Replace spaces and special chars with hyphens
  * - Remove consecutive hyphens
@@ -703,9 +839,12 @@ export function deriveSpecId(
  * slugify("Swagger Petstore") → "swagger-petstore"
  * slugify("Billing API v2")   → "billing-api-v2"
  * slugify("User Service")     → "user-service"
+ * slugify("Reservas API")     → "reservas-api"
  */
 export function slugify(input: string): string {
   return input
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')    // Remove combining marks (diacritics)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/-+/g, '-')
@@ -947,13 +1086,17 @@ export async function createOrchestrator(
   for (let i = 0; i < options.specs.length; i++) {
     const specConfig = options.specs[i];
 
-    // Load handlers
-    const handlersDir = specConfig.handlersDir || `./mocks/${specConfig.id || 'spec'}/handlers`;
-    const handlersResult = await loadHandlers(handlersDir, vite, cwd);
+    // Load handlers (skip if handlersDir is null — disabled by default)
+    const handlersDir = specConfig.handlersDir; // null = disabled
+    const handlersResult = handlersDir != null
+      ? await loadHandlers(handlersDir, vite, cwd)
+      : { handlers: new Map() };
 
-    // Load seeds
-    const seedsDir = specConfig.seedsDir || `./mocks/${specConfig.id || 'spec'}/seeds`;
-    const seedsResult = await loadSeeds(seedsDir, vite, cwd);
+    // Load seeds (skip if seedsDir is null — disabled by default)
+    const seedsDir = specConfig.seedsDir; // null = disabled
+    const seedsResult = seedsDir != null
+      ? await loadSeeds(seedsDir, vite, cwd)
+      : { seeds: new Map() };
 
     // Create core server instance (processes the document internally)
     const server = await createOpenApiServer({
@@ -968,14 +1111,32 @@ export async function createOrchestrator(
       // This matches the existing pattern in the v0.x plugin.ts.
       seeds: new Map(),
       timelineLimit: options.timelineLimit,
-      cors: false,        // CORS handled at main app level
+      cors: options.cors,  // CORS applied at BOTH main app AND sub-app (dual-application pattern)
       devtools: false,    // DevTools mounted at main app level
       logger,
     });
 
-    // Execute seeds
+    // Two-Phase Seed Population (see PRD FR-009)
+    //
+    // Phase 1: Execute seed functions → populates the Store
+    // Phase 2: Build seed data map → sync to route builder
+    //
+    // The route builder captures its `seeds` map via closure at build time.
+    // The map must be mutated in place (.clear() + .set()), NOT reassigned.
+    // This two-phase process applies to both initial load and hot reload.
     if (seedsResult.seeds.size > 0) {
+      // Phase 1: Execute seeds → populates store
       await executeSeeds(seedsResult.seeds, server.store, server.document);
+
+      // Phase 2: Build Map<string, unknown[]> from store and sync to route builder
+      const seedDataMap = new Map<string, unknown[]>();
+      for (const schema of server.store.getSchemas()) {
+        const items = server.store.list(schema);
+        if (items.length > 0) {
+          seedDataMap.set(schema, items);
+        }
+      }
+      server.updateSeeds(seedDataMap);
     }
 
     // Derive ID (now that document is processed)
@@ -983,14 +1144,6 @@ export async function createOrchestrator(
 
     // Update config with resolved values
     specConfig.id = id;
-    specConfig.handlersDir = handlersDir.replace(
-      `${specConfig.id || 'spec'}`,
-      id,
-    );
-    specConfig.seedsDir = seedsDir.replace(
-      `${specConfig.id || 'spec'}`,
-      id,
-    );
 
     // Derive proxy path
     const proxyPath = deriveProxyPath(specConfig.proxyPath, server.document, id);
@@ -1026,7 +1179,17 @@ export async function createOrchestrator(
 
   const mainApp = new Hono();
 
-  // CORS at top level
+  // CORS — dual-application pattern
+  //
+  // IMPORTANT: CORS must be applied at BOTH the mainApp level AND each
+  // per-spec sub-app instance. This is because spec-scoped requests
+  // are dispatched via `instance.server.app.fetch(c.req.raw)`, which
+  // creates a new request context that bypasses mainApp middleware.
+  // Without CORS on the sub-app, preflight OPTIONS requests and
+  // response headers would be missing for spec-scoped routes.
+  //
+  // The core createOpenApiServer() accepts a `cors` option for this purpose.
+  // In multi-spec mode, we pass cors: true to each core instance as well.
   if (options.cors) {
     mainApp.use(
       '*',
@@ -1187,7 +1350,12 @@ export function createMultiSpecWebSocketHub(
     });
   };
 
-  // Wire each core server's broadcasts to add specId
+  // Wire each core server's broadcasts AND sendTo to add specId
+  //
+  // Both broadcast() and sendTo() must be intercepted because core
+  // command handlers use sendTo() for direct replies (e.g., get:timeline,
+  // get:store) while route middleware uses broadcast() for push events
+  // (e.g., request, response, store:updated).
   for (const instance of instances) {
     const originalBroadcast = instance.server.wsHub.broadcast.bind(instance.server.wsHub);
     instance.server.wsHub.broadcast = (event) => {
@@ -1197,6 +1365,15 @@ export function createMultiSpecWebSocketHub(
         data: { ...event.data, specId: instance.id },
       };
       hub.broadcast(enrichedEvent);
+    };
+
+    const originalSendTo = instance.server.wsHub.sendTo.bind(instance.server.wsHub);
+    instance.server.wsHub.sendTo = (client, event) => {
+      const enrichedEvent = {
+        type: event.type,
+        data: { ...event.data, specId: instance.id },
+      };
+      hub.sendTo(client, enrichedEvent);
     };
   }
 
@@ -1209,6 +1386,30 @@ export function createMultiSpecWebSocketHub(
   });
 
   hub.setCommandHandler(commandHandler);
+
+  // Override handleMessage on each core instance's wsHub to intercept
+  // multi-spec-only commands (like get:specs) that the core command
+  // handler does not understand. Commands that include specId are
+  // routed through the multi-spec command handler instead.
+  for (const instance of instances) {
+    const originalHandleMessage = instance.server.wsHub.handleMessage.bind(
+      instance.server.wsHub,
+    );
+    instance.server.wsHub.handleMessage = (client, rawMessage) => {
+      try {
+        const parsed = JSON.parse(rawMessage);
+        // Multi-spec-only commands — handle at orchestrator level
+        if (parsed.type === 'get:specs' || parsed.data?.specId) {
+          commandHandler(client, parsed);
+          return;
+        }
+      } catch {
+        // Invalid JSON — let core handle the error
+      }
+      // Delegate to core command handler for single-spec commands
+      originalHandleMessage(client, rawMessage);
+    };
+  }
 
   return hub;
 }
@@ -1650,6 +1851,13 @@ export async function createPerSpecFileWatchers(
   const watchers: FileWatcher[] = [];
 
   for (const instance of instances) {
+    // Only set up watchers for directories that are configured (not null).
+    // When handlersDir or seedsDir is null (the default), no watcher is created.
+    // See PRD FR-008 / FR-009.
+    if (instance.config.handlersDir == null && instance.config.seedsDir == null) {
+      continue; // No directories to watch for this spec
+    }
+
     const debouncedHandlerReload = debounce(
       () => reloadSpecHandlers(instance, vite, cwd, options),
       100,
@@ -1660,8 +1868,8 @@ export async function createPerSpecFileWatchers(
     );
 
     const watcher = await createFileWatcher({
-      handlersDir: instance.config.handlersDir,
-      seedsDir: instance.config.seedsDir,
+      handlersDir: instance.config.handlersDir,   // may be null (skipped internally)
+      seedsDir: instance.config.seedsDir,         // may be null (skipped internally)
       cwd,
       onHandlerChange: debouncedHandlerReload,
       onSeedChange: debouncedSeedReload,
@@ -1682,6 +1890,9 @@ async function reloadSpecHandlers(
   cwd: string,
   options: ResolvedOptions,
 ): Promise<void> {
+  // Guard: handlersDir may be null (disabled)
+  if (instance.config.handlersDir == null) return;
+
   const handlersResult = await loadHandlers(instance.config.handlersDir, vite, cwd);
   instance.server.updateHandlers(handlersResult.handlers);
 
@@ -1703,13 +1914,31 @@ async function reloadSpecSeeds(
   cwd: string,
   options: ResolvedOptions,
 ): Promise<void> {
+  // Guard: seedsDir may be null (disabled)
+  if (instance.config.seedsDir == null) return;
+
   const seedsResult = await loadSeeds(instance.config.seedsDir, vite, cwd);
 
+  // Clear store before re-seeding
+  instance.server.store.clearAll();
+
+  // Two-Phase Seed Population (see PRD FR-009)
   if (seedsResult.seeds.size > 0) {
-    instance.server.store.clearAll();
+    // Phase 1: Execute seeds -> populates store
     await executeSeeds(seedsResult.seeds, instance.server.store, instance.server.document);
+
+    // Phase 2: Build seed data map -> sync to route builder
+    const seedDataMap = new Map<string, unknown[]>();
+    for (const schema of instance.server.store.getSchemas()) {
+      const items = instance.server.store.list(schema);
+      if (items.length > 0) {
+        seedDataMap.set(schema, items);
+      }
+    }
+    instance.server.updateSeeds(seedDataMap);
   } else {
-    instance.server.store.clearAll();
+    // No seeds — clear the route builder's seed map too
+    instance.server.updateSeeds(new Map());
   }
 
   // The broadcast wrapper automatically adds specId
@@ -1749,9 +1978,17 @@ export function openApiServer(options: OpenApiServerOptions): Plugin {
     apply: 'serve',
 
     config() {
-      // Same as v0.x: ensure @vue/devtools-api is pre-bundled
+      // @vue/devtools-api is an optional peerDependency.
+      // package.json declares:
+      //   "peerDependencies": { "@vue/devtools-api": "^8.0.6" }
+      //   "peerDependenciesMeta": { "@vue/devtools-api": { "optional": true } }
+      //
+      // Uses lazy dynamic import with graceful fallback (same pattern as
+      // @hono/node-ws and @hono/node-server). If the user has not installed
+      // @vue/devtools-api, the plugin works normally but no custom DevTools
+      // tab appears in Vue DevTools.
       if (!resolvedOptions.devtools || !resolvedOptions.enabled) return;
-      // ... (same implementation as v0.x)
+      // ... (optimizeDeps for @vue/devtools-api when available)
     },
 
     resolveId(id: string) {
@@ -2029,6 +2266,8 @@ export const useTimelineStore = defineStore('timeline', () => {
 
 **File:** `packages/devtools-client/src/components/NanoJsonEditor.vue`
 
+**Note:** The existing `DataTable.vue` component remains in use for structured tabular data presentation (e.g., store listings with sorting and pagination). NanoJSON replaces only the JSON tree-view editor functionality. Both components coexist in the Models page.
+
 ```typescript
 // Component wrapping NanoJSON with Vue lifecycle management
 //
@@ -2250,7 +2489,7 @@ interface MultiSpecSimulationCommand extends SimulationBase {
 | `simulation:removed` | `{ specId, path }` | Simulation removed |
 | `simulations:cleared` | `{ specId, count }` | All simulations cleared |
 | `registry` | `{ specId, endpoints[], stats }` | Registry data response |
-| `timeline` | `{ specId, entries[], count, total }` | Timeline data response |
+| `timeline` | `{ specId, entries[], count, total }` | Timeline data response. Note: `total` is an extension beyond base PRD -- useful for pagination UI |
 | `store` | `{ specId, schema, items[], count }` | Store data response |
 | `store:set` | `{ specId, schema, success, count }` | Store set acknowledgment |
 | `store:cleared` | `{ specId, schema, success }` | Store clear acknowledgment |
@@ -2462,7 +2701,9 @@ Client                          Server
 | Package | File | Change Type |
 |---------|------|-------------|
 | core | `index.ts` | Add `SpecInfo` export |
-| core | `server.ts` | Add `getTimeline()` and `clearTimeline()` to `OpenApiServer` interface |
+| core | `parser/processor.ts` | Add `injectSchemaIds()` step between upgrade and dereference |
+| core | `router/registry-builder.ts` | Update `extractSchemaName()` to check `x-schema-id` first |
+| core | `server.ts` | Add `getTimeline()` (readonly), `clearTimeline()`, `truncateTimeline()` to `OpenApiServer` interface |
 | core | `websocket/hub.ts` | Add `autoConnect?: boolean` option to `WebSocketHubOptions` |
 | core | `websocket/protocol.ts` | Add multi-spec type variants |
 | server | `types.ts` | Rewritten (`SpecConfig[]`) |
@@ -2487,7 +2728,7 @@ Client                          Server
 
 ### Unchanged Files
 
-All files in `packages/core/src/` except `index.ts`, `server.ts`, `websocket/hub.ts`, and `websocket/protocol.ts`.
+All files in `packages/core/src/` except `index.ts`, `server.ts`, `parser/processor.ts`, `router/registry-builder.ts`, `websocket/hub.ts`, and `websocket/protocol.ts`.
 
 ---
 
@@ -2512,4 +2753,4 @@ The original technical specification (v0.x) is preserved at `history/TECHNICAL-S
 
 ---
 
-*Document generated: February 2026*
+*Document generated: March 2026*

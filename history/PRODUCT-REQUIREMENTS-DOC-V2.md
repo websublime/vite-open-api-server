@@ -2,11 +2,12 @@
 
 ## vite-plugin-open-api-server v1.0.0
 
-**Version:** 1.0.0  
-**Date:** February 2026  
-**Status:** Draft — Under Review  
-**Authors:** Product Team  
+**Version:** 1.0.0
+**Date:** March 2026
+**Status:** APPROVED
+**Authors:** Product Team
 **Based on:** PRD v1 (v2.0 pre-stable), Architecture Analysis, Design Iteration Sessions
+**Updated:** March 2026 — Incorporated behavioral fixes from PR #89 (directory resolution defaults, x-schema-id extension) and PR #90 (seeds map synchronization)
 
 ---
 
@@ -177,11 +178,18 @@ packages/
 │   ├── src/
 │   │   ├── plugin.ts         # openApiServer() — multi-spec orchestrator
 │   │   ├── orchestrator.ts   # NEW: manages N spec instances
-│   │   ├── proxy.ts          # Request proxying (multiple proxy paths)
+│   │   ├── multi-proxy.ts     # Request proxying (multiple proxy paths)
+│   │   ├── multi-internal-api.ts # Aggregated internal API for multi-spec
+│   │   ├── multi-ws.ts       # Multi-spec WebSocket hub
+│   │   ├── multi-command.ts  # Multi-spec command handler
 │   │   ├── devtools.ts       # DevTools integration
 │   │   ├── hot-reload.ts     # Handler/seed file watching (per spec)
+│   │   ├── handlers.ts       # Handler file loading
+│   │   ├── seeds.ts          # Seed file loading
+│   │   ├── banner.ts         # Startup banner formatting
 │   │   ├── spec-id.ts        # NEW: spec ID derivation
 │   │   ├── proxy-path.ts     # NEW: proxy path auto-detection
+│   │   ├── utils.ts          # Shared utilities
 │   │   └── types.ts          # Plugin options (updated)
 │   └── package.json
 │
@@ -202,7 +210,7 @@ packages/
 
 ### 3.2 Technology Stack
 
-One addition to the technology stack from v0.x: NanoJSON replaces the custom JSON editor in DevTools.
+One planned addition to the technology stack from v0.x: NanoJSON will replace the custom JSON editor in DevTools.
 
 | Component | Technology | Rationale |
 |-----------|------------|-----------|
@@ -356,15 +364,15 @@ For each spec in config.specs:
   ┌─────────────────┐
   │ 1. Derive ID    │  → from config.id or slugified info.title
   ├─────────────────┤
-  │ 2. Process Spec │  → bundle → upgrade → dereference
+  │ 2. Process Spec │  → bundle → upgrade → inject schema IDs → dereference
   ├─────────────────┤
   │ 3. Derive Proxy │  → from config.proxyPath or spec servers[0].url
   ├─────────────────┤
   │ 4. Create Store │  → with spec-specific idFields
   ├─────────────────┤
-  │ 5. Load Handlers│  → from spec-specific handlersDir
+  │ 5. Load Handlers│  → from spec-specific handlersDir (skipped if null)
   ├─────────────────┤
-  │ 6. Load Seeds   │  → from spec-specific seedsDir
+  │ 6. Load Seeds   │  → from spec-specific seedsDir (skipped if null)
   ├─────────────────┤
   │ 7. Build Routes │  → Hono sub-app with all endpoints
   ├─────────────────┤
@@ -417,7 +425,7 @@ Examples:
 | **DevTools** | Spec filter chips, grouping labels, color assignment |
 | **Internal API** | `/_api/specs/:specId/registry`, `/_api/specs/:specId/store/:schema` |
 | **Logging** | `[OpenAPI:petstore]` prefix per spec |
-| **Handlers/Seeds dirs** | Default: `./mocks/{specId}/handlers`, `./mocks/{specId}/seeds` |
+| **Handlers/Seeds dirs** | Used as subdirectory name when `handlersDir`/`seedsDir` are explicitly configured (e.g., `./mocks/{specId}/handlers`). No default directory derivation — dirs default to `null` when unconfigured |
 
 **Acceptance Criteria:**
 - [ ] Explicit `id` in config takes priority
@@ -477,11 +485,13 @@ Examples:
 **Processing Pipeline:**
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Input         │───▶│   Bundle        │───▶│   Upgrade       │───▶│  Dereference    │
-│ (string/object) │    │ (resolve refs)  │    │ (to OAS 3.1)    │    │ (inline $refs)  │
-└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────┐
+│   Input         │───▶│   Bundle        │───▶│   Upgrade       │───▶│  Inject Schema IDs  │───▶│  Dereference    │
+│ (string/object) │    │ (resolve refs)  │    │ (to OAS 3.1)    │    │ (x-schema-id ext.)  │    │ (inline $refs)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────────┘    └─────────────────┘
 ```
+
+**Inject Schema IDs Step:** Before dereferencing, the system injects an `x-schema-id` extension property into every schema defined in `components.schemas`. The value is the schema's component key name (e.g., for `components.schemas.Pet`, the injected property is `x-schema-id: "Pet"`). This step is necessary because `@scalar/openapi-parser`'s dereference operation inlines all `$ref` pointers, which causes schema names (the component keys) to be lost. The `x-schema-id` extension propagates through all inlined references after dereferencing, preserving schema identity for downstream consumers such as `extractSchemaName()` and seed data matching.
 
 **Input Types Supported:**
 
@@ -499,6 +509,9 @@ Examples:
 - [ ] Support file paths, URLs, and inline objects
 - [ ] Resolve all external $ref references (files, URLs)
 - [ ] Upgrade all documents to OpenAPI 3.1.0
+- [ ] Inject `x-schema-id` extension into every `components.schemas` entry before dereferencing
+- [ ] `x-schema-id` value equals the schema's component key name (e.g., `"Pet"` for `components.schemas.Pet`)
+- [ ] `x-schema-id` is preserved in all inlined schemas after dereferencing
 - [ ] Dereference all $ref pointers inline
 - [ ] Report validation errors with spec ID context
 - [ ] Return minimal valid document for empty input
@@ -510,6 +523,8 @@ Examples:
 **Priority:** P0 (Critical)
 
 **Description:** Each spec instance maintains its own centralized registry of endpoints. The orchestrator provides an aggregated view for DevTools.
+
+**Schema Name Resolution:** The `responseSchema` field in each registry entry is populated by `extractSchemaName()`, which identifies the schema name from the response schema object. This function prioritizes the `x-schema-id` extension property (injected during document processing, see FR-004) over other heuristics. This ensures reliable schema identification even after `$ref` dereferencing has removed the original component key names.
 
 **Registry Entry (unchanged):**
 
@@ -669,29 +684,31 @@ specs: [
 mocks/
 ├── petstore/
 │   ├── handlers/
-│   │   └── pets.handler.ts      # Handlers for petstore operations
+│   │   └── pets.handlers.ts      # Handlers for petstore operations
 │   └── seeds/
-│       └── pets.seed.ts
+│       └── pets.seeds.ts
 └── billing/
     ├── handlers/
-    │   └── invoices.handler.ts  # Handlers for billing operations
+    │   └── invoices.handlers.ts  # Handlers for billing operations
     └── seeds/
-        └── invoices.seed.ts
+        └── invoices.seeds.ts
 ```
 
-Default directory derivation:
+**Directory Resolution:**
 
 ```
-If handlersDir not set → ./mocks/{specId}/handlers
-If seedsDir not set    → ./mocks/{specId}/seeds
+If handlersDir is explicitly set   → use the provided path
+If handlersDir is not set or null  → no handler loading (handlers feature disabled for this spec)
+Empty or whitespace-only strings   → normalized to null (no handler loading)
 ```
 
 **Acceptance Criteria:**
-- [ ] Each spec loads handlers from its own directory
+- [ ] Each spec loads handlers from its configured directory
 - [ ] Handler API (`defineHandlers`, `HandlerContext`) is unchanged
-- [ ] Default directory derived from spec ID
-- [ ] Explicit `handlersDir` overrides default
-- [ ] Handler hot reload is per-spec
+- [ ] When `handlersDir` is not configured, defaults to `null` — no handler file crawling occurs
+- [ ] Empty or whitespace-only `handlersDir` values are normalized to `null`
+- [ ] Explicit `handlersDir` path enables handler loading from that directory
+- [ ] Handler hot reload is per-spec (only active when `handlersDir` is configured)
 
 ---
 
@@ -701,17 +718,31 @@ If seedsDir not set    → ./mocks/{specId}/seeds
 
 **Description:** Each spec has its own seeds directory. Seeds populate the spec's own store. The `defineSeeds()` API is unchanged from v0.x.
 
+**Directory Resolution:**
+
+```
+If seedsDir is explicitly set   → use the provided path
+If seedsDir is not set or null  → no seed loading (seeds feature disabled for this spec)
+Empty or whitespace-only strings → normalized to null (no seed loading)
+```
+
 **Seed Execution Context:**
 
 Seeds receive `store` access scoped to their own spec. A petstore seed can reference `store.list('Pet')` but has no access to the billing store.
 
+**Two-Phase Seed Population:** Seed population involves two distinct phases:
+1. **Execute seeds** — `executeSeeds()` runs seed functions which populate the Store with data.
+2. **Sync seed map to route builder** — After seed execution, a `Map<string, unknown[]>` must be built from the store's populated data and passed to `server.updateSeeds()` to sync the route builder's internal seed map. This sync step is required because the route builder captures its `seeds` map via closure at build time; the map must be mutated in place (`.clear()` + `.set()`) rather than reassigned. This two-phase process applies to both initial load and hot reload.
+
 **Acceptance Criteria:**
-- [ ] Each spec loads seeds from its own directory
+- [ ] Each spec loads seeds from its configured directory
 - [ ] Seeds populate the spec's own store only
 - [ ] Seed API (`defineSeeds`, `SeedContext`) is unchanged
-- [ ] Default directory derived from spec ID
-- [ ] Explicit `seedsDir` overrides default
-- [ ] Seed hot reload is per-spec
+- [ ] When `seedsDir` is not configured, defaults to `null` — no seed file crawling occurs
+- [ ] Empty or whitespace-only `seedsDir` values are normalized to `null`
+- [ ] Explicit `seedsDir` path enables seed loading from that directory
+- [ ] After seed execution, the route builder's seed map is explicitly synced via `updateSeeds()`
+- [ ] Seed hot reload is per-spec (only active when `seedsDir` is configured)
 - [ ] Reseed command in DevTools specifies target spec
 
 ---
@@ -737,11 +768,14 @@ Seeds receive `store` access scoped to their own spec. A petstore seed can refer
 
 **Description:** Unchanged from v0.x. Each spec instance resolves and validates its own security schemes. Validate presence of credentials, accept any non-empty value.
 
+**Response Priority Integration:** Security validation runs **before all response paths**, including simulations. Even endpoints with active simulations return 401 if required credentials are missing. The full response priority chain is: Security Validation → Simulation → Handler → Seed → Example → Auto-generated.
+
 **Acceptance Criteria:**
 - [ ] Parse security schemes from each spec independently
 - [ ] Validate presence of required credentials
 - [ ] Accept any non-empty value as valid
 - [ ] Return 401 when credentials are missing
+- [ ] Security validation runs before simulation — simulated endpoints also require valid credentials
 - [ ] Log security scheme usage per spec in startup banner
 
 ---
@@ -750,19 +784,20 @@ Seeds receive `store` access scoped to their own spec. A petstore seed can refer
 
 **Priority:** P1 (High)
 
-**Description:** Each spec instance has independent file watchers for its handlers and seeds directories. Changes to one spec's files only reload that spec instance.
+**Description:** Each spec instance has independent file watchers for its handlers and seeds directories. Changes to one spec's files only reload that spec instance. File watching is only active for directories that are explicitly configured (not `null`). If `handlersDir` or `seedsDir` is `null` (the default when unconfigured), no watcher is set up for that directory.
 
 **Hot Reload Scope:**
 
 | File Changed | Reload Scope |
 |-------------|--------------|
-| `mocks/petstore/handlers/pets.handler.ts` | Petstore handlers only |
-| `mocks/billing/seeds/invoices.seed.ts` | Billing seeds only |
+| `mocks/petstore/handlers/pets.handlers.ts` | Petstore handlers only |
+| `mocks/billing/seeds/invoices.seeds.ts` | Billing seeds only |
 | `openapi/petstore.yaml` | **No hot reload** — requires full restart |
 
 **Acceptance Criteria:**
-- [ ] Watch handlers directory per spec for changes
-- [ ] Watch seeds directory per spec for changes
+- [ ] Watch handlers directory per spec for changes (only when `handlersDir` is configured, not `null`)
+- [ ] Watch seeds directory per spec for changes (only when `seedsDir` is configured, not `null`)
+- [ ] No watcher is created when `handlersDir` or `seedsDir` is `null`
 - [ ] Reload only the affected spec instance
 - [ ] Notify DevTools via WebSocket with spec ID context
 - [ ] Maintain other spec instances' state during reload
@@ -952,7 +987,7 @@ When the DevTools connects via WebSocket, the `connected` event includes all spe
 │                     │  Tags: pet                                    │
 │  ▼ 🔵 billing (16)  │                                               │
 │    ▸ Invoices (8)   │  Response Schema: Pet                         │
-│    ▸ Payments (5)   │  Handler: ✓ (pets.handler.ts)                │
+│    ▸ Payments (5)   │  Handler: ✓ (pets.handlers.ts)                │
 │    ▸ Accounts (3)   │  Seed: ✓ (15 items)                          │
 │                     │                                               │
 └─────────────────────┴───────────────────────────────────────────────┘
@@ -1086,7 +1121,7 @@ The top-right counter reflects applied filters: `12 endpoints | 1 spec` when fil
 - Schema dropdown shows only schemas for the selected spec
 - Reseed applies to the selected spec only
 - Clear applies to the selected schema within the selected spec
-- **JSON editor replaced** with NanoJSON (`@pardnchiu/nanojson`) — a lightweight (~23 KB), zero-dependency, tree-view JSON editor
+- **JSON editor will be replaced** with NanoJSON (`@pardnchiu/nanojson`) — a lightweight (~23 KB), zero-dependency, tree-view JSON editor. The existing `DataTable.vue` component remains for tabular data display
 
 **JSON Editor Integration (NanoJSON):**
 
@@ -1133,6 +1168,9 @@ CSS is auto-loaded from CDN by NanoJSON. Custom CSS overrides may be needed for 
 
 **Investigation Required (Phase 4):** Before integrating NanoJSON, verify how it applies CSS — whether it uses Shadow DOM (which prevents external CSS overrides) or injects global styles (which may conflict with OpenProps variables). If Shadow DOM is used, the `::part()` CSS pseudo-element or CSS custom properties must be used instead. This investigation should be done at the start of Phase 4 to determine the integration approach before building the `NanoJsonEditor.vue` component.
 
+**Existing Components:**
+- `DataTable.vue` — Tabular data display component with sorting and pagination. Remains in use for structured data presentation alongside the JSON editor.
+
 **Acceptance Criteria:**
 - [ ] Spec dropdown to select active spec
 - [ ] Schema dropdown filtered to selected spec's schemas
@@ -1145,6 +1183,7 @@ CSS is auto-loaded from CDN by NanoJSON. Custom CSS overrides may be needed for 
 - [ ] Item counter
 - [ ] Switching spec resets schema selection
 - [ ] CSS theme overrides for dark/light mode consistency
+- [ ] `DataTable.vue` retained for tabular data views
 
 ---
 
@@ -1322,16 +1361,22 @@ interface SpecConfig {
   /**
    * Directory containing handler files for this spec
    *
-   * @default './mocks/{specId}/handlers'
+   * When null (the default), no handler file crawling occurs.
+   * Empty or whitespace-only strings are normalized to null.
+   *
+   * @default null
    */
-  handlersDir?: string;
+  handlersDir?: string | null;
 
   /**
    * Directory containing seed files for this spec
    *
-   * @default './mocks/{specId}/seeds'
+   * When null (the default), no seed file crawling occurs.
+   * Empty or whitespace-only strings are normalized to null.
+   *
+   * @default null
    */
-  seedsDir?: string;
+  seedsDir?: string | null;
 
   /**
    * ID field configuration per schema for this spec
@@ -1437,8 +1482,8 @@ export default defineConfig({
   │  ✓ Proxy: /api/v3/* (auto-detected from spec)
   │
   │  HANDLERS:
-  │  ✓ pets.handler.ts: 4 handlers (getPetById, findPetsByStatus, addPet, updatePet)
-  │  ✓ store.handler.ts: 2 handlers (placeOrder, getOrderById)
+  │  ✓ pets.handlers.ts: 4 handlers (getPetById, findPetsByStatus, addPet, updatePet)
+  │  ✓ store.handlers.ts: 2 handlers (placeOrder, getOrderById)
   │
   │  SEEDS:
   │  ✓ Pet: 15 items | Category: 5 items | Order: 10 items | User: 5 items
@@ -1458,7 +1503,7 @@ export default defineConfig({
   │  ✓ Proxy: /api/billing/v2/* (explicit)
   │
   │  HANDLERS:
-  │  ✓ invoices.handler.ts: 3 handlers (createInvoice, getInvoice, listInvoices)
+  │  ✓ invoices.handlers.ts: 3 handlers (createInvoice, getInvoice, listInvoices)
   │
   │  SEEDS:
   │  ✓ Invoice: 20 items | Payment: 12 items | Account: 5 items
@@ -1553,7 +1598,7 @@ openApiServer({
 | `specs[]` | Array of spec configurations (replaces single `spec`) |
 | `specs[].id` | Explicit spec identifier (optional, auto-derived) |
 | Proxy auto-detection | `proxyPath` derived from spec's `servers[0].url` if omitted |
-| Default handlers/seeds dirs | `./mocks/{specId}/handlers` and `./mocks/{specId}/seeds` |
+| Explicit handlers/seeds dirs | `handlersDir` and `seedsDir` default to `null` (no file crawling when unconfigured); must be explicitly set to enable handler/seed loading |
 
 ### 8.4 Directory Structure Migration
 
@@ -1562,29 +1607,32 @@ openApiServer({
 ```
 mocks/
 ├── handlers/
-│   └── pets.handler.ts
+│   └── pets.handlers.ts
 └── seeds/
-    └── pets.seed.ts
+    └── pets.seeds.ts
 ```
 
 **After (1.0) — single spec with explicit dirs:**
 
 No change needed if `handlersDir` and `seedsDir` are set explicitly.
 
-**After (1.0) — using default dirs:**
+**After (1.0) — without explicit dirs:**
 
-```
-mocks/
-├── petstore/              # matches spec id
-│   ├── handlers/
-│   │   └── pets.handler.ts
-│   └── seeds/
-│       └── pets.seed.ts
-└── billing/               # matches spec id
-    ├── handlers/
-    │   └── invoices.handler.ts
-    └── seeds/
-        └── invoices.seed.ts
+When `handlersDir` and `seedsDir` are not configured, they default to `null` and no handler/seed file crawling occurs. To enable handler and seed loading, you must explicitly set these directories in each spec's configuration:
+
+```typescript
+specs: [
+  {
+    spec: './openapi/petstore.yaml',
+    handlersDir: './mocks/petstore/handlers',  // explicitly set
+    seedsDir: './mocks/petstore/seeds',        // explicitly set
+  },
+  {
+    spec: './openapi/billing.yaml',
+    handlersDir: './mocks/billing/handlers',   // explicitly set
+    seedsDir: './mocks/billing/seeds',         // explicitly set
+  },
+]
 ```
 
 ---
@@ -1606,9 +1654,9 @@ mocks/
 
 | Environment | Versions |
 |-------------|----------|
-| Node.js | >= 20.19.0 |
-| Vite | >= 5.0.0 |
-| Vue | >= 3.3.0 |
+| Node.js | ^20.19.0 or >=22.12.0 |
+| Vite | ^5.0.0 or ^6.0.0 or ^7.0.0 |
+| Vue | >= 3.5.0 |
 | Browsers | Chrome, Firefox, Safari (last 2 versions) |
 
 ### 9.3 Developer Experience
@@ -1761,14 +1809,16 @@ mocks/
 | **Existing Filters** | Preserved — spec filter is additive, not replacing |
 | **Versioning** | 0.x → 1.0.0 (first stable release, not a 2.0 breaking change) |
 | **Config Shape** | `spec: string` → `specs: SpecConfig[]` (breaking change from 0.x) |
-| **Default Directories** | `./mocks/{specId}/handlers`, `./mocks/{specId}/seeds` |
+| **Default Directories** | `null` — `handlersDir` and `seedsDir` default to `null` when unconfigured; no file crawling occurs unless explicitly set |
 | **Hot Reload** | Per-spec — changes to one spec don't affect others |
 | **WebSocket** | Single hub, all events tagged with `specId` |
 | **Base Architecture** | Hono Server (unchanged) |
-| **Document Processing** | @scalar pipeline (unchanged) |
+| **Schema Identification** | `x-schema-id` extension injected into `components.schemas` before dereference to preserve schema names through inlining |
+| **Seeds Map Synchronization** | Two-phase seed population: execute seeds to populate store, then sync seed map to route builder via in-place mutation (`.clear()` + `.set()`) |
+| **Document Processing** | @scalar pipeline (extended with schema ID injection step before dereference) |
 | **Fake Data** | Faker.js (unchanged) |
 | **Communication** | Persistent bidirectional WebSocket (extended with specId) |
-| **Response Priority** | Handler > Seed > Example > Auto-generated (unchanged) |
+| **Response Priority** | Simulation > Handler > Seed > Example > Auto-generated. Security validation runs before all response paths (including simulations) |
 | **Config Location** | Inline in vite.config.ts (unchanged) |
 | **Structure** | Monorepo: core, devtools-client, server, playground (unchanged) |
 | **JSON Editor** | NanoJSON (`@pardnchiu/nanojson`) via CDN dynamic import — not bundled |
@@ -1797,3 +1847,4 @@ The original PRD (pre-stable, v0.x) is preserved at `history/PRODUCT-REQUIREMENT
 ---
 
 *Document generated: February 2026*
+*Last updated: March 2026 — PR #89 (null default dirs, x-schema-id injection), PR #90 (seeds map synchronization)*
