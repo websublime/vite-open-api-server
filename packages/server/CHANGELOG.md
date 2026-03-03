@@ -1,3 +1,234 @@
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
+## [0.24.0-next.10] - 2026-03-03
+
+### Features
+
+- add agent definitions and orchestration skills (5e9846a)
+
+
+### Documentation
+
+- approve PRD and tech spec for March 2026 (9318442) (#89, #90)
+- update CLAUDE.md and AGENTS.md for v1.0.0 architecture (f640c75)
+
+
+### Other Changes
+
+- enable mister-anderson plugin (45dd3f5)
+- remove deprecated claude commands and beads-compat skill (a07388c)
+- merge new beads (787dac6)
+
+
+
 ## [0.24.0-next.9] - 2026-02-25
 
 ### Features
