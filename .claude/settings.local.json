@@ -29,6 +29,7 @@
     ]
   },
   "enabledPlugins": {
-    "beads@beads-marketplace": true
+    "beads@beads-marketplace": true,
+    "mister-anderson@websublime-mister-anderson": true
   }
 }
