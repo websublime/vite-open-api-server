@@ -1,3 +1,276 @@
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
+## [0.24.0-next.12] - 2026-03-03
+
+### Bug Fixes
+
+- update seeds.js mock to pass through buildSeedMapFromStore (0cb1580)
+- implement two-phase seed population correctly (2e9c04e)
+
+
+### Code Refactoring
+
+- extract buildSeedMapFromStore() to shared seeds module (edb2623)
+
+
+### Other Changes
+
+- add changeset for two-phase seed population fix (0be195f)
+- sync changeset for fix/vite-20k-seed-population (5a35047)
+- fix biome format violations in per-spec-reload test (b319e9d)
+
+
+
 ## [0.24.0-next.11] - 2026-03-03
 
 ### Bug Fixes
