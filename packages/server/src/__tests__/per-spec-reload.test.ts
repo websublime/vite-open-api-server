@@ -386,7 +386,13 @@ describe('Per-Spec Reload Isolation', () => {
         // Simulate store being populated by executeSeeds
         mockStore.getSchemas.mockReturnValue(['Pet']);
         mockStore.list.mockReturnValue([{ id: 1, name: 'Rex' }]);
-        return { schemaCount: 1, totalItems: 1, itemsPerSchema: { Pet: 1 }, skippedSchemas: [], warnings: [] };
+        return {
+          schemaCount: 1,
+          totalItems: 1,
+          itemsPerSchema: { Pet: 1 },
+          skippedSchemas: [],
+          warnings: [],
+        };
       });
 
       await reloadSpecSeeds(specA, mockVite, cwd, options);
@@ -498,7 +504,13 @@ describe('Per-Spec Reload Isolation', () => {
       mockedExecuteSeeds.mockImplementationOnce(async () => {
         mockStoreA.getSchemas.mockReturnValue(['Pet']);
         mockStoreA.list.mockReturnValue([{ id: 1, name: 'Rex' }]);
-        return { schemaCount: 1, totalItems: 1, itemsPerSchema: { Pet: 1 }, skippedSchemas: [], warnings: [] };
+        return {
+          schemaCount: 1,
+          totalItems: 1,
+          itemsPerSchema: { Pet: 1 },
+          skippedSchemas: [],
+          warnings: [],
+        };
       });
 
       // Reload spec A
@@ -518,7 +530,13 @@ describe('Per-Spec Reload Isolation', () => {
           if (schema === 'Category') return [{ id: 1, name: 'Tools' }];
           return [];
         });
-        return { schemaCount: 2, totalItems: 2, itemsPerSchema: { Item: 1, Category: 1 }, skippedSchemas: [], warnings: [] };
+        return {
+          schemaCount: 2,
+          totalItems: 2,
+          itemsPerSchema: { Item: 1, Category: 1 },
+          skippedSchemas: [],
+          warnings: [],
+        };
       });
 
       // Reload spec B
