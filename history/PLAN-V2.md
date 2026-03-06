@@ -2,8 +2,36 @@
 
 ## vite-plugin-open-api-server v1.0.0
 
-**Created:** February 2026  
+**Created:** February 2026
+**Updated:** March 2026 — Progress status after beads DB recovery
 **Based on:** PRODUCT-REQUIREMENTS-DOC-V2.md, TECHNICAL-SPECIFICATION-V2.md
+
+---
+
+## Progress Status
+
+| Epic | Status | Notes |
+|------|--------|-------|
+| Epic 1: Multi-Spec Core Infrastructure | **COMPLETED** | All 7 tasks implemented with tests. Merged to `next` branch. |
+| Epic 2: Per-Spec Isolation & Hot Reload | **COMPLETED** | All 3 tasks implemented with tests. `handlersDir`/`seedsDir` default to `null` (PRD updated). |
+| Epic 3: WebSocket & Internal API | **COMPLETED** | All 3 tasks implemented. POST/DELETE HTTP routes deferred (mutations via WebSocket). |
+| Epic 4: DevTools Multi-Spec UI | **NOT STARTED** | No multi-spec awareness in devtools-client yet. |
+| Epic 5: Banner, Logging, Migration & Tests | **NOT STARTED** | `banner.ts` is still v0.x single-spec. |
+| Epic 6: Playground & Release | **NOT STARTED** | Pending Epic 4 and Epic 5 completion. |
+
+### Bug Fixes Applied (post-implementation)
+
+These fixes were applied after initial Epic 1-3 implementation:
+
+| Fix | Description | Commit |
+|-----|-------------|--------|
+| `fix/schema-and-dirs` | Inject `x-schema-id` on component schemas; default `handlersDir`/`seedsDir` to `null` | Multiple |
+| `fix/seeds-update` | Fix mutable closure bug in `updateSeeds` — must mutate in place (`.clear()` + `.set()`), never reassign | Multiple |
+| `fix/vite-20k-seed-population` | Two-phase seed population: `executeSeeds()` then `buildSeedMapFromStore()` + `updateSeeds()` | `2e9c04e` |
+| `fix/vite-yb1-setidfield-idempotent` | Make `setIdField()` idempotent when field value unchanged | `639c7f6` |
+| `fix/vite-19u-models-panel-ui-fixes` | Models panel side margins, full-width, duplicate scrollbar fixes | Multiple |
+| `fix/vite-bzb-simulation-path-mismatch` | Simulation path mismatch — delay-only simulations pass through correctly | Multiple |
+| `fix/vite-aud-types-condition-order` | Fix `types` condition order in devtools-client exports | Multiple |
 
 ---
 
