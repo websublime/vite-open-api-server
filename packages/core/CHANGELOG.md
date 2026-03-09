@@ -1,3 +1,185 @@
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
+## [0.14.0-next.16] - 2026-03-09
+
+### Features
+
+- add multi-spec support to useWebSocket composable (7fa2a65)
+
+
+### Other Changes
+
+- update changeset (cbc5287)
+
+
+
 ## [0.14.0-next.15] - 2026-03-09
 
 ### Features
