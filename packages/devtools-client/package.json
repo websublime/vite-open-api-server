@@ -31,20 +31,21 @@
     "build:spa": "vite build --config vite.config.spa.ts"
   },
   "dependencies": {
-    "vue": "^3.5.17",
+    "lucide-vue-next": "^0.513.0",
     "open-props": "^2.0.0-beta.5",
     "pinia": "^3.0.3",
-    "vue-router": "^4.5.1",
-    "lucide-vue-next": "^0.513.0"
+    "vue": "^3.5.17",
+    "vue-router": "^4.5.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^6.0.0",
     "@ungap/structured-clone": "^1.3.0",
-    "vitest": "^4.0.17",
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/test-utils": "^2.4.6",
     "jsdom": "^26.1.0",
-    "vue-tsc": "^2.2.12",
+    "typescript": "^5.9.3",
     "vite": "^7.0.0",
-    "typescript": "^5.9.3"
+    "vitest": "^4.0.17",
+    "vue-tsc": "^2.2.12"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
