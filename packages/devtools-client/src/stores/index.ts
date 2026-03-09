@@ -7,6 +7,7 @@
  *
  * Store responsibilities:
  * - registry: Manages endpoint registry data from the server
+ * - specs: Manages multi-spec metadata, filtering, and colors
  * - timeline: Tracks request/response timeline events
  * - models: Manages store data for viewing/editing mock data
  * - simulation: Controls active error simulations
@@ -32,6 +33,9 @@ export type {
 } from './simulation';
 // Simulation store - manages error and delay simulations
 export { SIMULATION_PRESETS, useSimulationStore } from './simulation';
+export type { SpecInfo } from './specs';
+// Specs store - manages multi-spec metadata and filtering
+export { useSpecsStore } from './specs';
 export type {
   HttpMethod as TimelineHttpMethod,
   RequestLogEntry,
