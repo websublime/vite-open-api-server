@@ -12,25 +12,9 @@ import { mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import type { SpecInfo } from '../../stores/specs';
 import { useSpecsStore } from '../../stores/specs';
 import SpecFilter from '../SpecFilter.vue';
-
-/**
- * Create a mock SpecInfo entry
- */
-function createMockSpec(overrides: Partial<SpecInfo> = {}): SpecInfo {
-  return {
-    id: 'petstore',
-    title: 'Petstore API',
-    version: '1.0.0',
-    proxyPath: '/api/petstore',
-    color: '#4ade80',
-    endpointCount: 10,
-    schemaCount: 5,
-    ...overrides,
-  };
-}
+import { createMockSpec } from './helpers/mockSpec';
 
 describe('SpecFilter', () => {
   let pinia: ReturnType<typeof createPinia>;
