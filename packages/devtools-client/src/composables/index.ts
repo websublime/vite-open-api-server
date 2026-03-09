@@ -11,6 +11,7 @@
  * - useWebSocket: Handles WebSocket connection with auto-reconnect
  */
 
+export type { SpecInfo } from './useSpecs';
 export { useSpecs } from './useSpecs';
 export type { ThemeMode } from './useTheme';
 export { useTheme } from './useTheme';

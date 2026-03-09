@@ -93,13 +93,18 @@ export const useSpecsStore = defineStore('specs', () => {
    */
   function setSpecs(newSpecs: SpecInfo[]): void {
     specs.value = newSpecs;
+    // Clear stale filter if the active spec no longer exists
+    if (activeSpecFilter.value && !newSpecs.some((s) => s.id === activeSpecFilter.value)) {
+      activeSpecFilter.value = null;
+    }
   }
 
   /**
    * Set the active spec filter by ID, or null to show all
    */
   function setFilter(specId: string | null): void {
-    activeSpecFilter.value = specId;
+    activeSpecFilter.value =
+      specId !== null && !specs.value.some((s) => s.id === specId) ? null : specId;
   }
 
   /**
@@ -107,7 +112,11 @@ export const useSpecsStore = defineStore('specs', () => {
    * otherwise set it as the active filter
    */
   function toggleFilter(specId: string): void {
-    activeSpecFilter.value = activeSpecFilter.value === specId ? null : specId;
+    if (activeSpecFilter.value === specId) {
+      activeSpecFilter.value = null;
+    } else {
+      setFilter(specId);
+    }
   }
 
   /**

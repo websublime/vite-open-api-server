@@ -49,6 +49,7 @@ describe('useSpecs', () => {
 
     it('should expose activeSpecFilter from store', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
 
       const { activeSpecFilter } = useSpecs();
@@ -88,6 +89,7 @@ describe('useSpecs', () => {
 
     it('should expose isFiltered from store', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
 
       const { isFiltered } = useSpecs();
@@ -107,6 +109,7 @@ describe('useSpecs', () => {
 
     it('should delegate setFilter to store', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       const { setFilter } = useSpecs();
 
       setFilter('petstore');
@@ -116,6 +119,7 @@ describe('useSpecs', () => {
 
     it('should delegate toggleFilter to store', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       const { toggleFilter } = useSpecs();
 
       toggleFilter('petstore');
@@ -172,6 +176,7 @@ describe('useSpecs', () => {
   describe('isActiveSpec', () => {
     it('should return true when spec is the active filter', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
 
       const { isActiveSpec } = useSpecs();
@@ -181,6 +186,10 @@ describe('useSpecs', () => {
 
     it('should return false when spec is not the active filter', () => {
       const store = useSpecsStore();
+      store.setSpecs([
+        createMockSpec({ id: 'petstore' }),
+        createMockSpec({ id: 'users', title: 'Users API' }),
+      ]);
       store.setFilter('users');
 
       const { isActiveSpec } = useSpecs();
