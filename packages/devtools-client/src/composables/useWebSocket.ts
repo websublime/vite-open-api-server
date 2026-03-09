@@ -11,6 +11,9 @@
 import type { ComputedRef } from 'vue';
 import { computed, getCurrentInstance, onMounted, ref } from 'vue';
 
+import type { SpecInfo } from '../stores/specs';
+import { useSpecsStore } from '../stores/specs';
+
 /**
  * Server event types that can be received from the server
  * These match the ServerEvent types defined in @websublime/vite-plugin-open-api-core
@@ -49,15 +52,21 @@ export interface ServerEvent<T = unknown> {
 
 /**
  * Connected event data
+ *
+ * In multi-spec mode, the server sends `specs` alongside `serverVersion`.
+ * The `specs` field is optional for backward compatibility with single-spec servers.
  */
 export interface ConnectedEventData {
   serverVersion: string;
+  /** Spec metadata array (multi-spec mode only) */
+  specs?: SpecInfo[];
 }
 
 /**
  * Client command types that can be sent to the server
  */
 export type ClientCommandType =
+  | 'get:specs'
   | 'get:registry'
   | 'get:timeline'
   | 'get:store'
@@ -70,10 +79,29 @@ export type ClientCommandType =
 
 /**
  * Client command structure
+ *
+ * In multi-spec mode, commands include `specId` in their data to target
+ * a specific spec instance. Some commands (get:specs, get:registry, get:timeline,
+ * clear:timeline) are global and do not require specId.
  */
 export interface ClientCommand<T = unknown> {
   type: ClientCommandType;
   data?: T;
+}
+
+/**
+ * Simulation configuration for set:simulation command
+ *
+ * Mirrors SimulationConfig from @websublime/vite-plugin-open-api-core.
+ * Kept decoupled to avoid cross-package imports.
+ */
+export interface SimulationConfig {
+  path: string;
+  method?: string;
+  status?: number;
+  delay?: number;
+  body?: unknown;
+  headers?: Record<string, string>;
 }
 
 /**
@@ -152,6 +180,31 @@ export interface UseWebSocketReturn {
   ) => () => void;
   /** Reset the composable state (useful for testing) */
   resetState: () => void;
+
+  // =========================================================================
+  // Multi-spec command wrappers
+  // =========================================================================
+
+  /** Request the list of available specs */
+  getSpecs: () => boolean;
+  /** Request the route registry, optionally scoped to a spec */
+  getRegistry: (specId?: string) => boolean;
+  /** Request timeline entries, optionally scoped to a spec */
+  getTimeline: (specId?: string, limit?: number) => boolean;
+  /** Clear timeline entries, optionally scoped to a spec */
+  clearTimeline: (specId?: string) => boolean;
+  /** Request store data for a specific schema in a spec */
+  getStore: (specId: string, schema: string) => boolean;
+  /** Set store data for a specific schema in a spec */
+  setStore: (specId: string, schema: string, items: unknown[]) => boolean;
+  /** Clear store data for a specific schema in a spec */
+  clearStore: (specId: string, schema: string) => boolean;
+  /** Set a simulation configuration for a spec */
+  setSimulation: (specId: string, config: SimulationConfig) => boolean;
+  /** Clear a simulation for a specific path in a spec */
+  clearSimulation: (specId: string, path: string) => boolean;
+  /** Re-seed mock data for a spec */
+  reseed: (specId: string) => boolean;
 }
 
 /**
@@ -267,19 +320,46 @@ function handleOpen(): void {
 }
 
 /**
+ * Request initial data for each known spec after connection.
+ *
+ * Sends `get:registry` and `get:timeline` for every spec so the UI is
+ * immediately populated without user interaction.
+ */
+function requestInitialData(specs: SpecInfo[]): void {
+  for (const spec of specs) {
+    send({ type: 'get:registry', data: { specId: spec.id } });
+    send({ type: 'get:timeline', data: { specId: spec.id } });
+  }
+}
+
+/**
  * Handle WebSocket message event
  */
 function handleMessage(event: MessageEvent): void {
   try {
     const message = JSON.parse(event.data) as ServerEvent;
 
-    // Handle connected event specially to extract server version
+    // Handle connected event specially to extract server version and specs
     if (message.type === 'connected') {
       const connectedData = message.data as ConnectedEventData;
       serverVersion.value = connectedData.serverVersion;
 
+      // Populate specs store if specs are present (multi-spec mode)
+      if (connectedData.specs && Array.isArray(connectedData.specs)) {
+        // Lazy access to Pinia store — only called when a message arrives,
+        // so Pinia is guaranteed to be installed by then.
+        const specsStore = useSpecsStore();
+        specsStore.setSpecs(connectedData.specs);
+
+        // Request initial data per-spec so the UI is immediately populated
+        requestInitialData(connectedData.specs);
+      }
+
       if (import.meta.env.DEV) {
-        console.log(`[DevTools WebSocket] Server version: ${connectedData.serverVersion}`);
+        const specCount = connectedData.specs?.length ?? 0;
+        console.log(
+          `[DevTools WebSocket] Server version: ${connectedData.serverVersion}, specs: ${specCount}`,
+        );
       }
     }
 
@@ -421,6 +501,90 @@ function send<T = unknown>(command: ClientCommand<T>): boolean {
   }
 }
 
+// =============================================================================
+// Multi-spec command wrappers
+// =============================================================================
+
+/**
+ * Request the list of available specs (global command, no specId)
+ */
+function getSpecs(): boolean {
+  return send({ type: 'get:specs' });
+}
+
+/**
+ * Request the route registry, optionally scoped to a single spec
+ */
+function getRegistry(specId?: string): boolean {
+  return send({ type: 'get:registry', data: specId ? { specId } : undefined });
+}
+
+/**
+ * Request timeline entries, optionally scoped to a single spec
+ */
+function getTimeline(specId?: string, limit?: number): boolean {
+  const data: { specId?: string; limit?: number } = {};
+  if (specId) data.specId = specId;
+  if (limit !== undefined) data.limit = limit;
+  return send({
+    type: 'get:timeline',
+    data: Object.keys(data).length > 0 ? data : undefined,
+  });
+}
+
+/**
+ * Clear timeline entries, optionally scoped to a single spec
+ */
+function clearTimeline(specId?: string): boolean {
+  return send({ type: 'clear:timeline', data: specId ? { specId } : undefined });
+}
+
+/**
+ * Request store data for a specific schema within a spec (spec-scoped)
+ */
+function getStore(specId: string, schema: string): boolean {
+  return send({ type: 'get:store', data: { specId, schema } });
+}
+
+/**
+ * Set store data for a specific schema within a spec (spec-scoped)
+ */
+function setStore(specId: string, schema: string, items: unknown[]): boolean {
+  return send({ type: 'set:store', data: { specId, schema, items } });
+}
+
+/**
+ * Clear store data for a specific schema within a spec (spec-scoped)
+ */
+function clearStore(specId: string, schema: string): boolean {
+  return send({ type: 'clear:store', data: { specId, schema } });
+}
+
+/**
+ * Set a simulation configuration for a spec (spec-scoped)
+ */
+function setSimulation(specId: string, config: SimulationConfig): boolean {
+  return send({ type: 'set:simulation', data: { specId, ...config } });
+}
+
+/**
+ * Clear a simulation for a specific path in a spec (spec-scoped)
+ */
+function clearSimulation(specId: string, path: string): boolean {
+  return send({ type: 'clear:simulation', data: { specId, path } });
+}
+
+/**
+ * Re-seed mock data for a spec (spec-scoped)
+ */
+function reseed(specId: string): boolean {
+  return send({ type: 'reseed', data: { specId } });
+}
+
+// =============================================================================
+// Event subscription
+// =============================================================================
+
 /**
  * Subscribe to a server event
  *
@@ -544,6 +708,7 @@ function resetState(): void {
  * - Auto-reconnect with configurable delay
  * - Event subscription system
  * - Command sending
+ * - Multi-spec command wrappers
  *
  * @param options - Configuration options
  * @returns WebSocket management utilities
@@ -644,5 +809,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
      * Reset the composable state (useful for testing)
      */
     resetState,
+
+    // =========================================================================
+    // Multi-spec command wrappers
+    // =========================================================================
+
+    getSpecs,
+    getRegistry,
+    getTimeline,
+    clearTimeline,
+    getStore,
+    setStore,
+    clearStore,
+    setSimulation,
+    clearSimulation,
+    reseed,
   };
 }

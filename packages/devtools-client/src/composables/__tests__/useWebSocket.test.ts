@@ -8,8 +8,10 @@
  * @vitest-environment jsdom
  */
 
+import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useSpecsStore } from '../../stores/specs';
 import { type ClientCommand, type ServerEvent, useWebSocket } from '../useWebSocket';
 
 /**
@@ -108,10 +110,28 @@ class MockWebSocket {
 // Store original WebSocket
 const originalWebSocket = global.WebSocket;
 
+/**
+ * Helper: create mock SpecInfo objects for testing
+ */
+function createMockSpecs(count = 2) {
+  return Array.from({ length: count }, (_, i) => ({
+    id: `spec-${i + 1}`,
+    title: `Spec ${i + 1}`,
+    version: `1.${i}.0`,
+    proxyPath: `/api/spec${i + 1}`,
+    color: `#${String(i + 1).padStart(6, '0')}`,
+    endpointCount: 10 + i,
+    schemaCount: 5 + i,
+  }));
+}
+
 describe('useWebSocket', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     MockWebSocket.clearInstances();
+
+    // Set up Pinia so that useSpecsStore() works inside handleMessage
+    setActivePinia(createPinia());
 
     // Replace global WebSocket with MockWebSocket class
     global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
@@ -886,6 +906,405 @@ describe('useWebSocket', () => {
 
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
+    });
+  });
+
+  // ===========================================================================
+  // Multi-spec features
+  // ===========================================================================
+
+  describe('multi-spec: connected event populates specs store', () => {
+    it('should call setSpecs when connected event contains specs', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+      const specsStore = useSpecsStore();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      const specs = createMockSpecs(2);
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs },
+      });
+
+      expect(specsStore.specs).toEqual(specs);
+      expect(specsStore.specIds).toEqual(['spec-1', 'spec-2']);
+    });
+
+    it('should not call setSpecs when connected event has no specs', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+      const specsStore = useSpecsStore();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Single-spec server: no specs field
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '1.0.0' },
+      });
+
+      expect(specsStore.specs).toEqual([]);
+    });
+
+    it('should handle empty specs array gracefully', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+      const specsStore = useSpecsStore();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs: [] },
+      });
+
+      expect(specsStore.specs).toEqual([]);
+    });
+
+    it('should update specs store on reconnect with new specs', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+      const specsStore = useSpecsStore();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Initial connect with 2 specs
+      const specs1 = createMockSpecs(2);
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs: specs1 },
+      });
+      expect(specsStore.specs).toHaveLength(2);
+
+      // Simulate reconnect with 3 specs (e.g., spec added)
+      const specs2 = createMockSpecs(3);
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs: specs2 },
+      });
+      expect(specsStore.specs).toHaveLength(3);
+    });
+  });
+
+  describe('multi-spec: initial data requested on connect', () => {
+    it('should send get:registry and get:timeline for each spec on connect', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      const specs = createMockSpecs(2);
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs },
+      });
+
+      const sentMessages = MockWebSocket.instances[0].sentMessages.map((m) => JSON.parse(m));
+
+      // Should have sent 4 messages: get:registry + get:timeline for each of 2 specs
+      expect(sentMessages).toHaveLength(4);
+      expect(sentMessages).toContainEqual({ type: 'get:registry', data: { specId: 'spec-1' } });
+      expect(sentMessages).toContainEqual({ type: 'get:timeline', data: { specId: 'spec-1' } });
+      expect(sentMessages).toContainEqual({ type: 'get:registry', data: { specId: 'spec-2' } });
+      expect(sentMessages).toContainEqual({ type: 'get:timeline', data: { specId: 'spec-2' } });
+    });
+
+    it('should not send initial data requests when no specs', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Single-spec mode: no specs field
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '1.0.0' },
+      });
+
+      expect(MockWebSocket.instances[0].sentMessages).toHaveLength(0);
+    });
+
+    it('should not send initial data requests when specs array is empty', async () => {
+      const { connect } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'connected',
+        data: { serverVersion: '2.0.0', specs: [] },
+      });
+
+      // Empty specs array: setSpecs still called but no requests sent
+      expect(MockWebSocket.instances[0].sentMessages).toHaveLength(0);
+    });
+  });
+
+  describe('multi-spec: command wrappers', () => {
+    it('getSpecs should send get:specs command', async () => {
+      const { connect, getSpecs } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      const result = getSpecs();
+
+      expect(result).toBe(true);
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'get:specs',
+      });
+    });
+
+    it('getRegistry should send with optional specId', async () => {
+      const { connect, getRegistry } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Without specId
+      getRegistry();
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'get:registry',
+      });
+
+      // With specId
+      getRegistry('spec-1');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[1])).toEqual({
+        type: 'get:registry',
+        data: { specId: 'spec-1' },
+      });
+    });
+
+    it('getTimeline should send with optional specId and limit', async () => {
+      const { connect, getTimeline } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      // Without params
+      getTimeline();
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'get:timeline',
+      });
+
+      // With specId only
+      getTimeline('spec-1');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[1])).toEqual({
+        type: 'get:timeline',
+        data: { specId: 'spec-1' },
+      });
+
+      // With specId and limit
+      getTimeline('spec-1', 50);
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[2])).toEqual({
+        type: 'get:timeline',
+        data: { specId: 'spec-1', limit: 50 },
+      });
+    });
+
+    it('clearTimeline should send with optional specId', async () => {
+      const { connect, clearTimeline } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      clearTimeline();
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'clear:timeline',
+      });
+
+      clearTimeline('spec-1');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[1])).toEqual({
+        type: 'clear:timeline',
+        data: { specId: 'spec-1' },
+      });
+    });
+
+    it('getStore should send with required specId and schema', async () => {
+      const { connect, getStore } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      getStore('spec-1', 'Pet');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'get:store',
+        data: { specId: 'spec-1', schema: 'Pet' },
+      });
+    });
+
+    it('setStore should send with specId, schema, and items', async () => {
+      const { connect, setStore } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      const items = [{ id: 1, name: 'Fluffy' }];
+      setStore('spec-1', 'Pet', items);
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'set:store',
+        data: { specId: 'spec-1', schema: 'Pet', items },
+      });
+    });
+
+    it('clearStore should send with specId and schema', async () => {
+      const { connect, clearStore } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      clearStore('spec-1', 'Pet');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'clear:store',
+        data: { specId: 'spec-1', schema: 'Pet' },
+      });
+    });
+
+    it('setSimulation should send with specId and config spread', async () => {
+      const { connect, setSimulation } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      setSimulation('spec-1', {
+        path: '/api/pets',
+        method: 'GET',
+        status: 500,
+        delay: 1000,
+      });
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'set:simulation',
+        data: { specId: 'spec-1', path: '/api/pets', method: 'GET', status: 500, delay: 1000 },
+      });
+    });
+
+    it('clearSimulation should send with specId and path', async () => {
+      const { connect, clearSimulation } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      clearSimulation('spec-1', '/api/pets');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'clear:simulation',
+        data: { specId: 'spec-1', path: '/api/pets' },
+      });
+    });
+
+    it('reseed should send with specId', async () => {
+      const { connect, reseed } = useWebSocket({ autoConnect: false });
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      reseed('spec-1');
+      expect(JSON.parse(MockWebSocket.instances[0].sentMessages[0])).toEqual({
+        type: 'reseed',
+        data: { specId: 'spec-1' },
+      });
+    });
+
+    it('command wrappers should return false when not connected', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const { getSpecs, getRegistry, getTimeline, getStore, reseed } = useWebSocket({
+        autoConnect: false,
+      });
+
+      expect(getSpecs()).toBe(false);
+      expect(getRegistry('spec-1')).toBe(false);
+      expect(getTimeline('spec-1')).toBe(false);
+      expect(getStore('spec-1', 'Pet')).toBe(false);
+      expect(reseed('spec-1')).toBe(false);
+
+      warnSpy.mockRestore();
+    });
+  });
+
+  describe('multi-spec: specId in event data', () => {
+    it('should pass specId through to event handlers', async () => {
+      const { connect, on } = useWebSocket({ autoConnect: false });
+      const handler = vi.fn();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      on('registry', handler);
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'registry',
+        data: { specId: 'spec-1', registry: { endpoints: [] } },
+      });
+
+      expect(handler).toHaveBeenCalledWith({
+        specId: 'spec-1',
+        registry: { endpoints: [] },
+      });
+    });
+
+    it('should pass specId in store:updated events', async () => {
+      const { connect, on } = useWebSocket({ autoConnect: false });
+      const handler = vi.fn();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      on('store:updated', handler);
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'store:updated',
+        data: { specId: 'spec-2', schema: 'Pet', action: 'create', count: 5 },
+      });
+
+      expect(handler).toHaveBeenCalledWith({
+        specId: 'spec-2',
+        schema: 'Pet',
+        action: 'create',
+        count: 5,
+      });
+    });
+
+    it('should pass specId in timeline events', async () => {
+      const { connect, on } = useWebSocket({ autoConnect: false });
+      const handler = vi.fn();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      on('timeline', handler);
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'timeline',
+        data: { specId: 'spec-1', entries: [{ id: 'req-1' }], count: 1, total: 10 },
+      });
+
+      expect(handler).toHaveBeenCalledWith({
+        specId: 'spec-1',
+        entries: [{ id: 'req-1' }],
+        count: 1,
+        total: 10,
+      });
+    });
+
+    it('should pass specId in error events', async () => {
+      const { connect, on } = useWebSocket({ autoConnect: false });
+      const handler = vi.fn();
+
+      connect();
+      await vi.runAllTimersAsync();
+
+      on('error', handler);
+
+      MockWebSocket.instances[0].simulateMessage({
+        type: 'error',
+        data: { specId: 'spec-1', command: 'get:store', message: 'Schema not found' },
+      });
+
+      expect(handler).toHaveBeenCalledWith({
+        specId: 'spec-1',
+        command: 'get:store',
+        message: 'Schema not found',
+      });
     });
   });
 });
