@@ -1,0 +1,16 @@
+{
+  "branch": "feature/vite-open-api-server-d6w.3-websocket-composable",
+  "bump": "patch",
+  "environments": [
+    "staging"
+  ],
+  "packages": [
+    "@websublime/vite-plugin-open-api-core",
+    "@websublime/vite-plugin-open-api-devtools",
+    "petstore-app",
+    "@websublime/vite-plugin-open-api-server"
+  ],
+  "changes": [],
+  "created_at": "2026-03-09T16:53:05.379422Z",
+  "updated_at": "2026-03-09T16:53:05.381638Z"
+}
