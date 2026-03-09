@@ -1,3 +1,315 @@
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
+## [0.14.0-next.14] - 2026-03-09
+
+### Features
+
+- add specs store and useSpecs composable (fbc3d5e) (#94)
+
+
+### Bug Fixes
+
+- validate spec filter against existing specs and export SpecInfo type (3a18a5a)
+
+
+### Documentation
+
+- add progress status section to PLAN-V2.md after beads DB recovery (ef51add)
+
+
+### Other Changes
+
+- migrate beads from embedded Dolt to central server (6854f72)
+- bd init: initialize beads issue tracking (b631657)
+
+
+
 ## [0.14.0-next.13] - 2026-03-03
 
 ### Bug Fixes
