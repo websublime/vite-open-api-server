@@ -7,9 +7,11 @@
  *
  * Composable responsibilities:
  * - useTheme: Manages dark/light mode theme switching
+ * - useSpecs: Provides spec metadata utilities (colors, labels, filtering)
  * - useWebSocket: Handles WebSocket connection with auto-reconnect
  */
 
+export { useSpecs } from './useSpecs';
 export type { ThemeMode } from './useTheme';
 export { useTheme } from './useTheme';
 export type {
