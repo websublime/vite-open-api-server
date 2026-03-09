@@ -1,3 +1,185 @@
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
+## [0.24.0-next.14] - 2026-03-09
+
+### Features
+
+- add SpecBadge and SpecFilter components (47088a5)
+
+
+### Code Refactoring
+
+- extract shared createMockSpec test helper (9c28cbd)
+- move vitest config to per-package level (ff04e0c)
+
+
+
 ## [0.24.0-next.13] - 2026-03-09
 
 ### Features
