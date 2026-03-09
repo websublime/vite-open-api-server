@@ -24,6 +24,7 @@
   },
   "scripts": {
     "dev": "tsup --watch",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "copy:devtools-spa": "node scripts/copy-devtools-spa.mjs",
     "build": "tsup && pnpm run copy:devtools-spa"
