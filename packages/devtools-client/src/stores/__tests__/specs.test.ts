@@ -159,6 +159,7 @@ describe('useSpecsStore', () => {
   describe('setFilter', () => {
     it('should set active spec filter', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
 
       expect(store.activeSpecFilter).toBe('petstore');
@@ -166,8 +167,17 @@ describe('useSpecsStore', () => {
 
     it('should clear filter when set to null', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
       store.setFilter(null);
+
+      expect(store.activeSpecFilter).toBeNull();
+    });
+
+    it('should reject nonexistent spec ID', () => {
+      const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
+      store.setFilter('nonexistent');
 
       expect(store.activeSpecFilter).toBeNull();
     });
@@ -176,6 +186,7 @@ describe('useSpecsStore', () => {
   describe('toggleFilter', () => {
     it('should activate filter for a spec', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.toggleFilter('petstore');
 
       expect(store.activeSpecFilter).toBe('petstore');
@@ -183,6 +194,7 @@ describe('useSpecsStore', () => {
 
     it('should deactivate filter when toggling same spec', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.toggleFilter('petstore');
       store.toggleFilter('petstore');
 
@@ -191,10 +203,22 @@ describe('useSpecsStore', () => {
 
     it('should switch filter when toggling different spec', () => {
       const store = useSpecsStore();
+      store.setSpecs([
+        createMockSpec({ id: 'petstore' }),
+        createMockSpec({ id: 'users', title: 'Users API' }),
+      ]);
       store.toggleFilter('petstore');
       store.toggleFilter('users');
 
       expect(store.activeSpecFilter).toBe('users');
+    });
+
+    it('should reject nonexistent spec ID', () => {
+      const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
+      store.toggleFilter('nonexistent');
+
+      expect(store.activeSpecFilter).toBeNull();
     });
   });
 
@@ -220,7 +244,9 @@ describe('useSpecsStore', () => {
       store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('nonexistent');
 
+      // setFilter rejects nonexistent IDs, so activeSpec is null
       expect(store.activeSpec).toBeNull();
+      expect(store.activeSpecFilter).toBeNull();
     });
   });
 
@@ -232,12 +258,14 @@ describe('useSpecsStore', () => {
 
     it('should be true when a filter is active', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
       expect(store.isFiltered).toBe(true);
     });
 
     it('should return to false when filter is cleared', () => {
       const store = useSpecsStore();
+      store.setSpecs([createMockSpec({ id: 'petstore' })]);
       store.setFilter('petstore');
       store.setFilter(null);
       expect(store.isFiltered).toBe(false);
