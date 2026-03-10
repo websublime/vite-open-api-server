@@ -20,9 +20,11 @@ import {
   type TimelineData,
   useTimelineStore,
 } from '@/stores/timeline';
+import { useSpecsStore } from '@/stores/specs';
 
 // Store and WebSocket
 const timelineStore = useTimelineStore();
+const specsStore = useSpecsStore();
 const { send, on, connected } = useWebSocket();
 
 // Local UI state
@@ -58,7 +60,8 @@ function fetchTimeline(): void {
  * Handle timeline data from server
  */
 function handleTimelineData(data: TimelineData): void {
-  timelineStore.setTimelineData(data);
+  // TODO(d6w.6): extract specId from event data when page is multi-spec aware
+  timelineStore.setTimelineData(data, specsStore.specIds[0] ?? 'default');
   timelineStore.setLoading(false);
 }
 
@@ -66,7 +69,8 @@ function handleTimelineData(data: TimelineData): void {
  * Handle incoming request event
  */
 function handleRequest(data: RequestLogEntry): void {
-  timelineStore.addRequest(data);
+  // TODO(d6w.6): extract specId from event data when page is multi-spec aware
+  timelineStore.addRequest(data, specsStore.specIds[0] ?? 'default');
 }
 
 /**

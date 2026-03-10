@@ -21,12 +21,14 @@ import JsonEditor from '@/components/JsonEditor.vue';
 import { useNotifications } from '@/composables/useNotifications';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { useModelsStore } from '@/stores';
+import { useSpecsStore } from '@/stores/specs';
 
 // ==========================================================================
 // Store & Composables
 // ==========================================================================
 
 const modelsStore = useModelsStore();
+const specsStore = useSpecsStore();
 const { send, on, connected } = useWebSocket();
 const { success, error: notifyError, confirm } = useNotifications();
 
@@ -50,11 +52,13 @@ const selectedItemIndex = ref(-1);
 onMounted(async () => {
   // Load schemas on mount
   try {
-    await modelsStore.fetchSchemas();
+    // TODO(d6w.7): use proper spec selection when page is multi-spec aware
+    await modelsStore.fetchSchemas(specsStore.specIds[0] ?? 'default');
 
     // Select first schema if available
     if (modelsStore.schemas.length > 0 && !modelsStore.selectedSchema) {
-      await modelsStore.selectSchemaByName(modelsStore.schemas[0].name);
+      // TODO(d6w.7): use proper spec selection when page is multi-spec aware
+      await modelsStore.selectSchemaByName(specsStore.specIds[0] ?? 'default', modelsStore.schemas[0].name);
     }
   } catch (err) {
     // Error is already set in the store, but ensure it's visible
@@ -83,7 +87,8 @@ on('store:updated', (data) => {
     return;
   }
 
-  modelsStore.handleStoreUpdate(data as { schema: string; action: string; count: number });
+  // TODO(d6w.7): extract specId from event data when page is multi-spec aware
+  modelsStore.handleStoreUpdate(data as { specId: string; schema: string; action: string; count: number });
   selectedItemIndex.value = -1;
 });
 
@@ -101,7 +106,8 @@ on('reseeded', (data) => {
     return;
   }
 
-  modelsStore.handleReseedComplete(data as { success: boolean; schemas: string[] });
+  // TODO(d6w.7): extract specId from event data when page is multi-spec aware
+  modelsStore.handleReseedComplete(data as { specId: string; success: boolean; schemas: string[] });
   selectedItemIndex.value = -1;
 });
 
@@ -179,7 +185,8 @@ async function selectSchema(schemaName: string): Promise<void> {
     if (!confirmed) return;
   }
 
-  await modelsStore.selectSchemaByName(schemaName);
+  // TODO(d6w.7): use proper spec selection when page is multi-spec aware
+  await modelsStore.selectSchemaByName(specsStore.specIds[0] ?? 'default', schemaName);
 }
 
 /**
