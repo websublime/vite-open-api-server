@@ -124,6 +124,24 @@ export const useModelsStore = defineStore('models', () => {
   const error: Ref<string | null> = ref(null);
 
   // ==========================================================================
+  // Internal helpers
+  // ==========================================================================
+
+  /**
+   * Update the item count for the currently selected schema in schemasBySpec.
+   * No-op if no schema/spec is selected or schema is not found.
+   */
+  function updateSchemaCount(count: number): void {
+    if (!selectedSchema.value || !selectedSpecId.value) return;
+    const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
+    if (!specSchemas) return;
+    const schemaIndex = specSchemas.findIndex((s) => s.name === selectedSchema.value);
+    if (schemaIndex !== -1) {
+      specSchemas[schemaIndex].count = count;
+    }
+  }
+
+  // ==========================================================================
   // Computed
   // ==========================================================================
 
@@ -227,7 +245,9 @@ export const useModelsStore = defineStore('models', () => {
     error.value = null;
 
     try {
-      const response = await fetch(`${apiBasePath(specId)}/store/${encodeURIComponent(schemaName)}`);
+      const response = await fetch(
+        `${apiBasePath(specId)}/store/${encodeURIComponent(schemaName)}`,
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch schema data: ${response.statusText}`);
       }
@@ -309,13 +329,7 @@ export const useModelsStore = defineStore('models', () => {
       isDirtyFlag.value = false;
 
       // Update schema count
-      const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
-      if (specSchemas) {
-        const schemaIndex = specSchemas.findIndex((s) => s.name === selectedSchema.value);
-        if (schemaIndex !== -1) {
-          specSchemas[schemaIndex].count = result.created ?? currentItems.value.length;
-        }
-      }
+      updateSchemaCount(result.created ?? currentItems.value.length);
 
       return true;
     } catch (err) {
@@ -357,13 +371,7 @@ export const useModelsStore = defineStore('models', () => {
       isDirtyFlag.value = false;
 
       // Update schema count
-      const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
-      if (specSchemas) {
-        const schemaIndex = specSchemas.findIndex((s) => s.name === selectedSchema.value);
-        if (schemaIndex !== -1) {
-          specSchemas[schemaIndex].count = 0;
-        }
-      }
+      updateSchemaCount(0);
 
       return true;
     } catch (err) {
@@ -411,7 +419,12 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Handle store update from WebSocket event
    */
-  function handleStoreUpdate(data: { specId: string; schema: string; action: string; count: number }): void {
+  function handleStoreUpdate(data: {
+    specId: string;
+    schema: string;
+    action: string;
+    count: number;
+  }): void {
     const specSchemas = schemasBySpec.value.get(data.specId);
     if (specSchemas) {
       const schemaIndex = specSchemas.findIndex((s) => s.name === data.schema);
@@ -436,7 +449,11 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Handle reseed completion from WebSocket event
    */
-  function handleReseedComplete(data: { specId: string; success: boolean; schemas: string[] }): void {
+  function handleReseedComplete(data: {
+    specId: string;
+    success: boolean;
+    schemas: string[];
+  }): void {
     if (data.success) {
       // Refresh schema list for this spec
       fetchSchemas(data.specId);
