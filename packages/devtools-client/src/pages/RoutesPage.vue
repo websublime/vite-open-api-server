@@ -14,9 +14,11 @@ import EndpointDetail from '@/components/EndpointDetail.vue';
 import EndpointList from '@/components/EndpointList.vue';
 import { useWebSocket } from '@/composables/useWebSocket';
 import { type HttpMethod, type RegistryData, useRegistryStore } from '@/stores/registry';
+import { useSpecsStore } from '@/stores/specs';
 
 // Store and WebSocket
 const registryStore = useRegistryStore();
+const specsStore = useSpecsStore();
 const { send, on, connected } = useWebSocket();
 
 // Local UI state
@@ -49,7 +51,8 @@ function fetchRegistry(): void {
  * Handle registry data from server
  */
 function handleRegistryData(data: RegistryData): void {
-  registryStore.setRegistryData(data);
+  // TODO(d6w.5): extract specId from event data when page is multi-spec aware
+  registryStore.setRegistryData(specsStore.specIds[0] ?? 'default', data);
   registryStore.setLoading(false);
 }
 

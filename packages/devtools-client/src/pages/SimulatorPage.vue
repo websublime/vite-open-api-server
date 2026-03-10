@@ -13,6 +13,7 @@ import { useWebSocket } from '../composables/useWebSocket';
 import { useRegistryStore } from '../stores/registry';
 import type { ActiveSimulation } from '../stores/simulation';
 import { useSimulationStore } from '../stores/simulation';
+import { useSpecsStore } from '../stores/specs';
 
 // ==========================================================================
 // Types
@@ -45,6 +46,7 @@ interface SimulationClearedEvent {
 // ==========================================================================
 
 const simulationStore = useSimulationStore();
+const specsStore = useSpecsStore();
 const registryStore = useRegistryStore();
 const { send, on, connected } = useWebSocket();
 
@@ -153,7 +155,9 @@ function addSimulation(): void {
 
   // Combine method and path to create endpoint key (e.g., "get:/pets")
   const pathWithMethod = `${newSimulationMethod.value.toLowerCase()}:${trimmedPath}`;
+  // TODO(d6w.8): use proper spec selection when page is multi-spec aware
   const simulation = simulationStore.createSimulationFromPreset(
+    specsStore.specIds[0] ?? 'default',
     pathWithMethod,
     selectedPresetId.value,
     undefined,
