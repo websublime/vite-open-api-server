@@ -5,12 +5,15 @@
  * How: Tests state management, computed properties, and actions
  * Why: Ensures reliable timeline functionality for the Timeline Page
  *
+ * Multi-spec: Tests specId on entries, spec-filtered computeds,
+ * and per-spec clearing.
+ *
  * @module stores/__tests__/timeline.test
  */
 
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it } from 'vitest';
-
+import { useSpecsStore } from '../specs';
 import {
   type RequestLogEntry,
   type ResponseLogEntry,
@@ -18,6 +21,8 @@ import {
   type TimelineEntry,
   useTimelineStore,
 } from '../timeline';
+
+const DEFAULT_SPEC_ID = 'petstore';
 
 /**
  * Create mock request log entry
@@ -65,6 +70,7 @@ function createMockTimelineEntry(overrides: Partial<TimelineEntry> = {}): Timeli
     status: response?.status ?? null,
     duration: response?.duration ?? null,
     simulated: response?.simulated ?? false,
+    specId: DEFAULT_SPEC_ID,
     ...overrides,
   };
 }
@@ -114,16 +120,17 @@ describe('useTimelineStore', () => {
   });
 
   describe('addRequest', () => {
-    it('should add a request to entries', () => {
+    it('should add a request to entries with specId', () => {
       const store = useTimelineStore();
       const request = createMockRequest();
 
-      store.addRequest(request);
+      store.addRequest(request, DEFAULT_SPEC_ID);
 
       expect(store.entries).toHaveLength(1);
       expect(store.entries[0].id).toBe(request.id);
       expect(store.entries[0].request).toEqual(request);
       expect(store.entries[0].response).toBeNull();
+      expect(store.entries[0].specId).toBe(DEFAULT_SPEC_ID);
     });
 
     it('should add new entries at the beginning (newest first)', () => {
@@ -131,8 +138,8 @@ describe('useTimelineStore', () => {
       const request1 = createMockRequest({ id: 'req-1' });
       const request2 = createMockRequest({ id: 'req-2' });
 
-      store.addRequest(request1);
-      store.addRequest(request2);
+      store.addRequest(request1, DEFAULT_SPEC_ID);
+      store.addRequest(request2, DEFAULT_SPEC_ID);
 
       expect(store.entries[0].id).toBe('req-2');
       expect(store.entries[1].id).toBe('req-1');
@@ -143,7 +150,7 @@ describe('useTimelineStore', () => {
       store.setMaxEntries(3);
 
       for (let i = 0; i < 5; i++) {
-        store.addRequest(createMockRequest({ id: `req-${i}` }));
+        store.addRequest(createMockRequest({ id: `req-${i}` }), DEFAULT_SPEC_ID);
       }
 
       expect(store.entries).toHaveLength(3);
@@ -158,7 +165,7 @@ describe('useTimelineStore', () => {
       const request = createMockRequest({ id: 'req-1' });
       const response = createMockResponse({ requestId: 'req-1', status: 200 });
 
-      store.addRequest(request);
+      store.addRequest(request, DEFAULT_SPEC_ID);
       store.addResponse(response);
 
       expect(store.entries[0].response).toEqual(response);
@@ -180,7 +187,7 @@ describe('useTimelineStore', () => {
       const request = createMockRequest({ id: 'req-1' });
       const response = createMockResponse({ requestId: 'req-1', simulated: true });
 
-      store.addRequest(request);
+      store.addRequest(request, DEFAULT_SPEC_ID);
       store.addResponse(response);
 
       expect(store.entries[0].simulated).toBe(true);
@@ -219,7 +226,7 @@ describe('useTimelineStore', () => {
 
       // Request arrives later
       const request = createMockRequest({ id: 'req-delayed' });
-      store.addRequest(request);
+      store.addRequest(request, DEFAULT_SPEC_ID);
 
       // Should have merged the buffered response with the request
       expect(store.entries).toHaveLength(1);
@@ -229,7 +236,7 @@ describe('useTimelineStore', () => {
   });
 
   describe('setTimelineData', () => {
-    it('should set entries from timeline data', () => {
+    it('should set entries from timeline data with specId', () => {
       const store = useTimelineStore();
       const data: TimelineData = {
         entries: [
@@ -240,11 +247,12 @@ describe('useTimelineStore', () => {
         total: 2,
       };
 
-      store.setTimelineData(data);
+      store.setTimelineData(data, DEFAULT_SPEC_ID);
 
       expect(store.entries).toHaveLength(1);
       expect(store.entries[0].id).toBe('req-1');
       expect(store.entries[0].response).not.toBeNull();
+      expect(store.entries[0].specId).toBe(DEFAULT_SPEC_ID);
     });
 
     it('should pair requests with their responses', () => {
@@ -260,7 +268,7 @@ describe('useTimelineStore', () => {
         total: 4,
       };
 
-      store.setTimelineData(data);
+      store.setTimelineData(data, DEFAULT_SPEC_ID);
 
       expect(store.entries).toHaveLength(2);
       expect(store.entries.find((e) => e.id === 'req-1')?.status).toBe(200);
@@ -279,7 +287,7 @@ describe('useTimelineStore', () => {
         total: 3,
       };
 
-      store.setTimelineData(data);
+      store.setTimelineData(data, DEFAULT_SPEC_ID);
 
       expect(store.entries[0].id).toBe('req-2');
       expect(store.entries[1].id).toBe('req-3');
@@ -290,26 +298,61 @@ describe('useTimelineStore', () => {
       const store = useTimelineStore();
       store.setError('Some error');
 
-      store.setTimelineData({ entries: [], count: 0, total: 0 });
+      store.setTimelineData({ entries: [], count: 0, total: 0 }, DEFAULT_SPEC_ID);
 
       expect(store.error).toBeNull();
+    });
+
+    it('should replace entries for same specId but keep others', () => {
+      const store = useTimelineStore();
+
+      // Add entries for spec-a
+      store.addRequest(createMockRequest({ id: 'req-a1', timestamp: 1000 }), 'spec-a');
+
+      // Set timeline data for spec-b
+      store.setTimelineData(
+        {
+          entries: [
+            { type: 'request', data: createMockRequest({ id: 'req-b1', timestamp: 2000 }) },
+          ],
+          count: 1,
+          total: 1,
+        },
+        'spec-b',
+      );
+
+      // Both should be present
+      expect(store.entries).toHaveLength(2);
+      expect(store.entries.map((e) => e.specId)).toContain('spec-a');
+      expect(store.entries.map((e) => e.specId)).toContain('spec-b');
     });
   });
 
   describe('clearTimeline', () => {
-    it('should clear all entries', () => {
+    it('should clear all entries when no specId provided', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest());
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest(), DEFAULT_SPEC_ID);
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
 
       store.clearTimeline();
 
       expect(store.entries).toHaveLength(0);
     });
 
+    it('should clear only entries for the given specId', () => {
+      const store = useTimelineStore();
+      store.addRequest(createMockRequest({ id: 'req-a' }), 'spec-a');
+      store.addRequest(createMockRequest({ id: 'req-b' }), 'spec-b');
+
+      store.clearTimeline('spec-a');
+
+      expect(store.entries).toHaveLength(1);
+      expect(store.entries[0].specId).toBe('spec-b');
+    });
+
     it('should clear selected entry', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest());
+      store.addRequest(createMockRequest(), DEFAULT_SPEC_ID);
       store.selectEntry('req-1');
 
       store.clearTimeline();
@@ -317,7 +360,7 @@ describe('useTimelineStore', () => {
       expect(store.selectedEntryId).toBeNull();
     });
 
-    it('should clear response buffer when clearing timeline', () => {
+    it('should clear response buffer when clearing all', () => {
       const store = useTimelineStore();
 
       // Add a response without a matching request (gets buffered)
@@ -329,10 +372,111 @@ describe('useTimelineStore', () => {
 
       // Now add the matching request - it should NOT have the buffered response
       const request = createMockRequest({ id: 'orphaned-req' });
-      store.addRequest(request);
+      store.addRequest(request, DEFAULT_SPEC_ID);
 
       const entry = store.entries.find((e) => e.id === 'orphaned-req');
       expect(entry?.response).toBeNull();
+    });
+  });
+
+  describe('spec filtering', () => {
+    it('should return all entries when no spec filter is active', () => {
+      const store = useTimelineStore();
+
+      store.addRequest(createMockRequest({ id: 'req-a' }), 'spec-a');
+      store.addRequest(createMockRequest({ id: 'req-b' }), 'spec-b');
+
+      expect(store.filteredEntries).toHaveLength(2);
+    });
+
+    it('should filter entries by active spec', () => {
+      const store = useTimelineStore();
+      const specsStore = useSpecsStore();
+
+      store.addRequest(createMockRequest({ id: 'req-a' }), 'spec-a');
+      store.addRequest(createMockRequest({ id: 'req-b' }), 'spec-b');
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.filteredEntries).toHaveLength(1);
+      expect(store.filteredEntries[0].specId).toBe('spec-a');
+    });
+
+    it('should apply spec filter before other filters', () => {
+      const store = useTimelineStore();
+      const specsStore = useSpecsStore();
+
+      store.addRequest(createMockRequest({ id: 'req-a', method: 'GET' }), 'spec-a');
+      store.addRequest(createMockRequest({ id: 'req-b', method: 'GET' }), 'spec-b');
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+      store.toggleMethodFilter('GET');
+
+      expect(store.filteredEntries).toHaveLength(1);
+      expect(store.filteredEntries[0].specId).toBe('spec-a');
+    });
+
+    it('should scope totalCount to active spec', () => {
+      const store = useTimelineStore();
+      const specsStore = useSpecsStore();
+
+      store.addRequest(createMockRequest({ id: 'req-a' }), 'spec-a');
+      store.addRequest(createMockRequest({ id: 'req-b' }), 'spec-b');
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.totalCount).toBe(1);
     });
   });
 
@@ -382,9 +526,13 @@ describe('useTimelineStore', () => {
 
     it('should filter entries by path', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1', path: '/pets', operationId: 'listPets' }));
+      store.addRequest(
+        createMockRequest({ id: 'req-1', path: '/pets', operationId: 'listPets' }),
+        DEFAULT_SPEC_ID,
+      );
       store.addRequest(
         createMockRequest({ id: 'req-2', path: '/users', operationId: 'listUsers' }),
+        DEFAULT_SPEC_ID,
       );
 
       store.setSearchQuery('pets');
@@ -397,9 +545,11 @@ describe('useTimelineStore', () => {
       const store = useTimelineStore();
       store.addRequest(
         createMockRequest({ id: 'req-1', path: '/api/pets', operationId: 'listPets' }),
+        DEFAULT_SPEC_ID,
       );
       store.addRequest(
         createMockRequest({ id: 'req-2', path: '/api/users', operationId: 'createUser' }),
+        DEFAULT_SPEC_ID,
       );
 
       store.setSearchQuery('User');
@@ -410,7 +560,7 @@ describe('useTimelineStore', () => {
 
     it('should be case insensitive', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ path: '/PETS' }));
+      store.addRequest(createMockRequest({ path: '/PETS' }), DEFAULT_SPEC_ID);
 
       store.setSearchQuery('pets');
 
@@ -434,8 +584,8 @@ describe('useTimelineStore', () => {
 
     it('should filter entries by method', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1', method: 'GET' }));
-      store.addRequest(createMockRequest({ id: 'req-2', method: 'POST' }));
+      store.addRequest(createMockRequest({ id: 'req-1', method: 'GET' }), DEFAULT_SPEC_ID);
+      store.addRequest(createMockRequest({ id: 'req-2', method: 'POST' }), DEFAULT_SPEC_ID);
 
       store.toggleMethodFilter('GET');
 
@@ -445,9 +595,9 @@ describe('useTimelineStore', () => {
 
     it('should allow multiple method filters', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1', method: 'GET' }));
-      store.addRequest(createMockRequest({ id: 'req-2', method: 'POST' }));
-      store.addRequest(createMockRequest({ id: 'req-3', method: 'DELETE' }));
+      store.addRequest(createMockRequest({ id: 'req-1', method: 'GET' }), DEFAULT_SPEC_ID);
+      store.addRequest(createMockRequest({ id: 'req-2', method: 'POST' }), DEFAULT_SPEC_ID);
+      store.addRequest(createMockRequest({ id: 'req-3', method: 'DELETE' }), DEFAULT_SPEC_ID);
 
       store.toggleMethodFilter('GET');
       store.toggleMethodFilter('POST');
@@ -473,10 +623,10 @@ describe('useTimelineStore', () => {
     it('should filter entries by status category', () => {
       const store = useTimelineStore();
 
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1', status: 200 }));
 
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-2', status: 404 }));
 
       store.toggleStatusFilter('2xx');
@@ -487,7 +637,7 @@ describe('useTimelineStore', () => {
 
     it('should exclude entries without response from status filter', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       // No response added
 
       store.toggleStatusFilter('2xx');
@@ -513,10 +663,10 @@ describe('useTimelineStore', () => {
     it('should filter entries by simulated flag', () => {
       const store = useTimelineStore();
 
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1', simulated: true }));
 
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-2', simulated: false }));
 
       store.setSimulatedFilter(true);
@@ -577,7 +727,7 @@ describe('useTimelineStore', () => {
   describe('entry selection', () => {
     it('should select entry by ID', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
 
       store.selectEntry('req-1');
 
@@ -586,7 +736,7 @@ describe('useTimelineStore', () => {
 
     it('should return selected entry', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
 
       store.selectEntry('req-1');
 
@@ -607,7 +757,7 @@ describe('useTimelineStore', () => {
 
     it('should deselect entry', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.selectEntry('req-1');
 
       store.selectEntry(null);
@@ -619,26 +769,26 @@ describe('useTimelineStore', () => {
   describe('computed counts', () => {
     it('should count total entries', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
 
       expect(store.totalCount).toBe(2);
     });
 
     it('should count completed entries (with response)', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1' }));
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
 
       expect(store.completedCount).toBe(1);
     });
 
     it('should count pending entries (without response)', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1' }));
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
 
       expect(store.pendingCount).toBe(1);
     });
@@ -646,16 +796,16 @@ describe('useTimelineStore', () => {
     it('should count entries by status category', () => {
       const store = useTimelineStore();
 
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1', status: 200 }));
 
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-2', status: 201 }));
 
-      store.addRequest(createMockRequest({ id: 'req-3' }));
+      store.addRequest(createMockRequest({ id: 'req-3' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-3', status: 404 }));
 
-      store.addRequest(createMockRequest({ id: 'req-4' }));
+      store.addRequest(createMockRequest({ id: 'req-4' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-4', status: 500 }));
 
       expect(store.statusCounts['2xx']).toBe(2);
@@ -666,10 +816,10 @@ describe('useTimelineStore', () => {
     it('should calculate average duration', () => {
       const store = useTimelineStore();
 
-      store.addRequest(createMockRequest({ id: 'req-1' }));
+      store.addRequest(createMockRequest({ id: 'req-1' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-1', duration: 100 }));
 
-      store.addRequest(createMockRequest({ id: 'req-2' }));
+      store.addRequest(createMockRequest({ id: 'req-2' }), DEFAULT_SPEC_ID);
       store.addResponse(createMockResponse({ requestId: 'req-2', duration: 200 }));
 
       expect(store.averageDuration).toBe(150);
@@ -677,7 +827,7 @@ describe('useTimelineStore', () => {
 
     it('should return 0 average duration when no completed entries', () => {
       const store = useTimelineStore();
-      store.addRequest(createMockRequest());
+      store.addRequest(createMockRequest(), DEFAULT_SPEC_ID);
 
       expect(store.averageDuration).toBe(0);
     });
@@ -693,7 +843,7 @@ describe('useTimelineStore', () => {
     it('should trim entries when limit is reduced', () => {
       const store = useTimelineStore();
       for (let i = 0; i < 10; i++) {
-        store.addRequest(createMockRequest({ id: `req-${i}` }));
+        store.addRequest(createMockRequest({ id: `req-${i}` }), DEFAULT_SPEC_ID);
       }
 
       store.setMaxEntries(5);

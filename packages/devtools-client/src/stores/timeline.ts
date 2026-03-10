@@ -208,12 +208,16 @@ export const useTimelineStore = defineStore('timeline', () => {
   /**
    * Count of entries with responses (respects spec filter)
    */
-  const completedCount = computed(() => specFilteredEntries.value.filter((e) => e.response !== null).length);
+  const completedCount = computed(
+    () => specFilteredEntries.value.filter((e) => e.response !== null).length,
+  );
 
   /**
    * Count of pending requests — no response yet (respects spec filter)
    */
-  const pendingCount = computed(() => specFilteredEntries.value.filter((e) => e.response === null).length);
+  const pendingCount = computed(
+    () => specFilteredEntries.value.filter((e) => e.response === null).length,
+  );
 
   /**
    * Count of entries by status category (respects spec filter)

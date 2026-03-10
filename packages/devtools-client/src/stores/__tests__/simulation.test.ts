@@ -5,6 +5,9 @@
  * How: Tests state management, computed properties, and actions
  * Why: Ensures reliable simulation functionality for the Simulator Page
  *
+ * Multi-spec: Tests specId on ActiveSimulation, spec-filtered computeds,
+ * and createSimulationFromPreset with specId parameter.
+ *
  * @module stores/__tests__/simulation.test
  */
 
@@ -13,6 +16,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ActiveSimulation } from '../simulation';
 import { SIMULATION_PRESETS, useSimulationStore } from '../simulation';
+import { useSpecsStore } from '../specs';
+
+const DEFAULT_SPEC_ID = 'petstore';
 
 /**
  * Create mock active simulation
@@ -25,6 +31,7 @@ function createMockSimulation(overrides: Partial<ActiveSimulation> = {}): Active
     delay: undefined,
     body: { error: 'Internal Server Error' },
     presetId: 'server-error',
+    specId: DEFAULT_SPEC_ID,
     ...overrides,
   };
 }
@@ -93,7 +100,7 @@ describe('useSimulationStore', () => {
         expect(store.activeSimulations).toEqual([]);
       });
 
-      it('should return all simulations as array', () => {
+      it('should return all simulations as array when no spec filter', () => {
         const store = useSimulationStore();
         const sim1 = createMockSimulation({ path: 'GET /pets' });
         const sim2 = createMockSimulation({ path: 'POST /pets', status: 404 });
@@ -104,6 +111,39 @@ describe('useSimulationStore', () => {
         expect(store.activeSimulations).toHaveLength(2);
         expect(store.activeSimulations).toContainEqual(sim1);
         expect(store.activeSimulations).toContainEqual(sim2);
+      });
+
+      it('should filter by active spec', () => {
+        const store = useSimulationStore();
+        const specsStore = useSpecsStore();
+
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /pets', specId: 'spec-a' }));
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /users', specId: 'spec-b' }));
+
+        specsStore.specs = [
+          {
+            id: 'spec-a',
+            title: 'A',
+            version: '1.0',
+            proxyPath: '/a',
+            color: '#000',
+            endpointCount: 1,
+            schemaCount: 0,
+          },
+          {
+            id: 'spec-b',
+            title: 'B',
+            version: '1.0',
+            proxyPath: '/b',
+            color: '#fff',
+            endpointCount: 1,
+            schemaCount: 0,
+          },
+        ];
+        specsStore.setFilter('spec-a');
+
+        expect(store.activeSimulations).toHaveLength(1);
+        expect(store.activeSimulations[0].specId).toBe('spec-a');
       });
     });
 
@@ -119,6 +159,54 @@ describe('useSimulationStore', () => {
         store.addSimulationLocal(createMockSimulation({ path: 'POST /pets' }));
 
         expect(store.count).toBe(2);
+      });
+
+      it('should respect spec filter for count', () => {
+        const store = useSimulationStore();
+        const specsStore = useSpecsStore();
+
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /pets', specId: 'spec-a' }));
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /users', specId: 'spec-b' }));
+
+        specsStore.specs = [
+          {
+            id: 'spec-a',
+            title: 'A',
+            version: '1.0',
+            proxyPath: '/a',
+            color: '#000',
+            endpointCount: 1,
+            schemaCount: 0,
+          },
+        ];
+        specsStore.setFilter('spec-a');
+
+        expect(store.count).toBe(1);
+      });
+    });
+
+    describe('globalCount', () => {
+      it('should return total count regardless of spec filter', () => {
+        const store = useSimulationStore();
+        const specsStore = useSpecsStore();
+
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /pets', specId: 'spec-a' }));
+        store.addSimulationLocal(createMockSimulation({ path: 'GET /users', specId: 'spec-b' }));
+
+        specsStore.specs = [
+          {
+            id: 'spec-a',
+            title: 'A',
+            version: '1.0',
+            proxyPath: '/a',
+            color: '#000',
+            endpointCount: 1,
+            schemaCount: 0,
+          },
+        ];
+        specsStore.setFilter('spec-a');
+
+        expect(store.globalCount).toBe(2);
       });
     });
 
@@ -184,8 +272,7 @@ describe('useSimulationStore', () => {
 
         store.setSimulations(newSims);
 
-        expect(store.count).toBe(2);
-        expect(store.activeSimulations).toEqual(newSims);
+        expect(store.simulations.size).toBe(2);
       });
 
       it('should clear error on success', () => {
@@ -205,7 +292,7 @@ describe('useSimulationStore', () => {
 
         store.addSimulationLocal(sim);
 
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
         expect(store.getSimulation('GET /pets')).toEqual(sim);
       });
 
@@ -217,7 +304,7 @@ describe('useSimulationStore', () => {
         store.addSimulationLocal(sim1);
         store.addSimulationLocal(sim2);
 
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
         expect(store.getSimulation('GET /pets')?.status).toBe(404);
       });
     });
@@ -230,7 +317,7 @@ describe('useSimulationStore', () => {
         const removed = store.removeSimulationLocal('GET /pets');
 
         expect(removed).toBe(true);
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
       });
 
       it('should return false if simulation not found', () => {
@@ -249,8 +336,7 @@ describe('useSimulationStore', () => {
 
         store.clearSimulationsLocal();
 
-        expect(store.count).toBe(0);
-        expect(store.activeSimulations).toEqual([]);
+        expect(store.simulations.size).toBe(0);
       });
     });
 
@@ -305,9 +391,10 @@ describe('useSimulationStore', () => {
     });
 
     describe('createSimulationFromPreset', () => {
-      it('should create simulation from valid preset', () => {
+      it('should create simulation from valid preset with specId', () => {
         const store = useSimulationStore();
         const simulation = store.createSimulationFromPreset(
+          DEFAULT_SPEC_ID,
           'GET /pets',
           'server-error',
           'listPets',
@@ -319,32 +406,45 @@ describe('useSimulationStore', () => {
         expect(simulation?.status).toBe(500);
         expect(simulation?.presetId).toBe('server-error');
         expect(simulation?.body).toBeDefined();
+        expect(simulation?.specId).toBe(DEFAULT_SPEC_ID);
       });
 
       it('should return null for invalid preset', () => {
         const store = useSimulationStore();
-        const simulation = store.createSimulationFromPreset('GET /pets', 'invalid');
+        const simulation = store.createSimulationFromPreset(
+          DEFAULT_SPEC_ID,
+          'GET /pets',
+          'invalid',
+        );
 
         expect(simulation).toBeNull();
       });
 
       it('should set error for invalid preset', () => {
         const store = useSimulationStore();
-        store.createSimulationFromPreset('GET /pets', 'invalid');
+        store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'GET /pets', 'invalid');
 
         expect(store.error).toBe('Preset not found: invalid');
       });
 
       it('should include delay for delay presets', () => {
         const store = useSimulationStore();
-        const simulation = store.createSimulationFromPreset('GET /pets', 'slow-network');
+        const simulation = store.createSimulationFromPreset(
+          DEFAULT_SPEC_ID,
+          'GET /pets',
+          'slow-network',
+        );
 
         expect(simulation?.delay).toBe(3000);
       });
 
       it('should work without operationId', () => {
         const store = useSimulationStore();
-        const simulation = store.createSimulationFromPreset('GET /pets', 'server-error');
+        const simulation = store.createSimulationFromPreset(
+          DEFAULT_SPEC_ID,
+          'GET /pets',
+          'server-error',
+        );
 
         expect(simulation).toBeDefined();
         expect(simulation?.operationId).toBeUndefined();
@@ -413,7 +513,7 @@ describe('useSimulationStore', () => {
 
         store.handleSimulationRemoved({ path: 'GET /pets' });
 
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
       });
     });
 
@@ -425,7 +525,7 @@ describe('useSimulationStore', () => {
 
         store.handleSimulationsCleared({ count: 2 });
 
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
       });
     });
 
@@ -457,7 +557,7 @@ describe('useSimulationStore', () => {
 
         store.handleSimulationCleared({ path: 'GET /pets', success: true });
 
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
         expect(store.isLoading).toBe(false);
       });
 
@@ -468,11 +568,11 @@ describe('useSimulationStore', () => {
         // Simulate optimistic removal with rollback tracking
         store.removeSimulationLocal('GET /pets', true);
 
-        expect(store.count).toBe(0); // Optimistically removed
+        expect(store.simulations.size).toBe(0); // Optimistically removed
 
         store.handleSimulationCleared({ path: 'GET /pets', success: false });
 
-        expect(store.count).toBe(1); // Rolled back
+        expect(store.simulations.size).toBe(1); // Rolled back
         expect(store.getSimulation('GET /pets')).toEqual(simulation);
         expect(store.error).toBe('Failed to clear simulation for GET /pets');
       });
@@ -485,11 +585,11 @@ describe('useSimulationStore', () => {
 
         // Add with rollback tracking
         store.addSimulationLocal(simulation, true);
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
 
         // Rollback should remove it (restore to null)
         store.rollbackSimulation('GET /pets');
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
       });
 
       it('should rollback removed simulation (restore previous state)', () => {
@@ -498,15 +598,15 @@ describe('useSimulationStore', () => {
 
         // Add simulation first
         store.addSimulationLocal(simulation);
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
 
         // Remove with rollback tracking
         store.removeSimulationLocal('GET /pets', true);
-        expect(store.count).toBe(0);
+        expect(store.simulations.size).toBe(0);
 
         // Rollback should restore it
         store.rollbackSimulation('GET /pets');
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
         expect(store.getSimulation('GET /pets')).toEqual(simulation);
       });
 
@@ -535,7 +635,7 @@ describe('useSimulationStore', () => {
 
         // Rollback without tracking should do nothing
         store.rollbackSimulation('GET /pets');
-        expect(store.count).toBe(1);
+        expect(store.simulations.size).toBe(1);
         expect(store.getSimulation('GET /pets')).toEqual(simulation);
       });
     });
@@ -545,13 +645,13 @@ describe('useSimulationStore', () => {
     it('should handle multiple simulations for different paths', () => {
       const store = useSimulationStore();
 
-      const sim1 = store.createSimulationFromPreset('GET /pets', 'slow-network');
-      const sim2 = store.createSimulationFromPreset('POST /pets', 'server-error');
+      const sim1 = store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'GET /pets', 'slow-network');
+      const sim2 = store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'POST /pets', 'server-error');
 
       if (sim1) store.addSimulationLocal(sim1);
       if (sim2) store.addSimulationLocal(sim2);
 
-      expect(store.count).toBe(2);
+      expect(store.simulations.size).toBe(2);
       expect(store.hasSimulation('GET /pets')).toBe(true);
       expect(store.hasSimulation('POST /pets')).toBe(true);
     });
@@ -559,13 +659,13 @@ describe('useSimulationStore', () => {
     it('should enforce one simulation per path', () => {
       const store = useSimulationStore();
 
-      const sim1 = store.createSimulationFromPreset('GET /pets', 'slow-network');
-      const sim2 = store.createSimulationFromPreset('GET /pets', 'server-error');
+      const sim1 = store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'GET /pets', 'slow-network');
+      const sim2 = store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'GET /pets', 'server-error');
 
       if (sim1) store.addSimulationLocal(sim1);
       if (sim2) store.addSimulationLocal(sim2);
 
-      expect(store.count).toBe(1);
+      expect(store.simulations.size).toBe(1);
       expect(store.getSimulation('GET /pets')?.status).toBe(500);
     });
 
@@ -573,10 +673,10 @@ describe('useSimulationStore', () => {
       const store = useSimulationStore();
 
       // Add
-      const sim = store.createSimulationFromPreset('GET /pets', 'rate-limit');
+      const sim = store.createSimulationFromPreset(DEFAULT_SPEC_ID, 'GET /pets', 'rate-limit');
       if (sim) store.addSimulationLocal(sim);
 
-      expect(store.count).toBe(1);
+      expect(store.simulations.size).toBe(1);
 
       // Get
       const retrieved = store.getSimulation('GET /pets');
@@ -585,7 +685,49 @@ describe('useSimulationStore', () => {
       // Remove
       const removed = store.removeSimulationLocal('GET /pets');
       expect(removed).toBe(true);
-      expect(store.count).toBe(0);
+      expect(store.simulations.size).toBe(0);
+    });
+
+    it('should handle multi-spec workflow', () => {
+      const store = useSimulationStore();
+      const specsStore = useSpecsStore();
+
+      const sim1 = store.createSimulationFromPreset('spec-a', 'GET /pets', 'server-error');
+      const sim2 = store.createSimulationFromPreset('spec-b', 'GET /users', 'slow-network');
+
+      if (sim1) store.addSimulationLocal(sim1);
+      if (sim2) store.addSimulationLocal(sim2);
+
+      // Without filter, both visible
+      expect(store.activeSimulations).toHaveLength(2);
+
+      // With filter, only spec-a visible
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.activeSimulations).toHaveLength(1);
+      expect(store.activeSimulations[0].specId).toBe('spec-a');
+      // globalCount still shows all
+      expect(store.globalCount).toBe(2);
     });
   });
 });

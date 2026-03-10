@@ -5,6 +5,9 @@
  * How: Tests state management, computed properties, and actions
  * Why: Ensures reliable endpoint registry functionality for the Routes Page
  *
+ * Multi-spec: Tests per-spec registries, spec-filtered computeds,
+ * and specId on EndpointEntry.
+ *
  * @module stores/__tests__/registry.test
  */
 
@@ -17,6 +20,9 @@ import {
   type RegistryStats,
   useRegistryStore,
 } from '../registry';
+import { useSpecsStore } from '../specs';
+
+const DEFAULT_SPEC_ID = 'petstore';
 
 /**
  * Create mock endpoint entry
@@ -34,6 +40,7 @@ function createMockEndpoint(overrides: Partial<EndpointEntry> = {}): EndpointEnt
     hasHandler: false,
     hasSeed: false,
     security: [],
+    specId: DEFAULT_SPEC_ID,
     ...overrides,
   };
 }
@@ -59,7 +66,12 @@ describe('useRegistryStore', () => {
   });
 
   describe('initial state', () => {
-    it('should have empty endpoints array', () => {
+    it('should have empty registries map', () => {
+      const store = useRegistryStore();
+      expect(store.registries.size).toBe(0);
+    });
+
+    it('should have empty endpoints computed', () => {
       const store = useRegistryStore();
       expect(store.endpoints).toEqual([]);
     });
@@ -97,15 +109,25 @@ describe('useRegistryStore', () => {
   });
 
   describe('setRegistryData', () => {
-    it('should set endpoints from data', () => {
+    it('should set endpoints for a spec', () => {
       const store = useRegistryStore();
       const endpoint = createMockEndpoint();
       const data = createMockRegistryData([endpoint]);
 
-      store.setRegistryData(data);
+      store.setRegistryData(DEFAULT_SPEC_ID, data);
 
       expect(store.endpoints).toHaveLength(1);
-      expect(store.endpoints[0]).toEqual(endpoint);
+      expect(store.endpoints[0].specId).toBe(DEFAULT_SPEC_ID);
+    });
+
+    it('should stamp specId on each endpoint', () => {
+      const store = useRegistryStore();
+      const endpoint = createMockEndpoint({ specId: 'wrong' });
+      const data = createMockRegistryData([endpoint]);
+
+      store.setRegistryData('correct-spec', data);
+
+      expect(store.endpoints[0].specId).toBe('correct-spec');
     });
 
     it('should set stats from data', () => {
@@ -116,7 +138,7 @@ describe('useRegistryStore', () => {
       ];
       const data = createMockRegistryData(endpoints);
 
-      store.setRegistryData(data);
+      store.setRegistryData(DEFAULT_SPEC_ID, data);
 
       expect(store.stats.totalEndpoints).toBe(2);
       expect(store.stats.withCustomHandler).toBe(1);
@@ -126,7 +148,7 @@ describe('useRegistryStore', () => {
       const store = useRegistryStore();
       store.setError('Previous error');
 
-      store.setRegistryData(createMockRegistryData([]));
+      store.setRegistryData(DEFAULT_SPEC_ID, createMockRegistryData([]));
 
       expect(store.error).toBeNull();
     });
@@ -136,9 +158,230 @@ describe('useRegistryStore', () => {
       const endpoint = createMockEndpoint({ tags: ['pet'] });
       const data = createMockRegistryData([endpoint]);
 
-      store.setRegistryData(data);
+      store.setRegistryData(DEFAULT_SPEC_ID, data);
 
       expect(store.expandedTags.has('pet')).toBe(true);
+    });
+
+    it('should store data per-spec in registries map', () => {
+      const store = useRegistryStore();
+
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/a', path: '/a' })]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', path: '/b' })]),
+      );
+
+      expect(store.registries.size).toBe(2);
+      expect(store.registries.get('spec-a')?.endpoints).toHaveLength(1);
+      expect(store.registries.get('spec-b')?.endpoints).toHaveLength(1);
+    });
+  });
+
+  describe('removeRegistryData', () => {
+    it('should remove data for a spec', () => {
+      const store = useRegistryStore();
+      store.setRegistryData(DEFAULT_SPEC_ID, createMockRegistryData([createMockEndpoint()]));
+
+      store.removeRegistryData(DEFAULT_SPEC_ID);
+
+      expect(store.registries.size).toBe(0);
+      expect(store.endpoints).toEqual([]);
+    });
+  });
+
+  describe('spec filtering', () => {
+    it('should return all endpoints when no spec filter is active', () => {
+      const store = useRegistryStore();
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/a', path: '/a' })]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', path: '/b' })]),
+      );
+
+      expect(store.endpoints).toHaveLength(2);
+    });
+
+    it('should filter endpoints by active spec', () => {
+      const store = useRegistryStore();
+      const specsStore = useSpecsStore();
+
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/a', path: '/a' })]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', path: '/b' })]),
+      );
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.endpoints).toHaveLength(1);
+      expect(store.endpoints[0].path).toBe('/a');
+    });
+
+    it('should aggregate stats across all specs when no filter', () => {
+      const store = useRegistryStore();
+
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([createMockEndpoint({ hasHandler: true })]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', hasHandler: false })]),
+      );
+
+      expect(store.stats.totalEndpoints).toBe(2);
+      expect(store.stats.withCustomHandler).toBe(1);
+    });
+
+    it('should return spec-specific stats when filter is active', () => {
+      const store = useRegistryStore();
+      const specsStore = useSpecsStore();
+
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([createMockEndpoint({ hasHandler: true })]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', hasHandler: false })]),
+      );
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.stats.totalEndpoints).toBe(1);
+      expect(store.stats.withCustomHandler).toBe(1);
+    });
+
+    it('should return empty stats for unknown spec filter', () => {
+      const store = useRegistryStore();
+      const specsStore = useSpecsStore();
+
+      store.setRegistryData('spec-a', createMockRegistryData([createMockEndpoint()]));
+
+      specsStore.specs = [
+        {
+          id: 'unknown',
+          title: 'U',
+          version: '1.0',
+          proxyPath: '/u',
+          color: '#000',
+          endpointCount: 0,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('unknown');
+
+      expect(store.stats.totalEndpoints).toBe(0);
+    });
+  });
+
+  describe('globalStats', () => {
+    it('should always aggregate across all specs regardless of filter', () => {
+      const store = useRegistryStore();
+      const specsStore = useSpecsStore();
+
+      store.setRegistryData('spec-a', createMockRegistryData([createMockEndpoint()]));
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b' })]),
+      );
+
+      specsStore.specs = [
+        {
+          id: 'spec-a',
+          title: 'A',
+          version: '1.0',
+          proxyPath: '/a',
+          color: '#000',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+        {
+          id: 'spec-b',
+          title: 'B',
+          version: '1.0',
+          proxyPath: '/b',
+          color: '#fff',
+          endpointCount: 1,
+          schemaCount: 0,
+        },
+      ];
+      specsStore.setFilter('spec-a');
+
+      expect(store.globalStats.totalEndpoints).toBe(2);
+    });
+  });
+
+  describe('groupedBySpec', () => {
+    it('should group endpoints by spec then by tag', () => {
+      const store = useRegistryStore();
+
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([
+          createMockEndpoint({ key: 'get:/a', tags: ['pets'] }),
+          createMockEndpoint({ key: 'post:/a', tags: ['pets'] }),
+        ]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([createMockEndpoint({ key: 'get:/b', tags: ['users'] })]),
+      );
+
+      const grouped = store.groupedBySpec;
+      expect(grouped.size).toBe(2);
+      expect(grouped.get('spec-a')?.get('pets')).toHaveLength(2);
+      expect(grouped.get('spec-b')?.get('users')).toHaveLength(1);
     });
   });
 
@@ -189,6 +432,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by path', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ key: 'get:/pets', path: '/pets' }),
           createMockEndpoint({
@@ -212,6 +456,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by operationId', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ operationId: 'listPets' }),
           createMockEndpoint({
@@ -232,6 +477,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by summary', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ summary: 'List all pets' }),
           createMockEndpoint({
@@ -253,6 +499,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by tags', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: ['pet'] }),
           createMockEndpoint({
@@ -272,7 +519,10 @@ describe('useRegistryStore', () => {
 
     it('should be case insensitive', () => {
       const store = useRegistryStore();
-      store.setRegistryData(createMockRegistryData([createMockEndpoint({ path: '/PETS' })]));
+      store.setRegistryData(
+        DEFAULT_SPEC_ID,
+        createMockRegistryData([createMockEndpoint({ path: '/PETS' })]),
+      );
 
       store.setSearchQuery('pets');
 
@@ -297,6 +547,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by method', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ method: 'get' }),
           createMockEndpoint({ key: 'post:/pets', method: 'post', operationId: 'createPet' }),
@@ -312,6 +563,7 @@ describe('useRegistryStore', () => {
     it('should allow multiple method filters', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ method: 'get' }),
           createMockEndpoint({ key: 'post:/pets', method: 'post', operationId: 'createPet' }),
@@ -343,6 +595,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by handler', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ hasHandler: true }),
           createMockEndpoint({
@@ -369,6 +622,7 @@ describe('useRegistryStore', () => {
     it('should filter endpoints by seed', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ hasSeed: true }),
           createMockEndpoint({
@@ -425,7 +679,6 @@ describe('useRegistryStore', () => {
     it('should return true when method filter is active', () => {
       const store = useRegistryStore();
       store.toggleMethodFilter('get');
-      // Verify the method was added
       expect(store.filter.methods).toContain('get');
       expect(store.hasActiveFilters()).toBe(true);
     });
@@ -433,7 +686,6 @@ describe('useRegistryStore', () => {
     it('should return true when handler filter is active', () => {
       const store = useRegistryStore();
       store.setHandlerFilter(true);
-      // Verify the filter was set
       expect(store.filter.hasHandler).toBe(true);
       expect(store.hasActiveFilters()).toBe(true);
     });
@@ -442,7 +694,10 @@ describe('useRegistryStore', () => {
   describe('endpoint selection', () => {
     it('should select endpoint by key', () => {
       const store = useRegistryStore();
-      store.setRegistryData(createMockRegistryData([createMockEndpoint({ key: 'get:/pets' })]));
+      store.setRegistryData(
+        DEFAULT_SPEC_ID,
+        createMockRegistryData([createMockEndpoint({ key: 'get:/pets' })]),
+      );
 
       store.selectEndpoint('get:/pets');
 
@@ -452,11 +707,12 @@ describe('useRegistryStore', () => {
     it('should return selected endpoint', () => {
       const store = useRegistryStore();
       const endpoint = createMockEndpoint({ key: 'get:/pets' });
-      store.setRegistryData(createMockRegistryData([endpoint]));
+      store.setRegistryData(DEFAULT_SPEC_ID, createMockRegistryData([endpoint]));
 
       store.selectEndpoint('get:/pets');
 
-      expect(store.selectedEndpoint).toEqual(endpoint);
+      expect(store.selectedEndpoint).not.toBeNull();
+      expect(store.selectedEndpoint?.key).toBe('get:/pets');
     });
 
     it('should return null when no endpoint selected', () => {
@@ -495,6 +751,7 @@ describe('useRegistryStore', () => {
     it('should expand all groups', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: ['pet'] }),
           createMockEndpoint({
@@ -531,6 +788,7 @@ describe('useRegistryStore', () => {
     it('should group endpoints by first tag', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: ['pet'] }),
           createMockEndpoint({
@@ -552,6 +810,7 @@ describe('useRegistryStore', () => {
     it('should group by response schema when no tags', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: [], responseSchema: 'Pet' }),
           createMockEndpoint({
@@ -573,6 +832,7 @@ describe('useRegistryStore', () => {
     it('should group by path segment when no tags or schema', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({
             path: '/pets',
@@ -591,6 +851,7 @@ describe('useRegistryStore', () => {
     it('should sort groups alphabetically', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: ['zebra'] }),
           createMockEndpoint({
@@ -611,6 +872,7 @@ describe('useRegistryStore', () => {
     it('should sort endpoints within groups by path', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ path: '/pets/{petId}', tags: ['pet'] }),
           createMockEndpoint({
@@ -630,7 +892,10 @@ describe('useRegistryStore', () => {
 
     it('should include expansion state', () => {
       const store = useRegistryStore();
-      store.setRegistryData(createMockRegistryData([createMockEndpoint({ tags: ['pet'] })]));
+      store.setRegistryData(
+        DEFAULT_SPEC_ID,
+        createMockRegistryData([createMockEndpoint({ tags: ['pet'] })]),
+      );
 
       // setRegistryData auto-expands groups, so first verify it's expanded
       expect(store.groupedEndpoints[0].isExpanded).toBe(true);
@@ -649,6 +914,7 @@ describe('useRegistryStore', () => {
     it('should count all tags', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ tags: ['pet', 'store'] }),
           createMockEndpoint({
@@ -666,6 +932,7 @@ describe('useRegistryStore', () => {
     it('should count all schemas', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ responseSchema: 'Pet' }),
           createMockEndpoint({
@@ -684,6 +951,7 @@ describe('useRegistryStore', () => {
     it('should count handlers', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ hasHandler: true }),
           createMockEndpoint({
@@ -707,6 +975,7 @@ describe('useRegistryStore', () => {
     it('should count seeds', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ hasSeed: true }),
           createMockEndpoint({
@@ -726,6 +995,7 @@ describe('useRegistryStore', () => {
     it('should update handler status for matching operationIds', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ operationId: 'listPets', hasHandler: false }),
           createMockEndpoint({
@@ -737,10 +1007,31 @@ describe('useRegistryStore', () => {
         ]),
       );
 
-      store.updateHandlerStatus(['listPets']);
+      store.updateHandlerStatus(DEFAULT_SPEC_ID, ['listPets']);
 
       expect(store.endpoints[0].hasHandler).toBe(true);
       expect(store.endpoints[1].hasHandler).toBe(false);
+    });
+
+    it('should only update endpoints for the specified spec', () => {
+      const store = useRegistryStore();
+      store.setRegistryData(
+        'spec-a',
+        createMockRegistryData([
+          createMockEndpoint({ operationId: 'listPets', hasHandler: false }),
+        ]),
+      );
+      store.setRegistryData(
+        'spec-b',
+        createMockRegistryData([
+          createMockEndpoint({ key: 'get:/b', operationId: 'listPets', hasHandler: false }),
+        ]),
+      );
+
+      store.updateHandlerStatus('spec-a', ['listPets']);
+
+      expect(store.registries.get('spec-a')?.endpoints[0].hasHandler).toBe(true);
+      expect(store.registries.get('spec-b')?.endpoints[0].hasHandler).toBe(false);
     });
   });
 
@@ -748,6 +1039,7 @@ describe('useRegistryStore', () => {
     it('should update seed status for matching schemas', () => {
       const store = useRegistryStore();
       store.setRegistryData(
+        DEFAULT_SPEC_ID,
         createMockRegistryData([
           createMockEndpoint({ responseSchema: 'Pet', hasSeed: false }),
           createMockEndpoint({
@@ -761,7 +1053,7 @@ describe('useRegistryStore', () => {
         ]),
       );
 
-      store.updateSeedStatus(['Pet']);
+      store.updateSeedStatus(DEFAULT_SPEC_ID, ['Pet']);
 
       expect(store.endpoints[0].hasSeed).toBe(true);
       expect(store.endpoints[1].hasSeed).toBe(false);
