@@ -6,11 +6,11 @@
  * Why: Provides a single import location for store consumers
  *
  * Store responsibilities:
- * - registry: Manages endpoint registry data from the server
+ * - registry: Manages endpoint registry data from the server (per-spec)
  * - specs: Manages multi-spec metadata, filtering, and colors
- * - timeline: Tracks request/response timeline events
- * - models: Manages store data for viewing/editing mock data
- * - simulation: Controls active error simulations
+ * - timeline: Tracks request/response timeline events (per-spec)
+ * - models: Manages store data for viewing/editing mock data (per-spec)
+ * - simulation: Controls active error simulations (per-spec)
  */
 
 export type { ModelsData, ModelsStore, SchemaData, SchemaInfo } from './models';
@@ -23,6 +23,7 @@ export type {
   RegistryData,
   RegistryStats,
   SecurityRequirement,
+  SpecRegistry,
 } from './registry';
 // Registry store - manages endpoint data for the Routes pages,
 export { useRegistryStore } from './registry';

@@ -5,11 +5,16 @@
  * How: Manages simulation state and communicates with server via WebSocket
  * Why: Enables developers to test error handling and loading states
  *
+ * Multi-spec: Simulations carry specId. Computed views respect
+ * the activeSpecFilter from the specs store.
+ *
  * @module stores/simulation
  */
 
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
+import { useSpecsStore } from './specs';
 
 /**
  * Simulation preset type
@@ -39,6 +44,8 @@ export interface ActiveSimulation {
   delay?: number;
   body?: unknown;
   presetId?: string;
+  /** Which spec this simulation belongs to */
+  specId: string;
 }
 
 /**
@@ -107,12 +114,15 @@ export const SIMULATION_PRESETS: SimulationPreset[] = [
  * Simulation store for managing endpoint simulations
  *
  * Provides:
- * - Active simulations storage and retrieval
+ * - Active simulations storage and retrieval (per-spec)
  * - Preset definitions and lookup
  * - WebSocket command integration
  * - Simulation count and status tracking
+ * - Spec-filtered views via activeSpecFilter
  */
 export const useSimulationStore = defineStore('simulation', () => {
+  const specsStore = useSpecsStore();
+
   // ==========================================================================
   // State
   // ==========================================================================
@@ -144,16 +154,19 @@ export const useSimulationStore = defineStore('simulation', () => {
   // ==========================================================================
 
   /**
-   * All active simulations as an array
+   * All active simulations as an array, respecting activeSpecFilter
    */
   const activeSimulations = computed(() => {
-    return Array.from(simulations.value.values());
+    const all = Array.from(simulations.value.values());
+    const specFilter = specsStore.activeSpecFilter;
+    if (!specFilter) return all;
+    return all.filter((s) => s.specId === specFilter);
   });
 
   /**
-   * Count of active simulations
+   * Count of active simulations (respects spec filter)
    */
-  const count = computed(() => simulations.value.size);
+  const count = computed(() => activeSimulations.value.length);
 
   /**
    * Available presets
@@ -161,12 +174,12 @@ export const useSimulationStore = defineStore('simulation', () => {
   const presets = computed(() => SIMULATION_PRESETS);
 
   /**
-   * Check if any simulations are active
+   * Check if any simulations are active (respects spec filter)
    */
-  const hasActiveSimulations = computed(() => simulations.value.size > 0);
+  const hasActiveSimulations = computed(() => activeSimulations.value.length > 0);
 
   /**
-   * Get simulations grouped by type
+   * Get simulations grouped by type (respects spec filter)
    */
   const simulationsByType = computed(() => {
     const grouped = {
@@ -175,13 +188,18 @@ export const useSimulationStore = defineStore('simulation', () => {
       empty: [] as ActiveSimulation[],
     };
 
-    for (const simulation of simulations.value.values()) {
+    for (const simulation of activeSimulations.value) {
       const type = getSimulationType(simulation);
       grouped[type].push(simulation);
     }
 
     return grouped;
   });
+
+  /**
+   * Total count of simulations across ALL specs (ignores filter)
+   */
+  const globalCount = computed(() => simulations.value.size);
 
   /**
    * Determine simulation type from simulation config
@@ -282,6 +300,7 @@ export const useSimulationStore = defineStore('simulation', () => {
    * Create a simulation from a preset
    */
   function createSimulationFromPreset(
+    specId: string,
     path: string,
     presetId: string,
     operationId?: string,
@@ -299,6 +318,7 @@ export const useSimulationStore = defineStore('simulation', () => {
       delay: preset.delay,
       body: preset.body,
       presetId: preset.id,
+      specId,
     };
   }
 
@@ -416,6 +436,7 @@ export const useSimulationStore = defineStore('simulation', () => {
     // Getters
     activeSimulations,
     count,
+    globalCount,
     presets,
     hasActiveSimulations,
     simulationsByType,

@@ -5,11 +5,16 @@
  * How: Receives and stores timeline events from the server via WebSocket
  * Why: Provides reactive access to timeline data for the Timeline Page
  *
+ * Multi-spec: Timeline entries carry specId. Filtered views respect
+ * the activeSpecFilter from the specs store.
+ *
  * @module stores/timeline
  */
 
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+
+import { useSpecsStore } from './specs';
 
 /**
  * HTTP method type for timeline entries
@@ -28,6 +33,8 @@ export interface RequestLogEntry {
   headers: Record<string, string>;
   query: Record<string, string | string[]>;
   body?: unknown;
+  /** Which spec this request belongs to */
+  specId?: string;
 }
 
 /**
@@ -53,6 +60,8 @@ export interface TimelineEntry {
   status: number | null;
   duration: number | null;
   simulated: boolean;
+  /** Which spec this entry belongs to */
+  specId: string;
 }
 
 /**
@@ -80,11 +89,13 @@ export interface TimelineFilter {
  * Provides:
  * - Timeline entry storage and retrieval
  * - Real-time updates via WebSocket events
- * - Search and filter functionality
+ * - Search and filter functionality (including spec filtering)
  * - Selected entry tracking for detail view
  * - Timeline limit management
  */
 export const useTimelineStore = defineStore('timeline', () => {
+  const specsStore = useSpecsStore();
+
   // ==========================================================================
   // State
   // ==========================================================================
@@ -131,10 +142,20 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Filtered entries based on search and filters
+   * Entries filtered by active spec filter.
+   * This is the base for all further filtering.
+   */
+  const specFilteredEntries = computed(() => {
+    const specFilter = specsStore.activeSpecFilter;
+    if (!specFilter) return entries.value;
+    return entries.value.filter((e) => e.specId === specFilter);
+  });
+
+  /**
+   * Filtered entries based on spec filter, search, and other filters
    */
   const filteredEntries = computed(() => {
-    let result = entries.value;
+    let result = specFilteredEntries.value;
 
     // Apply search query (matches path or operationId)
     if (filter.value.searchQuery.trim()) {
@@ -180,22 +201,22 @@ export const useTimelineStore = defineStore('timeline', () => {
   });
 
   /**
-   * Total number of entries (including pending responses)
+   * Total number of entries (respects spec filter)
    */
-  const totalCount = computed(() => entries.value.length);
+  const totalCount = computed(() => specFilteredEntries.value.length);
 
   /**
-   * Count of entries with responses
+   * Count of entries with responses (respects spec filter)
    */
-  const completedCount = computed(() => entries.value.filter((e) => e.response !== null).length);
+  const completedCount = computed(() => specFilteredEntries.value.filter((e) => e.response !== null).length);
 
   /**
-   * Count of pending requests (no response yet)
+   * Count of pending requests — no response yet (respects spec filter)
    */
-  const pendingCount = computed(() => entries.value.filter((e) => e.response === null).length);
+  const pendingCount = computed(() => specFilteredEntries.value.filter((e) => e.response === null).length);
 
   /**
-   * Count of entries by status category
+   * Count of entries by status category (respects spec filter)
    */
   const statusCounts = computed(() => {
     const counts = {
@@ -206,7 +227,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       '5xx': 0,
     };
 
-    for (const entry of entries.value) {
+    for (const entry of specFilteredEntries.value) {
       if (entry.status !== null) {
         const category = getStatusCategory(entry.status);
         counts[category]++;
@@ -217,10 +238,10 @@ export const useTimelineStore = defineStore('timeline', () => {
   });
 
   /**
-   * Average response duration in milliseconds
+   * Average response duration in milliseconds (respects spec filter)
    */
   const averageDuration = computed(() => {
-    const completedEntries = entries.value.filter((e) => e.duration !== null);
+    const completedEntries = specFilteredEntries.value.filter((e) => e.duration !== null);
     if (completedEntries.length === 0) return 0;
 
     const totalDuration = completedEntries.reduce((sum, e) => sum + (e.duration ?? 0), 0);
@@ -234,7 +255,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   /**
    * Add a request to the timeline
    */
-  function addRequest(request: RequestLogEntry): void {
+  function addRequest(request: RequestLogEntry, specId: string): void {
     const entry: TimelineEntry = {
       id: request.id,
       request,
@@ -242,6 +263,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       status: null,
       duration: null,
       simulated: false,
+      specId,
     };
 
     // Check if there's a buffered response for this request
@@ -303,7 +325,7 @@ export const useTimelineStore = defineStore('timeline', () => {
   /**
    * Create a stub entry for an orphaned response
    */
-  function createStubEntry(response: ResponseLogEntry): TimelineEntry {
+  function createStubEntry(response: ResponseLogEntry, specId = 'unknown'): TimelineEntry {
     // Create a minimal request stub for the orphaned response
     const stubRequest: RequestLogEntry = {
       id: response.requestId,
@@ -323,6 +345,7 @@ export const useTimelineStore = defineStore('timeline', () => {
       status: response.status,
       duration: response.duration,
       simulated: response.simulated,
+      specId,
     };
   }
 
@@ -376,10 +399,13 @@ export const useTimelineStore = defineStore('timeline', () => {
   }
 
   /**
-   * Set timeline data from server response
-   * Used when fetching initial timeline data
+   * Set timeline data from server response.
+   * Used when fetching initial timeline data for a specific spec.
+   *
+   * @param data - The timeline data from the server
+   * @param specId - The spec these entries belong to
    */
-  function setTimelineData(data: TimelineData): void {
+  function setTimelineData(data: TimelineData, specId: string): void {
     const requestMap = new Map<string, TimelineEntry>();
     const incomingResponses = new Map<string, ResponseLogEntry>();
 
@@ -394,6 +420,7 @@ export const useTimelineStore = defineStore('timeline', () => {
           status: null,
           duration: null,
           simulated: false,
+          specId,
         });
       } else if (item.type === 'response') {
         const response = item.data as ResponseLogEntry;
@@ -414,19 +441,31 @@ export const useTimelineStore = defineStore('timeline', () => {
       (a, b) => b.request.timestamp - a.request.timestamp,
     );
 
+    // Remove existing entries for this specId, then add the new ones
+    const otherEntries = entries.value.filter((e) => e.specId !== specId);
+    const combined = [...sorted, ...otherEntries].sort(
+      (a, b) => b.request.timestamp - a.request.timestamp,
+    );
+
     // Apply maxEntries limit
-    entries.value = sorted.slice(0, maxEntries.value);
+    entries.value = combined.slice(0, maxEntries.value);
 
     error.value = null;
   }
 
   /**
-   * Clear all timeline entries
+   * Clear timeline entries.
+   * If specId is provided, only clears entries for that spec.
+   * Otherwise clears all entries.
    */
-  function clearTimeline(): void {
-    entries.value = [];
+  function clearTimeline(specId?: string): void {
+    if (specId) {
+      entries.value = entries.value.filter((e) => e.specId !== specId);
+    } else {
+      entries.value = [];
+      responseBuffer.clear();
+    }
     selectedEntryId.value = null;
-    responseBuffer.clear();
   }
 
   /**
