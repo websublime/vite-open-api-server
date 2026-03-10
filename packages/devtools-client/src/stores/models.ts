@@ -5,11 +5,14 @@
  * How: Fetches data from /_api/store endpoints and sends WebSocket commands
  * Why: Provides centralized state management for the Models page
  *
+ * Multi-spec: Schemas are stored per-spec in a Map. Fetch URLs are
+ * scoped by specId. Computed views respect activeSpecFilter.
+ *
  * API Endpoints Used:
- * - GET  /_api/store          - List all schemas
- * - GET  /_api/store/:schema  - Get items for a schema
- * - POST /_api/store/:schema  - Bulk replace items
- * - DELETE /_api/store/:schema - Clear schema data
+ * - GET  /_api/{specId}/store          - List all schemas for a spec
+ * - GET  /_api/{specId}/store/:schema  - Get items for a schema
+ * - POST /_api/{specId}/store/:schema  - Bulk replace items
+ * - DELETE /_api/{specId}/store/:schema - Clear schema data
  *
  * WebSocket Commands:
  * - reseed - Trigger reseed of all schemas
@@ -18,6 +21,8 @@
 import { defineStore } from 'pinia';
 import type { ComputedRef, Ref } from 'vue';
 import { computed, ref, toRaw } from 'vue';
+
+import { useSpecsStore } from './specs';
 
 /**
  * Safe clone helper that handles Vue reactive/proxy values
@@ -41,6 +46,8 @@ export interface SchemaInfo {
   count: number;
   /** ID field name for this schema */
   idField: string;
+  /** Which spec this schema belongs to */
+  specId: string;
 }
 
 /**
@@ -65,6 +72,8 @@ export interface ModelsData {
   schemas: SchemaInfo[];
   /** Currently selected schema name */
   selectedSchema: string | null;
+  /** Currently selected spec for schema operations */
+  selectedSpecId: string | null;
   /** Items for the currently selected schema */
   currentItems: unknown[];
   /** Loading state */
@@ -76,18 +85,31 @@ export interface ModelsData {
 }
 
 /**
+ * Build the API base path for a spec.
+ * Uses /_api/{specId} for multi-spec, falls back to /_api for empty specId.
+ */
+function apiBasePath(specId: string): string {
+  return specId ? `/_api/${encodeURIComponent(specId)}` : '/_api';
+}
+
+/**
  * Models store for managing store data
  */
 export const useModelsStore = defineStore('models', () => {
+  const specsStore = useSpecsStore();
+
   // ==========================================================================
   // State
   // ==========================================================================
 
-  /** List of available schemas with metadata */
-  const schemas: Ref<SchemaInfo[]> = ref([]);
+  /** Per-spec schemas: Map<specId, SchemaInfo[]> */
+  const schemasBySpec: Ref<Map<string, SchemaInfo[]>> = ref(new Map());
 
   /** Currently selected schema name */
   const selectedSchema: Ref<string | null> = ref(null);
+
+  /** Currently selected spec ID for schema operations */
+  const selectedSpecId: Ref<string | null> = ref(null);
 
   /** Items for the currently selected schema */
   const currentItems: Ref<unknown[]> = ref([]);
@@ -106,11 +128,32 @@ export const useModelsStore = defineStore('models', () => {
   // ==========================================================================
 
   /**
+   * Flattened list of all schemas, respecting activeSpecFilter.
+   * Returns schemas for the active spec only, or all schemas when no filter.
+   */
+  const schemas: ComputedRef<SchemaInfo[]> = computed(() => {
+    const specFilter = specsStore.activeSpecFilter;
+
+    if (specFilter) {
+      return schemasBySpec.value.get(specFilter) ?? [];
+    }
+
+    // All schemas across all specs
+    const all: SchemaInfo[] = [];
+    for (const [, specSchemas] of schemasBySpec.value) {
+      all.push(...specSchemas);
+    }
+    return all;
+  });
+
+  /**
    * Currently selected schema metadata
    */
   const currentSchema: ComputedRef<SchemaInfo | null> = computed(() => {
-    if (!selectedSchema.value) return null;
-    return schemas.value.find((s) => s.name === selectedSchema.value) ?? null;
+    if (!selectedSchema.value || !selectedSpecId.value) return null;
+    const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
+    if (!specSchemas) return null;
+    return specSchemas.find((s) => s.name === selectedSchema.value) ?? null;
   });
 
   /**
@@ -124,12 +167,12 @@ export const useModelsStore = defineStore('models', () => {
   const isDirty: ComputedRef<boolean> = computed(() => isDirtyFlag.value);
 
   /**
-   * Total number of schemas
+   * Total number of schemas (respects spec filter)
    */
   const schemaCount: ComputedRef<number> = computed(() => schemas.value.length);
 
   /**
-   * Total number of items across all schemas
+   * Total number of items across visible schemas
    */
   const totalItems: ComputedRef<number> = computed(() => {
     return schemas.value.reduce((sum, schema) => sum + schema.count, 0);
@@ -140,20 +183,23 @@ export const useModelsStore = defineStore('models', () => {
   // ==========================================================================
 
   /**
-   * Fetch the list of schemas from the server
+   * Fetch the list of schemas from the server for a specific spec
    */
-  async function fetchSchemas(): Promise<void> {
+  async function fetchSchemas(specId: string): Promise<void> {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await fetch('/_api/store');
+      const response = await fetch(`${apiBasePath(specId)}/store`);
       if (!response.ok) {
         throw new Error(`Failed to fetch schemas: ${response.statusText}`);
       }
 
       const data = await response.json();
-      schemas.value = data.schemas ?? [];
+      const rawSchemas: Array<Omit<SchemaInfo, 'specId'>> = data.schemas ?? [];
+      // Stamp each schema with its specId
+      const stampedSchemas: SchemaInfo[] = rawSchemas.map((s) => ({ ...s, specId }));
+      schemasBySpec.value.set(specId, stampedSchemas);
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch schemas';
       console.error('[ModelsStore] Error fetching schemas:', err);
@@ -165,22 +211,23 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Select a schema and fetch its data
    */
-  async function selectSchemaByName(schemaName: string): Promise<void> {
-    if (selectedSchema.value === schemaName) return;
+  async function selectSchemaByName(specId: string, schemaName: string): Promise<void> {
+    if (selectedSchema.value === schemaName && selectedSpecId.value === specId) return;
 
     selectedSchema.value = schemaName;
-    await fetchSchemaData(schemaName);
+    selectedSpecId.value = specId;
+    await fetchSchemaData(specId, schemaName);
   }
 
   /**
    * Fetch data for a specific schema
    */
-  async function fetchSchemaData(schemaName: string): Promise<void> {
+  async function fetchSchemaData(specId: string, schemaName: string): Promise<void> {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await fetch(`/_api/store/${encodeURIComponent(schemaName)}`);
+      const response = await fetch(`${apiBasePath(specId)}/store/${encodeURIComponent(schemaName)}`);
       if (!response.ok) {
         throw new Error(`Failed to fetch schema data: ${response.statusText}`);
       }
@@ -193,9 +240,12 @@ export const useModelsStore = defineStore('models', () => {
       isDirtyFlag.value = false;
 
       // Update schema count in the list
-      const schemaIndex = schemas.value.findIndex((s) => s.name === schemaName);
-      if (schemaIndex !== -1) {
-        schemas.value[schemaIndex].count = data.count;
+      const specSchemas = schemasBySpec.value.get(specId);
+      if (specSchemas) {
+        const schemaIndex = specSchemas.findIndex((s) => s.name === schemaName);
+        if (schemaIndex !== -1) {
+          specSchemas[schemaIndex].count = data.count;
+        }
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch schema data';
@@ -227,7 +277,7 @@ export const useModelsStore = defineStore('models', () => {
    * Save the current items to the server
    */
   async function saveItems(): Promise<boolean> {
-    if (!selectedSchema.value) {
+    if (!selectedSchema.value || !selectedSpecId.value) {
       error.value = 'No schema selected';
       return false;
     }
@@ -236,13 +286,16 @@ export const useModelsStore = defineStore('models', () => {
     error.value = null;
 
     try {
-      const response = await fetch(`/_api/store/${encodeURIComponent(selectedSchema.value)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${apiBasePath(selectedSpecId.value)}/store/${encodeURIComponent(selectedSchema.value)}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(currentItems.value),
         },
-        body: JSON.stringify(currentItems.value),
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -256,9 +309,12 @@ export const useModelsStore = defineStore('models', () => {
       isDirtyFlag.value = false;
 
       // Update schema count
-      const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
-      if (schemaIndex !== -1) {
-        schemas.value[schemaIndex].count = result.created ?? currentItems.value.length;
+      const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
+      if (specSchemas) {
+        const schemaIndex = specSchemas.findIndex((s) => s.name === selectedSchema.value);
+        if (schemaIndex !== -1) {
+          specSchemas[schemaIndex].count = result.created ?? currentItems.value.length;
+        }
       }
 
       return true;
@@ -275,7 +331,7 @@ export const useModelsStore = defineStore('models', () => {
    * Clear all items for the current schema
    */
   async function clearSchema(): Promise<boolean> {
-    if (!selectedSchema.value) {
+    if (!selectedSchema.value || !selectedSpecId.value) {
       error.value = 'No schema selected';
       return false;
     }
@@ -284,9 +340,12 @@ export const useModelsStore = defineStore('models', () => {
     error.value = null;
 
     try {
-      const response = await fetch(`/_api/store/${encodeURIComponent(selectedSchema.value)}`, {
-        method: 'DELETE',
-      });
+      const response = await fetch(
+        `${apiBasePath(selectedSpecId.value)}/store/${encodeURIComponent(selectedSchema.value)}`,
+        {
+          method: 'DELETE',
+        },
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to clear schema: ${response.statusText}`);
@@ -298,9 +357,12 @@ export const useModelsStore = defineStore('models', () => {
       isDirtyFlag.value = false;
 
       // Update schema count
-      const schemaIndex = schemas.value.findIndex((s) => s.name === selectedSchema.value);
-      if (schemaIndex !== -1) {
-        schemas.value[schemaIndex].count = 0;
+      const specSchemas = schemasBySpec.value.get(selectedSpecId.value);
+      if (specSchemas) {
+        const schemaIndex = specSchemas.findIndex((s) => s.name === selectedSchema.value);
+        if (schemaIndex !== -1) {
+          specSchemas[schemaIndex].count = 0;
+        }
       }
 
       return true;
@@ -325,10 +387,10 @@ export const useModelsStore = defineStore('models', () => {
    * Refresh the current schema data from the server
    */
   async function refresh(): Promise<void> {
-    if (selectedSchema.value) {
-      await fetchSchemaData(selectedSchema.value);
-    } else {
-      await fetchSchemas();
+    if (selectedSchema.value && selectedSpecId.value) {
+      await fetchSchemaData(selectedSpecId.value, selectedSchema.value);
+    } else if (selectedSpecId.value) {
+      await fetchSchemas(selectedSpecId.value);
     }
   }
 
@@ -336,8 +398,9 @@ export const useModelsStore = defineStore('models', () => {
    * Reset the store state
    */
   function reset(): void {
-    schemas.value = [];
+    schemasBySpec.value.clear();
     selectedSchema.value = null;
+    selectedSpecId.value = null;
     currentItems.value = [];
     originalItems.value = [];
     loading.value = false;
@@ -348,16 +411,19 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Handle store update from WebSocket event
    */
-  function handleStoreUpdate(data: { schema: string; action: string; count: number }): void {
-    const schemaIndex = schemas.value.findIndex((s) => s.name === data.schema);
-    if (schemaIndex !== -1) {
-      schemas.value[schemaIndex].count = data.count;
+  function handleStoreUpdate(data: { specId: string; schema: string; action: string; count: number }): void {
+    const specSchemas = schemasBySpec.value.get(data.specId);
+    if (specSchemas) {
+      const schemaIndex = specSchemas.findIndex((s) => s.name === data.schema);
+      if (schemaIndex !== -1) {
+        specSchemas[schemaIndex].count = data.count;
+      }
     }
 
     // If the updated schema is currently selected, refresh it only if no unsaved changes
-    if (selectedSchema.value === data.schema) {
+    if (selectedSchema.value === data.schema && selectedSpecId.value === data.specId) {
       if (!isDirty.value) {
-        fetchSchemaData(data.schema);
+        fetchSchemaData(data.specId, data.schema);
       } else {
         // Don't auto-refresh when there are unsaved changes
         console.warn(
@@ -370,15 +436,15 @@ export const useModelsStore = defineStore('models', () => {
   /**
    * Handle reseed completion from WebSocket event
    */
-  function handleReseedComplete(data: { success: boolean; schemas: string[] }): void {
+  function handleReseedComplete(data: { specId: string; success: boolean; schemas: string[] }): void {
     if (data.success) {
-      // Refresh schema list
-      fetchSchemas();
+      // Refresh schema list for this spec
+      fetchSchemas(data.specId);
 
       // Refresh current schema data only if no unsaved changes
-      if (selectedSchema.value) {
+      if (selectedSchema.value && selectedSpecId.value === data.specId) {
         if (!isDirty.value) {
-          fetchSchemaData(selectedSchema.value);
+          fetchSchemaData(data.specId, selectedSchema.value);
         } else {
           console.warn(
             `[ModelsStore] Skipping auto-refresh after reseed for schema "${selectedSchema.value}" - unsaved changes exist`,
@@ -394,8 +460,10 @@ export const useModelsStore = defineStore('models', () => {
 
   return {
     // State
+    schemasBySpec,
     schemas,
     selectedSchema,
+    selectedSpecId,
     currentItems,
     loading,
     error,
