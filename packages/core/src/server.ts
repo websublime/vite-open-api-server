@@ -210,6 +210,21 @@ export interface OpenApiServer {
  * @param config - Server configuration
  * @returns Configured server instance
  */
+
+/** Populate the store from a seeds map, logging any per-item failures. */
+function populateStoreFromSeeds(store: Store, seeds: Map<string, unknown[]>, logger: Logger): void {
+  store.clearAll();
+  for (const [schemaName, items] of seeds) {
+    for (const item of items) {
+      try {
+        store.create(schemaName, item);
+      } catch (error) {
+        logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
+      }
+    }
+  }
+}
+
 export async function createOpenApiServer(config: OpenApiServerConfig): Promise<OpenApiServer> {
   const {
     spec,
@@ -585,16 +600,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
 
       // Re-populate store with new seeds
       // Note: clearAll() removes ALL schemas, not just the ones being updated
-      store.clearAll();
-      for (const [schemaName, items] of newSeeds) {
-        for (const item of items) {
-          try {
-            store.create(schemaName, item);
-          } catch (error) {
-            logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
-          }
-        }
-      }
+      populateStoreFromSeeds(store, newSeeds, logger);
 
       // Update registry with new seed info
       const seedSchemaNames = new Set(newSeeds.keys());
