@@ -13,6 +13,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import TimelineDetail from '@/components/TimelineDetail.vue';
 import TimelineEntryComponent from '@/components/TimelineEntry.vue';
 import { useWebSocket } from '@/composables/useWebSocket';
+import { useSpecsStore } from '@/stores/specs';
 import {
   type HttpMethod,
   type RequestLogEntry,
@@ -20,7 +21,6 @@ import {
   type TimelineData,
   useTimelineStore,
 } from '@/stores/timeline';
-import { useSpecsStore } from '@/stores/specs';
 
 // Store and WebSocket
 const timelineStore = useTimelineStore();
