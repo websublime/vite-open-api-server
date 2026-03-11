@@ -245,16 +245,7 @@ export async function createOpenApiServer(config: OpenApiServerConfig): Promise<
   const store = createStore({ idFields });
 
   // Populate store with seed data
-  for (const [schemaName, items] of seeds) {
-    for (const item of items) {
-      try {
-        store.create(schemaName, item);
-      } catch (error) {
-        // Log but don't fail - duplicate IDs in seeds are common
-        logger.warn(`[vite-plugin-open-api-core] Failed to seed ${schemaName}:`, error);
-      }
-    }
-  }
+  populateStoreFromSeeds(store, seeds, logger);
 
   // Create WebSocket hub for real-time updates
   const wsHub = createWebSocketHub();
